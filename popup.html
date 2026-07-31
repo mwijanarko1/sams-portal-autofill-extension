@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SAMS Portal Autofill</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --indigo-950: #1e1b4b;
+      --indigo-900: #312e81;
+      --indigo-800: #3730a3;
+      --indigo-700: #4338ca;
+      --indigo-600: #4f46e5;
+      --indigo-400: #818cf8;
+      --indigo-100: #e0e7ff;
+      --indigo-50: #eef2ff;
+      --purple-700: #6d28d9;
+      --purple-600: #7c3aed;
+      --brand-navy: #262261; /* SAMS logo colour */
+      --slate-700: #334155;
+      --slate-600: #475569;
+      --slate-500: #64748b;
+      --slate-400: #94a3b8;
+      --slate-300: #cbd5e1;
+      --slate-200: #e2e8f0;
+      --slate-100: #f1f5f9;
+      --slate-50: #f8fafc;
+    }
+    body {
+      font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+      font-size: 13px;
+      color: var(--slate-700);
+      background: #f5f3ff;
+      width: 420px;
+      min-height: 300px;
+    }
+    .container { padding: 16px; }
+
+    /* ── Header ────────────────────────────────────── */
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 14px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--indigo-100);
+    }
+    .header img { width: 32px; height: 32px; flex-shrink: 0; }
+    .header-content { flex: 1; }
+    .header-title {
+      font-size: 15px;
+      font-weight: 800;
+      background: linear-gradient(to right, var(--brand-navy), var(--purple-600));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      line-height: 1.2;
+    }
+    .header-subtitle {
+      font-size: 10px;
+      color: var(--slate-400);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .header-version { font-size: 10px; color: var(--slate-400); font-weight: 500; }
+
+    /* ── Cards ─────────────────────────────────────── */
+    .section { margin-bottom: 14px; }
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      border: 1px solid var(--indigo-100);
+      padding: 12px;
+      box-shadow: 0 1px 3px rgba(38, 34, 97, 0.06);
+    }
+    .section-title {
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--slate-500);
+      margin-bottom: 8px;
+    }
+
+    /* ── Student search ────────────────────────────── */
+    .search-wrap { position: relative; }
+    .search-input {
+      width: 100%;
+      padding: 8px 12px 8px 32px;
+      border: 1px solid var(--slate-300);
+      border-radius: 10px;
+      font-size: 12px;
+      font-family: inherit;
+      color: var(--slate-700);
+      background: #fff;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    .search-input:focus {
+      outline: none;
+      border-color: var(--indigo-400);
+      box-shadow: 0 0 0 3px var(--indigo-100);
+    }
+    .search-input::placeholder { color: var(--slate-400); }
+    .search-icon {
+      position: absolute;
+      left: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--slate-400);
+      font-size: 13px;
+      pointer-events: none;
+    }
+    .search-results {
+      position: absolute;
+      top: calc(100% + 4px);
+      left: 0;
+      right: 0;
+      background: #fff;
+      border: 1px solid var(--indigo-100);
+      border-radius: 10px;
+      box-shadow: 0 8px 20px rgba(38, 34, 97, 0.15);
+      max-height: 190px;
+      overflow-y: auto;
+      z-index: 10;
+      display: none;
+    }
+    .search-results.open { display: block; }
+    .search-result {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 10px;
+      cursor: pointer;
+      border-bottom: 1px solid var(--slate-100);
+    }
+    .search-result:last-child { border-bottom: none; }
+    .search-result:hover, .search-result.active { background: var(--indigo-50); }
+    .search-result .avatar {
+      width: 26px; height: 26px;
+      border-radius: 999px;
+      background: linear-gradient(135deg, var(--brand-navy), var(--purple-600));
+      color: #fff;
+      font-size: 10px;
+      font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .search-result .sr-name { font-size: 12px; font-weight: 600; color: var(--slate-700); }
+    .search-result .sr-meta { font-size: 10px; color: var(--slate-400); }
+    .search-empty { padding: 10px; font-size: 11px; color: var(--slate-400); text-align: center; }
+
+    /* ── Selected student chip ─────────────────────── */
+    .selected-student {
+      display: none;
+      align-items: center;
+      gap: 10px;
+      margin-top: 10px;
+      padding: 8px 10px;
+      background: var(--indigo-50);
+      border: 1px solid var(--indigo-100);
+      border-radius: 10px;
+    }
+    .selected-student.visible { display: flex; }
+    .selected-student .avatar {
+      width: 30px; height: 30px;
+      border-radius: 999px;
+      background: linear-gradient(135deg, var(--brand-navy), var(--purple-600));
+      color: #fff;
+      font-size: 11px;
+      font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .selected-student .ss-name { font-size: 12px; font-weight: 700; color: var(--indigo-900); }
+    .selected-student .ss-meta { font-size: 10px; color: var(--slate-500); }
+    .selected-student .ss-clear {
+      margin-left: auto;
+      border: none;
+      background: none;
+      color: var(--slate-400);
+      cursor: pointer;
+      font-size: 14px;
+      padding: 2px 6px;
+      border-radius: 6px;
+    }
+    .selected-student .ss-clear:hover { background: var(--indigo-100); color: var(--indigo-800); }
+
+    /* ── Autofill button ───────────────────────────── */
+    .btn-autofill {
+      width: 100%;
+      margin-top: 12px;
+      padding: 10px 16px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 700;
+      border: none;
+      cursor: pointer;
+      color: #fff;
+      background: linear-gradient(135deg, var(--brand-navy), var(--purple-600));
+      transition: opacity .15s, transform .08s, box-shadow .15s;
+      font-family: inherit;
+      letter-spacing: 0.01em;
+    }
+    .btn-autofill:hover:not(:disabled) { box-shadow: 0 4px 14px rgba(109, 40, 217, 0.35); }
+    .btn-autofill:active { transform: scale(.97); }
+    .btn-autofill:disabled { opacity: .4; cursor: not-allowed; transform: none; box-shadow: none; }
+
+    /* ── Status area ───────────────────────────────── */
+    .status-entry {
+      padding: 8px 10px;
+      border-radius: 8px;
+      font-size: 11px;
+      margin-bottom: 6px;
+      line-height: 1.4;
+      border-left: 3px solid transparent;
+    }
+    .status-entry.info { background: var(--indigo-50); color: var(--indigo-800); border-left-color: var(--indigo-400); }
+    .status-entry.success { background: #f0fdf4; color: #166534; border-left-color: #22c55e; }
+    .status-entry.warn { background: #fffbeb; color: #92400e; border-left-color: #f59e0b; }
+    .status-entry.error { background: #fef2f2; color: #991b1b; border-left-color: #ef4444; }
+    .status-meta { font-size: 10px; color: var(--slate-400); margin-top: 2px; }
+
+    /* ── Result grid ───────────────────────────────── */
+    .result-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+      gap: 4px;
+      margin-top: 6px;
+    }
+    .result-stat { background: var(--indigo-50); border-radius: 8px; padding: 5px 6px; text-align: center; }
+    .result-stat .num { font-size: 15px; font-weight: 700; color: var(--indigo-900); line-height: 1.2; }
+    .result-stat .lbl { font-size: 8px; color: var(--slate-500); text-transform: uppercase; letter-spacing: 0.04em; }
+
+    /* ── Field list ────────────────────────────────── */
+    .field-list { margin-top: 6px; max-height: 140px; overflow-y: auto; font-size: 10px; color: var(--slate-600); }
+    .field-list code { background: var(--indigo-100); padding: 1px 5px; border-radius: 4px; font-size: 10px; color: var(--indigo-900); }
+    .field-entry { display: inline-block; margin: 1px 0; line-height: 1.6; }
+    .field-type { font-size: 9px; color: var(--slate-500); background: var(--slate-100); padding: 0 4px; border-radius: 3px; }
+    .field-badge { display: inline-block; font-size: 8px; font-weight: 700; padding: 0 5px; border-radius: 999px; vertical-align: middle; }
+    .field-badge.req { background: #fecaca; color: #991b1b; }
+    .field-badge.has-val { background: #bbf7d0; color: #166534; }
+    .field-score { font-size: 9px; color: var(--indigo-600); font-weight: 600; }
+    .field-meta { font-size: 9px; color: var(--slate-400); }
+
+    /* ── Spinner ───────────────────────────────────── */
+    .spinner {
+      display: inline-block;
+      width: 12px; height: 12px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin .6s linear infinite;
+      vertical-align: middle;
+      margin-right: 4px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Footer ────────────────────────────────────── */
+    .footer {
+      margin-top: 10px;
+      padding-top: 8px;
+      border-top: 1px solid var(--indigo-100);
+      font-size: 9px;
+      color: var(--slate-400);
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <!-- Header -->
+  <div class="header">
+    <img src="sams-logo.svg" alt="SAMS CRM" />
+    <div class="header-content">
+      <div class="header-title">SAMS Portal Autofill</div>
+      <div class="header-subtitle">Powered by SAMS CRM</div>
+    </div>
+    <span class="header-version">v2.3.8</span>
+  </div>
+
+  <!-- Student search -->
+  <div class="section">
+    <div class="card">
+      <div class="section-title">Student</div>
+      <div class="search-wrap">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="studentSearch" class="search-input" placeholder="Search by name or ID…" autocomplete="off" />
+        <div id="searchResults" class="search-results"></div>
+      </div>
+      <div id="selectedStudent" class="selected-student">
+        <div class="avatar" id="selAvatar"></div>
+        <div>
+          <div class="ss-name" id="selName"></div>
+          <div class="ss-meta" id="selMeta"></div>
+        </div>
+        <button class="ss-clear" id="btnClear" title="Change student">✕</button>
+      </div>
+      <button id="btnAutofill" class="btn-autofill" disabled>✨ Autofill This Page</button>
+    </div>
+  </div>
+
+  <!-- Status / Results -->
+  <div id="statusArea"></div>
+
+  <div class="footer">
+    Never auto-submits — review before submitting · Only student selection saved locally
+  </div>
+</div>
+<script src="popup.js"></script>
+</body>
+</html>
