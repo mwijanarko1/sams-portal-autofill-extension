@@ -4,7 +4,7 @@ Exact application origins and authenticated test journeys are awaiting SAMS acce
 
 | Portal | Origin confirmed | Personal | Contact | Education | Employment | Fixtures | Status |
 |---|---:|---:|---:|---:|---:|---:|---|
-| University of Greenwich | No | Not tested | Not tested | Not tested | Not tested | Missing | Blocked by access |
+| University of Greenwich | Yes (`nelson.gre.ac.uk`) | Partial | Partial | Partial | Partial | 10 pages | Live map in docs/history/GREENWICH.md |
 | University of Greater Manchester | No | Not tested | Not tested | Not tested | Not tested | Missing | Blocked by access |
 | Bangor University | No | Not tested | Not tested | Not tested | Not tested | Missing | Blocked by access |
 
