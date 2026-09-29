@@ -3499,7 +3499,7 @@ chrome.runtime.onMessage.addListener(function (message, sender, sendResponse) {
   try {
     switch (message.action) {
       case "ping": {
-        sendResponse({ pong: true, version: "2.3.9" });
+        sendResponse({ pong: true, version: "0.1.0" });
         break;
       }
 
