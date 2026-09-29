@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>CRM reader fixture</title>
+  <style>body { font-family: sans-serif; } label, section, main { display: block; margin: 8px; }</style>
+</head>
+<body>
+  <header>Signed in as <span>sara.counsellor@samsglobal.co.uk</span></header>
+  <main data-sams-profile>
+    <h1>Student Profile</h1>
+    <h2>Personal Information</h2>
+    <label><span>Given Name *</span><input value="Aisha"></label>
+    <label><span>Family Name *</span><input value="Rahman"></label>
+    <label><span>Gender *</span><select><option selected>Female</option><option>Male</option></select></label>
+    <label><span>Nationality *</span><select><option selected>Bangladeshi</option><option>British</option></select></label>
+
+    <dl>
+      <div><dt>Institute Name</dt><dd>Dhaka College</dd></div>
+      <div><dt>Subject</dt><dd>Computer Science</dd></div>
+    </dl>
+
+    <section>
+      <h2>Contact Information</h2>
+      <div><span aria-hidden="true"></span>+44 7700 900123</div>
+      <div><span aria-hidden="true"></span>aisha.rahman@example.com</div>
+      <div>
+        <div>Emergency Contact</div>
+        <div><span>Amina Rahman</span><span>Mother</span></div>
+        <ul>
+          <li>+880 1712 345678</li>
+          <li>amina.rahman@example.com</li>
+        </ul>
+      </div>
+    </section>
+  </main>
+  <pre id="result"></pre>
+  <script>
+    globalThis.SAMS_ALLOWLIST = { isCrmOrigin: () => true };
+    globalThis.chrome = { runtime: { onMessage: { addListener() {} } } };
+  </script>
+  <script src="../../config/crm-source.js"></script>
+  <script>
+    SAMS_CRM_SOURCE.profilePathPatterns = [/.*/];
+  </script>
+  <script src="../../src/crm-reader.js"></script>
+  <script>
+    document.getElementById("result").textContent = JSON.stringify(SAMS_CRM_READER.readProfile());
+  </script>
+</body>
+</html>

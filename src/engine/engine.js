@@ -1,628 +1,61 @@
-/* ===================================================================
- * content.js — SAMS Portal Autofill Extension
- *
- * Injected programmatically via chrome.scripting when the user
- * triggers scan or autofill from the popup (including allFrames).
- *
- * Listens for messages from the popup:
- *
- *   { action: "ping" }          → health check (returns { pong: true })
- *   { action: "scan" }          → scans the page for form fields
- *   { action: "autofill", fieldMap } → fills matched fields
- *
- * NEVER clicks submit/save buttons.
- * NEVER collects credentials.
- * Only fills visible, enabled, non-hidden form fields.
- * =================================================================== */
+/* SAMS portal scan, match, format, and fill engine. */
+if (!globalThis.SAMS_SYNONYMS) throw new Error("SAMS synonym config was not loaded.");
+var STOPWORDS = globalThis.SAMS_SYNONYMS.STOPWORDS;
+var SYNONYM_MAP = globalThis.SAMS_SYNONYMS.SYNONYM_MAP;
+var AUTOCOMPLETE_KEY_MAP = globalThis.SAMS_SYNONYMS.AUTOCOMPLETE_KEY_MAP;
 
-// Prevent double listeners when content.js is re-injected into the same frame.
 if (globalThis.__SAMS_PORTAL_AUTOFILL_LOADED__) {
-  // Already initialised in this frame — skip re-registration.
+  // The engine is already registered in this frame.
 } else {
 globalThis.__SAMS_PORTAL_AUTOFILL_LOADED__ = true;
 
-// ─── Common stopwords excluded from word-overlap scoring ─────────────
+var FORBIDDEN_CONTROL_TEXT = /\b(submit|pay|send|delete|confirm|declare|agree|next|save|continue)\b/i;
+var ACTIVE_PORTAL = (globalThis.SAMS_PORTALS || []).find(function (portal) {
+  return (portal.origins || []).includes(location.origin) &&
+    (!(portal.pageMatchers || []).length || portal.pageMatchers.some(function (matcher) {
+      return typeof matcher === "string" ? location.pathname.includes(matcher) : matcher.test(location.pathname);
+    }));
+}) || null;
 
-const STOPWORDS = new Set([
-  "a", "an", "the", "in", "on", "at", "to", "of", "for", "by", "or",
-  "and", "is", "if", "as", "it", "be", "no", "not", "do", "up",
-  "name", "date", "number", "no", "nbr", "type", "id", "code", "ref",
-  "info", "details", "desc", "description", "other", "please",
-  "enter", "select", "choose", "add", "new", "your", "our",
-  "field", "value", "label", "text",
-  "application", "form", "section", "page", "required", "optional",
-]);
+if (ACTIVE_PORTAL && ACTIVE_PORTAL.extraSynonyms) {
+  Object.keys(ACTIVE_PORTAL.extraSynonyms).forEach(function (key) {
+    SYNONYM_MAP[key] = (SYNONYM_MAP[key] || []).concat(ACTIVE_PORTAL.extraSynonyms[key]);
+  });
+}
 
-// ─── Synonym map (CRM key → human-readable label patterns) ──────────
-// Each key maps to an array of label text patterns that might appear on
-// portal forms. Patterns are normalized for comparison.
-// Includes common UK admissions / e:Vision / Salesforce agent-portal labels.
+function portalOverrideKey(element) {
+  if (!ACTIVE_PORTAL) return "";
+  var overrides = ACTIVE_PORTAL.selectorOverrides || {};
+  var keys = Object.keys(overrides);
+  for (var i = 0; i < keys.length; i++) {
+    var selectors = Array.isArray(overrides[keys[i]]) ? overrides[keys[i]] : [overrides[keys[i]]];
+    for (var j = 0; j < selectors.length; j++) {
+      try { if (element.matches(selectors[j])) return keys[i]; } catch (error) { /* invalid selector */ }
+    }
+  }
+  return "";
+}
 
-const SYNONYM_MAP = {
-  // ── Name ──────────────────────────────────────────────────────────
-  givenName: [
-    "first name", "firstname", "forename", "forenames", "given name",
-    "given names", "first/given name", "legal first name",
-    "first given name", "applicant first name", "student first name",
-    "preferred first name", "christian name",
-    // Salesforce API names (Sunderland Online Applications)
-    "firstname", "first_name", "givenname",
-  ],
-  familyName: [
-    "last name", "lastname", "surname", "family name",
-    "surname/family/last name", "legal last name", "family/surname",
-    "applicant surname", "student surname", "applicant last name",
-    "lastname", "last_name", "surname",
-  ],
-  middleName: [
-    "middle name", "middle initial", "middle", "middle names",
-    "middle name(s)", "middlename", "middle_name",
-  ],
-  // ── Personal ──────────────────────────────────────────────────────
-  dateOfBirth: [
-    "date of birth", "dob", "birth date", "birthdate",
-    "birth day", "birthday", "date of birth (dob)",
-    "applicant date of birth", "date of birth dd/mm/yyyy",
-    "birth date", "dateofbirth", "date_of_birth",
-  ],
-  gender: [
-    "gender", "sex", "gender identity", "legal gender",
-    // Ulster University QA (apply.qahighereducation.com) live label / API name
-    "sex identifier", "sex_identifier", "sexidentifier",
-  ],
-  maritalStatus: ["marital status", "marriage status", "civil status"],
-  nationality: [
-    "nationality", "citizenship", "country of citizenship",
-    "country of origin", "country of nationality",
-    "nationality / citizenship", "passport nationality",
-  ],
-  // Ulster QA Personal Details (live audit 2026-07-31)
-  ethnicity: [
-    "ethnicity", "ethnic origin", "ethnic background",
-    "ethnic group", "ethnicity / ethnic origin",
-  ],
-  dependants: [
-    "dependants", "dependents", "number of dependants",
-    "do you have dependants", "dependent children",
-  ],
-  currentDomicile: [
-    "current domicile", "domicile", "country of domicile",
-    "permanent domicile", "current_domicile",
-  ],
-  previouslyApplied: [
-    "previously applied", "have you previously applied",
-    "previously applied for or enrolled",
-    "applied for or enrolled onto a course with ulster",
-    "qahe partner", "previous application",
-  ],
-  previousName: [
-    "previously been known by any other name",
-    "known by any other name", "previous name",
-    "other name", "former name", "alias",
-  ],
-  // ── Contact ───────────────────────────────────────────────────────
-  location: [
-    "location", "address", "street address", "current address",
-    "permanent address", "residence", "home address",
-    "mailing address", "postal address", "correspondence address",
-    "address line 1", "address line1", "line 1", "line1",
-    "residential address", "permanent residence",
-    "house/flat number and street", "house flat number and street",
-    "mailingstreet", "mailing street", "street",
-  ],
-  city: [
-    "city", "town", "city/town", "city name", "town/city",
-    "town or city", "mailingcity", "mailing city",
-  ],
-  state: [
-    "state", "province", "region", "state/province",
-    "county", "territory", "county/state",
-  ],
-  postcode: [
-    "postcode", "zip code", "zip", "postal code",
-    "post code", "zip/postal code", "uk postcode",
-    "mailingpostalcode", "mailing postal code", "mailing postcode",
-  ],
-  countryName: [
-    "country", "nation", "country of residence",
-    "country code", "country of permanent residence",
-    "home country", "residence country", "mailing country",
-  ],
-  phone: [
-    "phone number", "telephone number", "mobile number",
-    "contact number", "phone", "telephone", "mobile",
-    "cell", "tel", "cell phone", "mobile phone",
-    "mobile telephone", "home telephone", "contact telephone",
-    "primary phone", "daytime telephone", "mobilephone", "mobile_phone",
-    // Ulster QA: national number fields (country code is separate combobox)
-    // exact "phone" / "mobile" labels handled carefully in matchScore
-  ],
-  email: [
-    "email address", "e-mail address", "email", "e-mail",
-    "contact email", "primary email", "applicant email",
-    "student email",
-  ],
-  funding: [
-    // Main funding combobox only — NOT "Other funding source" free-text
-    // (that field is Otherfundingsource__c and must stay empty for Self-Funding)
-    "how are you intending to fund this programme",
-    "how are you intending to fund this program",
-    "how are you intending to fund",
-    "intend to fund",
-    "programme funding",
-    "program funding",
-    "tuition funding",
-    "funding source",
-    "fundingsource",
-    // bare "funding" is OK for exact label; guarded against "other funding" below
-    "funding",
-    // Ulster QA live radio group (ego-browser 2026-07-31)
-    "fee payment method", "fee_payment_method", "feepaymentmethod",
-  ],
-  phoneCountryCode: [
-    "phone country code", "mobile country code",
-    "telephone country code", "country code phone",
-    "dialling code", "dialing code", "intl dial code",
-  ],
-  // Only used when funding type is Other — leave empty for Self-Funding demos
-  otherFundingSource: [
-    "other funding source",
-    "otherfundingsource",
-    "otherfundingsource__c",
-    "other source of funding",
-    "please specify funding",
-  ],
-  // ── Sunderland / Salesforce-specific helpers ──────────────────────
-  title: [
-    // Do NOT use bare "title" — it steals Employment "Job Title" (fills "Mr").
-    // Exact label "Title" is handled via matchScore special-case below.
-    "title/salutation", "salutation", "honorific",
-    "mr/mrs", "name title", "title mr", "title mrs", "title miss",
-    "applicant title", "personal title",
-  ],
-  highestQualification: [
-    // Step 1 "Your details" only — do NOT include bare "qualification level"
-    // (that label is Academic History and maps to qualificationLevel → Higher Education)
-    "highest qualification", "highest education", "highest award",
-    "uk masters degree", "highest academic qualification",
-  ],
-  hasUniversityDegree: [
-    "do you have a university degree", "university degree",
-    "have a degree", "hold a degree",
-  ],
-  hasTwoYearsWorkExperience: [
-    "minimum of two years work experience",
-    "two years work experience", "2 years work experience",
-    "minimum two years",
-  ],
-  emergencyName: [
-    "emergency contact", "emergency contact name", "emergency name",
-    "emergency person", "next of kin", "next of kin name",
-    "emergency contact full name", "nominated contact name",
-  ],
-  // Ulster QA NEW NOMINATED CONTACT modal (live 2026-07-31): First + Last, not full name
-  emergencyFirstName: [
-    "new contact first name", "new_contact_first_name",
-    "emergency first name", "nominated first name",
-    "contact first name", "emergency contact first name",
-  ],
-  emergencyLastName: [
-    "new contact last name", "new_contact_last_name",
-    "emergency last name", "nominated last name",
-    "contact last name", "emergency contact last name",
-  ],
-  emergencyPhone: [
-    "emergency phone", "emergency contact phone", "emergency telephone",
-    "emergency contact number", "next of kin telephone",
-    "nominated phone", "nominated contact phone",
-  ],
-  // Ulster modal label is "Phone Country Dialing Code" (not main "Phone Country Code")
-  emergencyPhoneCountryCode: [
-    "phone country dialing code", "country dialing code",
-    "emergency phone country code", "nominated phone country code",
-    "emergency dialing code", "phone country dialling code",
-    "country dialling code",
-  ],
-  // ── Education (incl. Sunderland Academic History) ─────────────────
-  institutionName: [
-    "institution name", "school name", "college name", "university name",
-    "institution", "school", "university", "college",
-    "previous institution", "educational institution",
-    "name of institution", "name of school", "name of university",
-    "school attended", "attended institution",
-    "institution attended", "alma mater",
-    // Sunderland academic "Organisation" (university)
-    "organisation", "organization", "academic organisation",
-    "academic organization", "awarding institution",
-    "awarding body", "place of study",
-    // Ulster QA NEW EDUCATION HISTORY
-    "education institution", "education institution name",
-  ],
-  degree: [
-    "degree", "qualification", "degree qualification",
-    "qualification name", "education level",
-    "level of education", "highest qualification",
-    "highest education", "level of study", "study level",
-    "degree name", "degree awarded",
-  ],
-  qualificationLevel: [
-    "qualification level", "level of qualification",
-    "academic level", "he level",
-    "nqf level", "rqf level",
-    // avoid bare "education level" / "study level" — those collide with other fields
-  ],
-  qualificationType: [
-    "qualification type", "type of qualification",
-    "award type", "degree type", "type of degree",
-  ],
-  major: [
-    "major", "field of study", "area of study", "subject area",
-    "major subject", "course of study", "study field",
-    "academic program", "program of study", "discipline",
-    "concentration", "specialization", "specialisation",
-    // Sunderland
-    "program title/subject", "program title", "programme title",
-    "programme title/subject", "subject", "course title",
-    "program title subject",
-  ],
-  grade: [
-    // Prefer specific phrases — bare "class"/"result" over-match other fields
-    "grade", "degree class", "degree classification",
-    "classification", "final grade", "overall grade",
-    "award class", "honours class", "honors class",
-    "overall classification", "class of degree",
-  ],
-  awardStatus: [
-    "award status", "status of award", "completion status",
-    "qualification status", "degree status", "awarded",
-    "completed", "result status",
-    // Ulster Results radios: Completed | In Progress
-    "results", "picklist results",
-  ],
-  studyCountry: [
-    "country you studied in", "country of study",
-    "study country", "country of education",
-    "country studied", "studied in",
-    // Ulster education modal: bare *Country (picklist_Country)
-    "picklist country", "education country",
-  ],
-  studyDates: [
-    "study dates", "study period", "dates of attendance",
-    "education dates", "attendance dates", "study timeline",
-    "date range",
-  ],
-  startDate: [
-    "start date", "from date", "begin date",
-    "commencement date", "enrollment date", "enrolment date",
-    "date from", "month year from", "from month year",
-    "start month year", "date started", "study from month year",
-    // avoid bare "start" — steals unrelated fields
-  ],
-  endDate: [
-    "end date", "to date", "completion date",
-    "finish date", "date ended", "date to", "graduation date",
-    "month year to", "to month year", "end month year",
-    "date finished", "study to month year",
-  ],
-  // Ulster QA year-only picklists (not full dates)
-  studyStartYear: [
-    "start year", "study start year", "education start year",
-    "year started", "year from", "pickist start year", "picklist start year",
-    "academic start year",
-  ],
-  studyEndYear: [
-    "end year", "study end year", "education end year",
-    "year ended", "year to", "picklist end year",
-    "predicted end year", "end year or predicted",
-    "end year (or predicted end year if in progress)",
-    "academic end year",
-  ],
-  studyFromMonthYear: [
-    "month year from", "from month year", "study from",
-    "attendance from", "education from",
-  ],
-  studyToMonthYear: [
-    "month year to", "to month year", "study to",
-    "attendance to", "education to",
-  ],
-  graduationYear: [
-    "graduation year", "year of graduation", "passing year",
-    "year of passing", "completion year", "year completed",
-    "year of completion",
-  ],
-  gpa: ["gpa", "grade point average", "gpa grade", "gpa score"],
-  previousEducation: [
-    "previous education", "prior education",
-    "previous study", "past education",
-  ],
-  englishFirstLanguage: [
-    "is english your first language", "english first language",
-    "first language english", "native english",
-    "english as first language",
-  ],
-  otherEnglishLanguageExperience: [
-    // Prefer exact Sunderland label / API name — avoid bare "english" / "experience"
-    // (those steal Job Title history "experience" or nationality autocomplete language)
-    "other english language experience",
-    "otherenglishlanguageexperience",
-    "otherenglishlanguageexperience__c",
-    "other english language evidence",
-    "english language evidence",
-    "english proficiency details",
-  ],
-  // ── Passport / Identity ───────────────────────────────────────────
-  passportNumber: [
-    "passport number", "passport no", "passport",
-    // Ulster QA / Salesforce identity docs often label passport as Document Number
-    "document number", "document no", "document #",
-    "passport document number", "identity document number",
-  ],
-  passportIssueDate: [
-    "passport issue date", "date of issue", "issue date",
-    "document issue date", "date of issue of document",
-  ],
-  passportExpiryDate: [
-    "passport expiry date", "expiry date", "date of expiry",
-    "expiration date", "passport expiration",
-    "document expiry date", "document expiry", "date of expiry of document",
-  ],
-  issuingAuthority: [
-    "issuing authority", "issued by",
-    "document issuing authority", "passport issuing authority",
-  ],
-  // ── English test ───────────────────────────────────────────────────
-  englishTestName: [
-    "english test name", "english proficiency", "english test",
-    "proficiency test", "test name", "test type",
-  ],
-  overallScore: [
-    "overall score", "total score", "overall band",
-    "overall result",
-  ],
-  listeningScore: ["listening score", "listening band"],
-  readingScore: ["reading score", "reading band"],
-  writingScore: ["writing score", "writing band"],
-  speakingScore: ["speaking score", "speaking band"],
-  testDate: ["test date", "exam date", "date of test"],
-  // ── Visa / Authorisation ───────────────────────────────────────────
-  visaType: ["visa type", "visa category"],
-  visaCountry: ["visa country", "country of visa"],
-  visaStatus: ["visa status", "current visa status"],
-  visaStartDate: ["visa start date", "visa valid from", "visa begins"],
-  visaEndDate: ["visa end date", "visa valid until", "visa expires"],
-  refusalReason: ["refusal reason", "refusal details", "reason for refusal"],
-  workAuthorization: [
-    "work authorization", "work permit", "sponsorship",
-    "visa status", "authorization to work",
-    "work eligibility", "right to work",
-    "employment authorization",
-  ],
-  // ── CV / Employment (incl. Sunderland Employment History) ──────────
-  cvEmploymentStatus: [
-    "employment status", "current employment status",
-  ],
-  cvCurrentJobTitle: [
-    "current job title", "job title", "position",
-    "position title", "current position",
-    "jobtitle", "jobtitle__c", "role title", "job role",
-    // Sunderland Employment History label
-    "*job title", "job title *",
-  ],
-  // Ulster QA NEW EMPLOYMENT HISTORY: *Employment Occupation (SOC combobox)
-  occupation: [
-    "employment occupation", "occupation", "job occupation",
-    "occupational title", "soc occupation", "occupation title",
-  ],
-  cvCurrentEmployer: [
-    "current employer", "employer", "company name",
-    "organization", "company", "employer name",
-    // Sunderland employment "Organisation" (employer)
-    "organisation", "employing organisation", "employer organisation",
-    "organisation__c", "workplace", "place of work",
-    // Ulster Add New modal
-    "new company name", "new_company_name",
-  ],
-  // Ulster optional: Employer's Name (contact person — not company)
-  employerContactName: [
-    "employer s name", "employers name", "employer's name",
-    "new employer", "new_employer", "employer contact name",
-    "manager name", "line manager",
-  ],
-  employerContactEmail: [
-    "employer s email", "employers email", "employer's email",
-    "employer email", "text employer email", "text_employer_email",
-  ],
-  employerContactPhone: [
-    "employer s phone", "employers phone", "employer's phone number",
-    "employer phone", "employer telephone", "employer contact phone",
-  ],
-  employmentCountry: [
-    "employment country", "country of employment",
-    "work country", "country of work", "employer country",
-  ],
-  cvWorkStartDate: [
-    "work start date", "employment start date", "job start date",
-    "started work", "employment from", "work from",
-    "month year from", "from month year",
-    "new start date", "new_start_date",
-  ],
-  cvWorkEndDate: [
-    "work end date", "employment end date", "job end date",
-    "ended work", "employment to", "work to",
-    "month year to", "to month year",
-    "new end date", "new_end_date",
-  ],
-  presentEmployment: [
-    "present employment", "current employment", "currently employed",
-    "still employed", "i currently work here", "present",
-    "present__c",
-    // Ulster checkbox
-    "this is my current employment", "new this is my current employment",
-  ],
-  // Ulster *My Job Description (textarea)
-  cvJobDescription: [
-    "my job description", "job description", "role description",
-    "position description", "description of role", "job duties summary",
-  ],
-  // Ulster *My Main Responsibilities (textarea) — separate from job description
-  mainResponsibilities: [
-    "my main responsibilities", "main responsibilities",
-    "key responsibilities", "main duties", "job responsibilities",
-    "principal responsibilities", "responsibilities",
-  ],
-  cvYearsExperience: [
-    "years of experience", "years experience", "work experience",
-    "total experience",
-  ],
-  cvProfessionalSummary: [
-    "professional summary", "summary", "profile summary",
-    "personal statement",
-  ],
-  cvReferee1Name: [
-    "referee name", "referee 1 name", "reference name",
-    "referee", "reference contact",
-  ],
-  cvReferee1Email: [
-    "referee email", "referee 1 email", "reference email",
-  ],
-  cvReferee1Phone: [
-    "referee phone", "referee 1 phone", "reference phone",
-  ],
-  employerName: [
-    "employer", "employer name", "company name",
-    "organization", "current employer",
-    "workplace",
-  ],
-  jobTitle: [
-    "job title", "position", "position title",
-    "current position", "current job title",
-    "job position",
-  ],
-  // ── ATS / Portal ──────────────────────────────────────────────────
-  linkedinUrl: [
-    "linkedin", "linkedin url", "linkedin profile",
-    "linkedin address", "linkedin link",
-  ],
-  portfolioUrl: [
-    "portfolio", "portfolio url", "portfolio website",
-    "personal website", "website url", "web portfolio",
-  ],
-  resumeCv: [
-    "resume", "cv", "curriculum vitae",
-    "upload resume", "upload cv", "attach resume",
-    "attach cv", "resume/cv",
-  ],
-  coverLetter: [
-    "cover letter", "cover letter text", "cover note",
-  ],
-  salaryExpectation: [
-    "salary expectation", "expected salary", "desired salary",
-    "salary requirement",
-  ],
-  availabilityDate: [
-    "availability date", "available from", "start availability",
-    "earliest start date",
-  ],
-  // ── Admission preferences ──────────────────────────────────────────
-  preferredUniversity: [
-    "preferred university", "university preference",
-    "target university", "chosen university",
-    "university choice",
-  ],
-  preferredCourse: [
-    // Avoid bare "programme"/"program"/"course" — steals funding question
-    // ("How are you intending to fund this programme?")
-    "preferred course", "preferred subject",
-    "course of interest", "course title", "programme title",
-    "program title", "programme of study", "program of study",
-    "course applied for", "intended course", "preferred programme",
-    "preferred program", "fml_programname", "fml_programname__c",
-  ],
-  preferredIntake: [
-    "preferred intake", "intake", "start date", "semester", "term",
-    "enrollment term", "admission term", "entry point",
-    "intended start date", "proposed start date", "intake date",
-    "year of entry", "entry year",
-  ],
-  preferredRoute: [
-    "preferred route", "route", "study route", "study level",
-    "route type", "mode of study", "level of study",
-  ],
-  // Ulster QA Personal Statement free text
-  personalStatement: [
-    "personal statement", "statement of purpose", "sop",
-    "supporting statement", "motivation letter",
-  ],
-  // Ulster QA NEW NOMINATED CONTACT (Add New modal) — live 2026-07-31
-  emergencyRelationship: [
-    "relationship to you", "relationship to you?",
-    "new relationship to you", "new_relationship_to_you",
-    "relationship", "relationship to applicant",
-    "emergency relationship", "contact relationship",
-    "nominated relationship",
-  ],
-  emergencyEmail: [
-    "new text contact email", "new_text_contact_email",
-    "emergency email", "emergency contact email",
-    "next of kin email", "nominated contact email",
-    "nominated email", "contact email emergency",
-  ],
-  // Required on Ulster nominated modal (label *Date of Birth, API New_u18_Date_of_Birth)
-  emergencyDateOfBirth: [
-    "new u18 date of birth", "new_u18_date_of_birth",
-    "emergency date of birth", "nominated date of birth",
-    "contact date of birth", "emergency contact date of birth",
-  ],
-  emergencySpecialInstructions: [
-    "special instructions", "special_instructions",
-    "emergency special instructions", "nominated special instructions",
-  ],
-};
+function portalBlocks(element) {
+  if (!ACTIVE_PORTAL) return false;
+  return (ACTIVE_PORTAL.blockedControls || []).some(function (selector) {
+    try { return element.matches(selector) || !!element.closest(selector); } catch (error) { return false; }
+  });
+}
 
-// ─── Autocomplete attribute → CRM key mapping ─────────────────────────
-// HTML autocomplete spec values mapped to CRM keys for strong-signal matching.
-
-const AUTOCOMPLETE_KEY_MAP = {
-  "given-name": "givenName",
-  "additional-name": "middleName",
-  "family-name": "familyName",
-  "name": "givenName",
-  "honorific-prefix": "givenName",
-  "nickname": "givenName",
-  "email": "email",
-  "tel": "phone",
-  "tel-country-code": "phone",
-  "tel-national": "phone",
-  "tel-area-code": "phone",
-  "tel-local": "phone",
-  "tel-extension": "phone",
-  "organization": "institutionName",
-  "organization-title": "cvCurrentJobTitle",
-  "street-address": "location",
-  "address-line1": "location",
-  "address-line2": "location",
-  "address-level1": "state",
-  "address-level2": "city",
-  "address-level3": "city",
-  "address-level4": "location",
-  "postal-code": "postcode",
-  "country": "countryName",
-  "country-name": "countryName",
-  "bday": "dateOfBirth",
-  "bday-day": "dateOfBirth",
-  "bday-month": "dateOfBirth",
-  "bday-year": "dateOfBirth",
-  "sex": "gender",
-  "job-title": "jobTitle",
-  "url": "portfolioUrl",
-  "photo": "resumeCv",
-  // Do not map autocomplete "language" → nationality (steals English language fields).
-  // Nationality is matched via label synonyms only.
-  // "language": "nationality",
-  "cc-name": "givenName",
-  "cc-given-name": "givenName",
-  "cc-family-name": "familyName",
-};
+function safeClick(target, kind) {
+  if (!target || FORBIDDEN_CONTROL_TEXT.test([
+    target.textContent,
+    target.getAttribute && target.getAttribute("aria-label"),
+    target.getAttribute && target.getAttribute("title"),
+  ].filter(Boolean).join(" "))) return false;
+  if (target.closest && target.closest("button, a, [role='button']")) return false;
+  if (portalBlocks(target)) return false;
+  if (kind === "radio" && !(target.matches && target.matches('input[type="radio"]'))) return false;
+  if (kind === "option" && !(target.matches && target.matches("[role='option'], lightning-base-combobox-item, .slds-listbox__option"))) return false;
+  target.click();
+  return true;
+}
 
 // ─── Helpers ────────────────────────────────────────────────────────────
 
@@ -769,6 +202,7 @@ function getSelectorPath(el) {
  */
 function isFillable(el) {
   if (el.disabled) return false;
+  if (portalBlocks(el)) return false;
 
   var rect = el.getBoundingClientRect();
   if (rect.width === 0 || rect.height === 0) return false;
@@ -1133,7 +567,7 @@ function querySelectorAllDeep(selector, root) {
         if (sr) walk(sr, depth + 1);
       }
     } catch (e) {
-      // Cross-origin or inaccessible — skip
+    // Cross-origin or inaccessible, skip
     }
   }
 
@@ -1274,6 +708,7 @@ function scanFormFields(opts) {
     }
 
     var nominatedContext = isInsideNominatedModal(el);
+    var overrideCrmKey = portalOverrideKey(el);
 
     // Lean auto-scan: identity only (no expensive context walks / selector paths)
     if (lean) {
@@ -1288,6 +723,7 @@ function scanFormFields(opts) {
         currentValue: currentVal,
         hasValue: hasValue,
         nominatedContext: nominatedContext,
+        overrideCrmKey: overrideCrmKey,
         visible: true,
         enabled: true,
       });
@@ -1321,6 +757,7 @@ function scanFormFields(opts) {
       fieldsetLegend: getClosestFieldsetLegend(el),
       nearestHeading: getNearestHeading(el),
       nominatedContext: nominatedContext,
+      overrideCrmKey: overrideCrmKey,
       nearbyText: fillMode ? "" : getNearbyText(el),
       ariaDescribedby: fillMode ? "" : getAriaDescribedbyText(el),
       options: options,
@@ -1392,7 +829,7 @@ function isInsideNominatedModal(el) {
         if (/new_contact_|new_text_contact|new_relationship|new_u18|special_instructions/i.test(hn)) {
           return true;
         }
-        // Bounded text window — modal panel, not whole body
+  // Bounded text window, modal panel, not whole body
         var hostText = "";
         try {
           hostText = (host.innerText || "").slice(0, 2200);
@@ -1529,7 +966,7 @@ function getSectionKind(field) {
   );
   var hasEmp = /employment history|work history|professional experience|job history|employer/.test(ctx);
   var hasAca = /academic history|education history|higher education|qualification/.test(ctx);
-  // "Academic and professional background" is the page stage — prefer more specific
+      // "Academic and professional background" is the page stage, prefer more specific
   if (hasEmp && !/academic history/.test(ctx)) return "employment";
   if (hasAca && /academic history|education history|higher education/.test(ctx)) return "academic";
   if (hasEmp) return "employment";
@@ -1708,7 +1145,7 @@ function matchScore(crmKey, fieldId, autocompleteValue, terminalToken, sectionKi
   if (isEmergencyPhoneField && crmKey !== "emergencyPhone") {
     return 0;
   }
-  // Nominated First / Last name — must not steal applicant givenName/familyName
+  // Nominated First / Last name, must not steal applicant givenName/familyName
   var isEmergencyFirstNameField =
     /\bnew contact first name\b|\bemergency first name\b|\bnominated first name\b|\bcontact first name\b/.test(nField) ||
     (isNominatedContext && /\bfirst name\b/.test(nField));
@@ -1747,7 +1184,7 @@ function matchScore(crmKey, fieldId, autocompleteValue, terminalToken, sectionKi
   var isSpecialInstructionsField = /\bspecial instructions\b|\bspecial_instructions\b/.test(nField);
   if (isSpecialInstructionsField && crmKey !== "emergencySpecialInstructions") return 0;
   if (crmKey === "emergencySpecialInstructions" && !isSpecialInstructionsField) return 0;
-  // Sex Identifier (Ulster) — exclusive to gender
+    // Sex Identifier (Ulster), exclusive to gender
   if (/\bsex identifier\b|\bsex_identifier\b/.test(nField) && crmKey !== "gender") {
     return 0;
   }
@@ -1795,7 +1232,7 @@ function matchScore(crmKey, fieldId, autocompleteValue, terminalToken, sectionKi
   }
   // Prefer dedicated occupation key over generic job title when label is Occupation
   if (isOccupationField && (crmKey === "cvCurrentJobTitle" || crmKey === "jobTitle")) {
-    // allow as fallback only if occupation key not stronger — scored below with lower lock
+      // allow as fallback only if occupation key not stronger, scored below with lower lock
   }
   var isMainResponsibilitiesField =
     /\bmain responsibilit|\bkey responsibilit|\bmain duties\b|\bjob responsibilit/.test(nField);
@@ -1858,7 +1295,7 @@ function matchScore(crmKey, fieldId, autocompleteValue, terminalToken, sectionKi
   if (crmKey === "studyEndYear" && !isStudyEndYearField) return 0;
   // Don't put graduation year into Start Year
   if (crmKey === "graduationYear" && isStudyStartYearField) return 0;
-  // Education Country (select) — exclusive to studyCountry when in education modal
+  // Education Country (select), exclusive to studyCountry when in education modal
   var isEducationCountryField =
     (/\bpicklist country\b|\beducation country\b|\bcountry of study\b|\bcountry you studied\b|\bstudy country\b/.test(nField) ||
       (/\bcountry\b/.test(nField) &&
@@ -1892,7 +1329,7 @@ function matchScore(crmKey, fieldId, autocompleteValue, terminalToken, sectionKi
   var synonyms = synMeta.synonyms;
   var baseScore = 0;
 
-  // Salutation: exact "Title" label (no bare "title" synonym — removed to protect Job Title)
+    // Salutation: exact "Title" label (no bare "title" synonym, removed to protect Job Title)
   if (crmKey === "title" && (nField === "title" || /^title\b/.test(nField))) {
     baseScore = Math.max(baseScore, 100);
   }
@@ -2015,12 +1452,12 @@ function matchScore(crmKey, fieldId, autocompleteValue, terminalToken, sectionKi
     if (hasWordBoundary && (nField.startsWith(syn + " ") || nField.endsWith(" " + syn))) {
       baseScore = Math.max(baseScore, 85);
     }
-    // Word-boundaried contains (but not start/end — already scored above)
+  // Word-boundaried contains (but not start/end, already scored above)
     else if (hasWordBoundary) {
       baseScore = Math.max(baseScore, 65);
     }
 
-    // Bare substring contains — lowered well below threshold; only helps combined signals.
+  // Bare substring contains, lowered well below threshold; only helps combined signals.
     // Short synonyms (<=4 chars) skip bare substring entirely to avoid false positives.
     if (syn.length > 4 && nField.includes(syn)) {
       baseScore = Math.max(baseScore, 35);
@@ -2372,8 +1809,8 @@ function setRadioGroupValue(el, value, crmKey) {
   }
   if (!best || bestScore < 55) return false;
   try {
+    if (!safeClick(best, "radio")) return false;
     best.checked = true;
-    best.click();
     best.dispatchEvent(new Event("input", { bubbles: true, composed: true }));
     best.dispatchEvent(new Event("change", { bubbles: true, composed: true }));
     return true;
@@ -2411,7 +1848,7 @@ async function setElementValue(el, value, meta) {
     var candidates = expandComboboxCandidates(crmKey, value);
     if (candidates.indexOf(value.trim()) === -1) candidates.unshift(value.trim());
 
-    // Helper: skip placeholder/default options (e.g. "— Select —", "Choose one\u2026")
+      // Helper: skip placeholder/default options (e.g. "\u2014 Select \u2014", "Choose one\u2026")
     function isPlaceholderOption(o) {
       var t = o.text.trim().toLowerCase();
       return !o.value || o.value === "" ||
@@ -2482,7 +1919,6 @@ async function setElementValue(el, value, meta) {
     if (isSearch) {
       try {
         el.focus();
-        el.click();
         el.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }));
       } catch (e3) { /* ignore */ }
       var picked = await pickLightningComboboxOption(el, value, meta && meta.crmKey);
@@ -2544,7 +1980,7 @@ function expandComboboxCandidates(crmKey, value) {
     // First Class | Upper Second | Lower Second | Third Class | Unclassified |
     // Aegrotat | Commendation | Distinction | Merit | Pass | Failed Award | Other
     if (/2\s*:\s*1|two division one|upper second|2\.1|ii\.?i\b|class two division one/.test(n)) {
-      add("Upper Second"); // exact Sunderland option — try first
+      add("Upper Second"); // exact Sunderland option, try first
       add("Upper Second Class Honours (2:1)");
       add("Upper Second Class Honours");
       add("Upper Second Class (2:1)");
@@ -2775,7 +2211,7 @@ function expandComboboxCandidates(crmKey, value) {
     }
   }
 
-  // Ulster Title picklist: Mr. (with period) — Sunderland uses Mr without period
+      // Ulster Title picklist: Mr. (with period), Sunderland uses Mr without period
   if (crmKey === "title") {
     var nt = normalize(v);
     if (/^mr\.?$/.test(nt)) {
@@ -2905,7 +2341,7 @@ function expandComboboxCandidates(crmKey, value) {
     }
   }
 
-  // Ulster NEW NOMINATED CONTACT — Relationship To You? radios (live 2026-07-31)
+        // Ulster NEW NOMINATED CONTACT: Relationship To You? radios (live 2026-07-31)
   // Options: Parent · Guardian · Host · Grandparent · Spouse · Sibling · Other · Next of Kin
   if (crmKey === "emergencyRelationship") {
     var nr = normalize(v);
@@ -2941,7 +2377,7 @@ function expandComboboxCandidates(crmKey, value) {
       add("Other");
       add("choice_Other");
     }
-    // CRM often stores "Family" / "Relative" — prefer Parent for demo family contact
+        // CRM often stores "Family" / "Relative", prefer Parent for demo family contact
     if (/^family$|^relative$/.test(nr)) {
       add("Parent");
       add("Next of Kin");
@@ -3237,13 +2673,10 @@ async function pickLightningComboboxOption(inputEl, value, crmKey) {
       }
     } catch (e2) { /* ignore */ }
     try {
-      best.click();
-      return true;
+      return safeClick(best, "option");
     } catch (e3) {
       try {
-        best.dispatchEvent(
-          new MouseEvent("click", { bubbles: true, cancelable: true, view: window })
-        );
+        if (!safeClick(best, "option")) return false;
         return true;
       } catch (e4) {
         return false;
@@ -3307,13 +2740,15 @@ async function autofillPage(fieldMap, fields) {
       var sectionKind = fields[f]._sectionKind != null
         ? fields[f]._sectionKind
         : getSectionKind(fields[f]);
-      var score = matchScore(
+      var score = fields[f].overrideCrmKey
+        ? (fields[f].overrideCrmKey === crmKey ? 1000 : 0)
+        : matchScore(
         crmKey,
         identifier,
         fields[f].autocomplete,
         terminalToken,
         sectionKind
-      );
+        );
       if (score >= 50) {
         ranked.push({ field: fields[f], score: score });
       }
@@ -3421,6 +2856,55 @@ async function autofillPage(fieldMap, fields) {
     skippedSelect.map(function (s) { return { name: s.name, reason: s.reason }; })
   );
 
+  var noCrmValue = [];
+  var manualReview = [];
+  var reviewedGroups = new Set();
+  var knownKeys = Object.keys(SYNONYM_MAP);
+  for (var mi = 0; mi < fields.length; mi++) {
+    var manualField = fields[mi];
+    var manualType = (manualField.type || "").toLowerCase();
+    var groupId = manualType === "radio" && manualField.name
+      ? "radio:" + manualField.name
+      : manualField.element;
+    if (reviewedGroups.has(groupId)) continue;
+    reviewedGroups.add(groupId);
+    var liveValue = manualType === "radio"
+      ? fields.some(function (candidate) {
+          return candidate.type === "radio" && candidate.name === manualField.name && candidate.element.checked;
+        })
+      : String(manualField.element.value || "").trim();
+    if (liveValue) continue;
+
+    var manualItem = {
+      fieldName: manualField.name || manualField.id || "",
+      fieldLabel: manualField.label || "Unlabelled field",
+      type: manualType || manualField.tagName,
+      required: !!manualField.required,
+    };
+    manualReview.push(manualItem);
+
+    var topKey = "";
+    var topScore = 0;
+    for (var mk = 0; mk < knownKeys.length; mk++) {
+      var manualScore = manualField.overrideCrmKey
+        ? (manualField.overrideCrmKey === knownKeys[mk] ? 1000 : 0)
+        : matchScore(
+        knownKeys[mk],
+        manualField._identifier,
+        manualField.autocomplete,
+        manualField._terminalToken,
+        manualField._sectionKind
+        );
+      if (manualScore > topScore) {
+        topScore = manualScore;
+        topKey = knownKeys[mk];
+      }
+    }
+    if (topScore >= 50 && !String(fieldMap[topKey] || "").trim()) {
+      noCrmValue.push(Object.assign({ name: topKey }, manualItem));
+    }
+  }
+
   return {
     filled: filled,
     skipped: skippedAll,
@@ -3428,6 +2912,8 @@ async function autofillPage(fieldMap, fields) {
     skippedExisting: skippedExisting,
     skippedSelect: skippedSelect,
     unmatched: unmatched,
+    noCrmValue: noCrmValue,
+    manualReview: manualReview,
   };
 }
 
@@ -3456,13 +2942,15 @@ function enrichFieldsWithMapping(fields, fieldMap) {
     var bestKey = null;
 
     for (var k = 0; k < crmKeys.length; k++) {
-      var score = matchScore(
+      var score = field.overrideCrmKey
+        ? (field.overrideCrmKey === crmKeys[k] ? 1000 : 0)
+        : matchScore(
         crmKeys[k],
         identifier,
         field.autocomplete,
         terminalToken,
         sectionKind
-      );
+        );
       if (score > bestScore) {
         bestScore = score;
         bestKey = crmKeys[k];
@@ -3479,59 +2967,12 @@ function enrichFieldsWithMapping(fields, fieldMap) {
   });
 }
 
-// ─── Message handler ────────────────────────────────────────────────────
+globalThis.SAMS_ENGINE = {
+  scanFormFields,
+  autofillPage,
+  enrichFieldsWithMapping,
+  formatValueForField,
+  safeClick,
+};
 
-chrome.runtime.onMessage.addListener(function (message, sender, sendResponse) {
-  // Async path for autofill (Lightning option wait)
-  if (message && message.action === "autofill") {
-    (async function () {
-      try {
-        var fields = scanFormFields({ mode: "fill" });
-        var result = await autofillPage(message.fieldMap || {}, fields);
-        sendResponse(result);
-      } catch (err) {
-        sendResponse({ error: err.message || String(err) });
-      }
-    })();
-    return true;
-  }
-
-  try {
-    switch (message.action) {
-      case "ping": {
-        sendResponse({ pong: true, version: "0.1.0" });
-        break;
-      }
-
-      case "scan": {
-        var lean = !!(message.lean || message.mode === "lean");
-        // Never run expensive fieldMap enrichment on lean auto-scan
-        var scanned = scanFormFields(lean ? { lean: true } : { mode: "full" });
-        var fieldCount = scanned.length;
-        var descriptors = scanned.map(function (f) {
-          var d = Object.assign({}, f);
-          delete d.element;
-          return d;
-        });
-
-        if (!lean && message.fieldMap && typeof message.fieldMap === "object") {
-          descriptors = enrichFieldsWithMapping(scanned, message.fieldMap);
-        }
-
-        // Lean: still return thin descriptors for count + optional UI; no enrichment
-        sendResponse({ fields: descriptors, fieldCount: fieldCount });
-        break;
-      }
-
-      default:
-        sendResponse({ error: "Unknown action: " + (message && message.action) });
-    }
-  } catch (err) {
-    sendResponse({ error: err.message });
-  }
-
-  // Keep the message channel open for async response
-  return true;
-});
-
-} // end __SAMS_PORTAL_AUTOFILL_LOADED__ guard
+} // end loaded guard

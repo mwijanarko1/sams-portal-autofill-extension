@@ -2,18 +2,15 @@
   "manifest_version": 3,
   "name": "SAMS Portal Autofill",
   "version": "0.1.0",
-  "description": "Autofill university portal forms using SAMS CRM student data. Local/demo only.",
-  "permissions": [
-    "storage",
-    "activeTab",
-    "scripting"
-  ],
+  "description": "Copy visible student data from SAMS CRM and fill approved university portal drafts.",
+  "permissions": ["storage", "activeTab", "scripting", "alarms", "webNavigation"],
   "host_permissions": [
-    "http://localhost/*",
-    "https://localhost/*",
-    "http://127.0.0.1/*",
-    "https://127.0.0.1/*"
+    "https://app.samscrm.co.uk/*",
+    "http://localhost:3000/*",
+    "http://localhost:3001/*",
+    "http://127.0.0.1:3001/*"
   ],
+  "background": { "service_worker": "src/background.js" },
   "action": {
     "default_popup": "popup.html",
     "default_title": "SAMS Portal Autofill"
