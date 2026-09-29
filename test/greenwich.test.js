@@ -231,3 +231,75 @@ test("greenwich autofill skips institution city and can still fill applicant cit
   assert.equal(institutionCity.value, "");
   assert.ok(result.filled.some((row) => row.name === "city"));
 });
+
+// Scanned-field shape for autofillPage, with the override key the config assigns.
+function scanned(ctx, el, label) {
+  const cfg = ctx.SAMS_PORTALS.find((p) => p.id === "greenwich");
+  const overrideCrmKey =
+    Object.keys(cfg.selectorOverrides).find((key) =>
+      cfg.selectorOverrides[key].includes(`#${el.id}`)
+    ) || "";
+  return {
+    element: el,
+    name: el.name,
+    id: el.id,
+    label,
+    type: "text",
+    tagName: "input",
+    autocomplete: "",
+    currentValue: el.value,
+    hasValue: !!el.value,
+    nominatedContext: false,
+    overrideCrmKey,
+    visible: true,
+    enabled: true,
+  };
+}
+
+test("greenwich fills qualification row 1 only, including Level from CRM degree", async () => {
+  const ctx = loadGreenwich("/pls/prod/bwskaess.P_DispAppQual");
+  const crm = { degree: "Bachelors", major: "Computer Science", grade: "First" };
+  const row = (n) => ({
+    level: fakeEl({ id: `ud${n}qualtype`, name: `ud${n}qualtype`, label: "Level" }),
+    subject: fakeEl({ id: `ud${n}subject`, name: `ud${n}subject`, label: "Subject including Modules or Units" }),
+    grade: fakeEl({ id: `ud${n}grade`, name: `ud${n}grade`, label: "Grade leave blank if pending" }),
+  });
+
+  // Rows 2-20 never enter the fillable set, so a repeat click cannot spill into them.
+  for (let n = 92; n <= 110; n++) {
+    for (const field of ["qualtype", "subject", "grade", "month", "year"]) {
+      const id = `ud${n}${field}`;
+      assert.equal(ctx.SAMS_ENGINE.isFillable(fakeEl({ id, name: id })), false, `${id} should be blocked`);
+    }
+  }
+
+  const row1 = row(91);
+  const fields = () =>
+    [row1.level, row1.subject, row1.grade]
+      .filter((el) => ctx.SAMS_ENGINE.isFillable(el))
+      .map((el) => scanned(ctx, el, el.getAttribute("aria-label")));
+  await ctx.SAMS_ENGINE.autofillPage(crm, fields());
+  assert.equal(row1.level.value, "Bachelors");
+  assert.equal(row1.subject.value, "Computer Science");
+  assert.equal(row1.grade.value, "First");
+
+  const again = await ctx.SAMS_ENGINE.autofillPage(crm, fields());
+  assert.equal(again.filled.length, 0);
+});
+
+test("greenwich phone fields keep the dialling prefix", async () => {
+  const ctx = loadGreenwich("/pls/prod/bwskaadr.P_DispAppAddr");
+  const fill = async (phone) => {
+    const mobile = fakeEl({ id: "mobiletelno", name: "mobiletelno", label: "Mobile Telephone No." });
+    const home = fakeEl({ id: "hometelno", name: "hometelno", label: "Home Telephone No." });
+    await ctx.SAMS_ENGINE.autofillPage({ phone }, [
+      scanned(ctx, mobile, "Mobile Telephone No."),
+      scanned(ctx, home, "Home Telephone No."),
+    ]);
+    return [mobile.value, home.value];
+  };
+  sameJson(await fill("+44 7700 900123"), ["07700900123", "07700900123"]);
+  sameJson(await fill("+44 (0) 7700 900123"), ["07700900123", "07700900123"]);
+  sameJson(await fill("0044 7700 900123"), ["07700900123", "07700900123"]);
+  sameJson(await fill("+880 1712-345678"), ["+8801712345678", "+8801712345678"]);
+});

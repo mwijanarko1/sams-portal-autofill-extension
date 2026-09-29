@@ -38,7 +38,8 @@ const config = {
     // Applicant phones only (not referee #ud25)
     phone: ["#mobiletelno", "#hometelno"],
     institutionName: ["#col_name"],
-    qualificationLevel: ["#ud91qualtype"],
+    // CRM reader emits "degree" for Qualification / Academic Level
+    degree: ["#ud91qualtype"],
     major: ["#ud91subject"],
     grade: ["#ud91grade"],
     preferredCourse: ["#p_program_code"],
@@ -46,6 +47,8 @@ const config = {
     personalStatement: ["#p_sarstmt_desc"],
     funding: ["#ud35"],
   },
+  // No separate country-code field: phone values keep their dialling prefix.
+  phoneKeepsDialPrefix: true,
   // Keep synonyms narrow; avoid generic "e-mail address" / "address line 1"
   // which match referee and education institution fields.
   extraSynonyms: {
@@ -63,7 +66,7 @@ const config = {
     countryOfBirth: ["country of birth"],
     phone: ["mobile telephone no.", "home telephone no."],
     institutionName: ["institution name"],
-    qualificationLevel: ["level"],
+    degree: ["level"],
     major: ["subject including modules or units"],
     grade: ["grade leave blank if pending"],
     preferredCourse: ["programme of study"],
@@ -119,6 +122,11 @@ const config = {
     "#ud28",
     "#ud29",
     "#ud30",
+    // Qualification rows 2-20 (#ud92*..#ud110*): CRM holds one qualification,
+    // so only row 1 may fill; otherwise a repeat click duplicates it into row 2.
+    ...Array.from({ length: 19 }, (_, i) =>
+      ["qualtype", "subject", "grade", "month", "year"].map((field) => `#ud${92 + i}${field}`)
+    ).flat(),
   ],
 };
 const index = globalThis.SAMS_PORTALS.findIndex((portal) => portal.id === config.id);
