@@ -1,7 +1,9 @@
 # SAMS Portal Autofill — University portal test matrix
 
-Target for SAMS meeting prep. Extension: **SAMS Portal Autofill** v2.2+  
+Target for SAMS meeting prep. Extension: **SAMS Portal Autofill** v2.3.10+  
 CRM backend: `http://localhost:3000` (must be running)
+
+**Deep maps:** [SUNDERLAND.md](./SUNDERLAND.md) · [ULSTER_QA.md](./ULSTER_QA.md)
 
 ## Prerequisites
 
@@ -22,7 +24,7 @@ CRM backend: `http://localhost:3000` (must be running)
 | 1 | **Sunderland University** | myApplication / e:Vision + online apply | https://evision.sunderland.ac.uk/ · https://apply.online.sunderland.ac.uk/ | Forms often in frames — v2.2 injects all frames |
 | 2 | **University of Greater Manchester** (ex-Bolton) | International / agent applicant flow | https://greatermanchester.ac.uk/international/how-to-apply-and-admissions | Confirm agent-specific URL with SAMS if different |
 | 3 | **Keele University** | Keele Agent Portal (+ KUIC StudyLink if used) | Register: https://www.keele.ac.uk/study/internationalstudents/agentportalregistration/ | Need approved agent login |
-| 4 | **Ulster University QA** | QA Higher Education Agent Portal | https://agent.qahighereducation.com/s/login/ | Salesforce Experience Cloud; multi-step |
+| 4 | **Ulster University QA** | QA Higher Education **applicant** portal | https://apply.qahighereducation.com/s/login | Salesforce Flow + closed shadow; full map in **ULSTER_QA.md** (agent portal is separate) |
 
 ## Per-portal checklist
 

@@ -100,7 +100,15 @@ The extension includes a comprehensive synonym map covering:
 | `phone` | phone, telephone, mobile, tel |
 | `email` | email, e-mail, email address |
 | `emergencyName` | emergency contact, next of kin |
-| `passportNumber` | passport number, passport |
+| `emergencyFirstName` / `emergencyLastName` | Ulster nominated modal first/last name |
+| `emergencyRelationship` | relationship to you (Parent, Guardian, …) |
+| `emergencyEmail` / `emergencyPhone` | nominated/emergency email & phone |
+| `emergencyPhoneCountryCode` | phone country dialing code (modal) |
+| `emergencyDateOfBirth` | nominated contact DOB |
+| `occupation` | employment occupation (Ulster SOC picklist) |
+| `cvJobDescription` | my job description |
+| `mainResponsibilities` | my main responsibilities |
+| `passportNumber` | passport number, passport, **document number** (Ulster) |
 | `preferredCourse` | course, subject, program |
 | `preferredIntake` | intake, semester, term, start date |
 | … and 40+ more |
@@ -124,11 +132,29 @@ See `content.js` → `SYNONYM_MAP` for the complete list.
 
 See **[PORTALS.md](./PORTALS.md)** for the test matrix covering Sunderland, University of Greater Manchester, Keele, and Ulster University QA.
 
-### v2.2 improvements for real portals
+**Per-portal field matrices:**
+
+- [SUNDERLAND.md](./SUNDERLAND.md) — Sunderland Online Applications (live picklists)
+- [ULSTER_QA.md](./ULSTER_QA.md) — Ulster University QA / apply.qahighereducation.com (**v2.3.10**)
+
+### v2.2+ improvements for real portals
 
 - **All-frame injection** — scans and fills fields inside iframes (common on e:Vision / Salesforce agent portals).
 - **UK date formatting** — CRM ISO dates (`1998-01-01`) map to `DD/MM/YYYY` on text DOB fields and `YYYY-MM-DD` on `input[type=date]`.
 - **Broader UK admissions synonyms** — forenames, country of nationality, correspondence address, programme title, entry point, etc.
+
+### v2.3.10 Ulster QA — Nominated / Emergency Add New
+
+- Full **NEW NOMINATED CONTACT** modal matrix (Relationship, First/Last, Dialing Code, Phone, Email, DOB).
+- Exclusive locks so applicant name/phone/email/DOB never fill the modal (and vice versa).
+- CRM seed + popup map `emergencyFirstName`, `emergencyLastName`, `emergencyRelationship`, `emergencyEmail`, `emergencyPhone`, `emergencyPhoneCountryCode`, `emergencyDateOfBirth`.
+
+### v2.3.9 Ulster QA
+
+- **Closed shadow pierce** via `chrome.dom.openOrClosedShadowRoot` (Salesforce Flow picklists).
+- **Radio groups** — Fee Payment Method, Yes/No previous apply / previous name.
+- **Ulster-exclusive labels** — Sex Identifier, Ethnicity, Dependants, Current Domicile, Phone Country Code (`United Kingdom (+44)`).
+- **Title `Mr.`** and funding **Self Funding** (no hyphen) option aliases.
 
 ## Limitations
 

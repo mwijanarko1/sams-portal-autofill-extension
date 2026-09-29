@@ -65,12 +65,40 @@ const SYNONYM_MAP = {
     "applicant date of birth", "date of birth dd/mm/yyyy",
     "birth date", "dateofbirth", "date_of_birth",
   ],
-  gender: ["gender", "sex", "gender identity", "legal gender"],
+  gender: [
+    "gender", "sex", "gender identity", "legal gender",
+    // Ulster University QA (apply.qahighereducation.com) live label / API name
+    "sex identifier", "sex_identifier", "sexidentifier",
+  ],
   maritalStatus: ["marital status", "marriage status", "civil status"],
   nationality: [
     "nationality", "citizenship", "country of citizenship",
     "country of origin", "country of nationality",
     "nationality / citizenship", "passport nationality",
+  ],
+  // Ulster QA Personal Details (live audit 2026-07-31)
+  ethnicity: [
+    "ethnicity", "ethnic origin", "ethnic background",
+    "ethnic group", "ethnicity / ethnic origin",
+  ],
+  dependants: [
+    "dependants", "dependents", "number of dependants",
+    "do you have dependants", "dependent children",
+  ],
+  currentDomicile: [
+    "current domicile", "domicile", "country of domicile",
+    "permanent domicile", "current_domicile",
+  ],
+  previouslyApplied: [
+    "previously applied", "have you previously applied",
+    "previously applied for or enrolled",
+    "applied for or enrolled onto a course with ulster",
+    "qahe partner", "previous application",
+  ],
+  previousName: [
+    "previously been known by any other name",
+    "known by any other name", "previous name",
+    "other name", "former name", "alias",
   ],
   // ── Contact ───────────────────────────────────────────────────────
   location: [
@@ -106,6 +134,8 @@ const SYNONYM_MAP = {
     "cell", "tel", "cell phone", "mobile phone",
     "mobile telephone", "home telephone", "contact telephone",
     "primary phone", "daytime telephone", "mobilephone", "mobile_phone",
+    // Ulster QA: national number fields (country code is separate combobox)
+    // exact "phone" / "mobile" labels handled carefully in matchScore
   ],
   email: [
     "email address", "e-mail address", "email", "e-mail",
@@ -126,6 +156,13 @@ const SYNONYM_MAP = {
     "fundingsource",
     // bare "funding" is OK for exact label; guarded against "other funding" below
     "funding",
+    // Ulster QA live radio group (ego-browser 2026-07-31)
+    "fee payment method", "fee_payment_method", "feepaymentmethod",
+  ],
+  phoneCountryCode: [
+    "phone country code", "mobile country code",
+    "telephone country code", "country code phone",
+    "dialling code", "dialing code", "intl dial code",
   ],
   // Only used when funding type is Other — leave empty for Self-Funding demos
   otherFundingSource: [
@@ -161,11 +198,30 @@ const SYNONYM_MAP = {
   emergencyName: [
     "emergency contact", "emergency contact name", "emergency name",
     "emergency person", "next of kin", "next of kin name",
-    "emergency contact full name",
+    "emergency contact full name", "nominated contact name",
+  ],
+  // Ulster QA NEW NOMINATED CONTACT modal (live 2026-07-31): First + Last, not full name
+  emergencyFirstName: [
+    "new contact first name", "new_contact_first_name",
+    "emergency first name", "nominated first name",
+    "contact first name", "emergency contact first name",
+  ],
+  emergencyLastName: [
+    "new contact last name", "new_contact_last_name",
+    "emergency last name", "nominated last name",
+    "contact last name", "emergency contact last name",
   ],
   emergencyPhone: [
     "emergency phone", "emergency contact phone", "emergency telephone",
     "emergency contact number", "next of kin telephone",
+    "nominated phone", "nominated contact phone",
+  ],
+  // Ulster modal label is "Phone Country Dialing Code" (not main "Phone Country Code")
+  emergencyPhoneCountryCode: [
+    "phone country dialing code", "country dialing code",
+    "emergency phone country code", "nominated phone country code",
+    "emergency dialing code", "phone country dialling code",
+    "country dialling code",
   ],
   // ── Education (incl. Sunderland Academic History) ─────────────────
   institutionName: [
@@ -179,6 +235,8 @@ const SYNONYM_MAP = {
     "organisation", "organization", "academic organisation",
     "academic organization", "awarding institution",
     "awarding body", "place of study",
+    // Ulster QA NEW EDUCATION HISTORY
+    "education institution", "education institution name",
   ],
   degree: [
     "degree", "qualification", "degree qualification",
@@ -218,11 +276,15 @@ const SYNONYM_MAP = {
     "award status", "status of award", "completion status",
     "qualification status", "degree status", "awarded",
     "completed", "result status",
+    // Ulster Results radios: Completed | In Progress
+    "results", "picklist results",
   ],
   studyCountry: [
     "country you studied in", "country of study",
     "study country", "country of education",
     "country studied", "studied in",
+    // Ulster education modal: bare *Country (picklist_Country)
+    "picklist country", "education country",
   ],
   studyDates: [
     "study dates", "study period", "dates of attendance",
@@ -230,16 +292,30 @@ const SYNONYM_MAP = {
     "date range",
   ],
   startDate: [
-    "start date", "from date", "start", "begin date",
+    "start date", "from date", "begin date",
     "commencement date", "enrollment date", "enrolment date",
     "date from", "month year from", "from month year",
     "start month year", "date started", "study from month year",
+    // avoid bare "start" — steals unrelated fields
   ],
   endDate: [
-    "end date", "to date", "until", "completion date",
+    "end date", "to date", "completion date",
     "finish date", "date ended", "date to", "graduation date",
     "month year to", "to month year", "end month year",
     "date finished", "study to month year",
+  ],
+  // Ulster QA year-only picklists (not full dates)
+  studyStartYear: [
+    "start year", "study start year", "education start year",
+    "year started", "year from", "pickist start year", "picklist start year",
+    "academic start year",
+  ],
+  studyEndYear: [
+    "end year", "study end year", "education end year",
+    "year ended", "year to", "picklist end year",
+    "predicted end year", "end year or predicted",
+    "end year (or predicted end year if in progress)",
+    "academic end year",
   ],
   studyFromMonthYear: [
     "month year from", "from month year", "study from",
@@ -275,15 +351,25 @@ const SYNONYM_MAP = {
     "english proficiency details",
   ],
   // ── Passport / Identity ───────────────────────────────────────────
-  passportNumber: ["passport number", "passport no", "passport"],
+  passportNumber: [
+    "passport number", "passport no", "passport",
+    // Ulster QA / Salesforce identity docs often label passport as Document Number
+    "document number", "document no", "document #",
+    "passport document number", "identity document number",
+  ],
   passportIssueDate: [
     "passport issue date", "date of issue", "issue date",
+    "document issue date", "date of issue of document",
   ],
   passportExpiryDate: [
     "passport expiry date", "expiry date", "date of expiry",
     "expiration date", "passport expiration",
+    "document expiry date", "document expiry", "date of expiry of document",
   ],
-  issuingAuthority: ["issuing authority", "issued by"],
+  issuingAuthority: [
+    "issuing authority", "issued by",
+    "document issuing authority", "passport issuing authority",
+  ],
   // ── English test ───────────────────────────────────────────────────
   englishTestName: [
     "english test name", "english proficiency", "english test",
@@ -322,12 +408,33 @@ const SYNONYM_MAP = {
     // Sunderland Employment History label
     "*job title", "job title *",
   ],
+  // Ulster QA NEW EMPLOYMENT HISTORY: *Employment Occupation (SOC combobox)
+  occupation: [
+    "employment occupation", "occupation", "job occupation",
+    "occupational title", "soc occupation", "occupation title",
+  ],
   cvCurrentEmployer: [
     "current employer", "employer", "company name",
     "organization", "company", "employer name",
     // Sunderland employment "Organisation" (employer)
     "organisation", "employing organisation", "employer organisation",
     "organisation__c", "workplace", "place of work",
+    // Ulster Add New modal
+    "new company name", "new_company_name",
+  ],
+  // Ulster optional: Employer's Name (contact person — not company)
+  employerContactName: [
+    "employer s name", "employers name", "employer's name",
+    "new employer", "new_employer", "employer contact name",
+    "manager name", "line manager",
+  ],
+  employerContactEmail: [
+    "employer s email", "employers email", "employer's email",
+    "employer email", "text employer email", "text_employer_email",
+  ],
+  employerContactPhone: [
+    "employer s phone", "employers phone", "employer's phone number",
+    "employer phone", "employer telephone", "employer contact phone",
   ],
   employmentCountry: [
     "employment country", "country of employment",
@@ -337,16 +444,31 @@ const SYNONYM_MAP = {
     "work start date", "employment start date", "job start date",
     "started work", "employment from", "work from",
     "month year from", "from month year",
+    "new start date", "new_start_date",
   ],
   cvWorkEndDate: [
     "work end date", "employment end date", "job end date",
     "ended work", "employment to", "work to",
     "month year to", "to month year",
+    "new end date", "new_end_date",
   ],
   presentEmployment: [
     "present employment", "current employment", "currently employed",
     "still employed", "i currently work here", "present",
     "present__c",
+    // Ulster checkbox
+    "this is my current employment", "new this is my current employment",
+  ],
+  // Ulster *My Job Description (textarea)
+  cvJobDescription: [
+    "my job description", "job description", "role description",
+    "position description", "description of role", "job duties summary",
+  ],
+  // Ulster *My Main Responsibilities (textarea) — separate from job description
+  mainResponsibilities: [
+    "my main responsibilities", "main responsibilities",
+    "key responsibilities", "main duties", "job responsibilities",
+    "principal responsibilities", "responsibilities",
   ],
   cvYearsExperience: [
     "years of experience", "years experience", "work experience",
@@ -425,6 +547,35 @@ const SYNONYM_MAP = {
   preferredRoute: [
     "preferred route", "route", "study route", "study level",
     "route type", "mode of study", "level of study",
+  ],
+  // Ulster QA Personal Statement free text
+  personalStatement: [
+    "personal statement", "statement of purpose", "sop",
+    "supporting statement", "motivation letter",
+  ],
+  // Ulster QA NEW NOMINATED CONTACT (Add New modal) — live 2026-07-31
+  emergencyRelationship: [
+    "relationship to you", "relationship to you?",
+    "new relationship to you", "new_relationship_to_you",
+    "relationship", "relationship to applicant",
+    "emergency relationship", "contact relationship",
+    "nominated relationship",
+  ],
+  emergencyEmail: [
+    "new text contact email", "new_text_contact_email",
+    "emergency email", "emergency contact email",
+    "next of kin email", "nominated contact email",
+    "nominated email", "contact email emergency",
+  ],
+  // Required on Ulster nominated modal (label *Date of Birth, API New_u18_Date_of_Birth)
+  emergencyDateOfBirth: [
+    "new u18 date of birth", "new_u18_date_of_birth",
+    "emergency date of birth", "nominated date of birth",
+    "contact date of birth", "emergency contact date of birth",
+  ],
+  emergencySpecialInstructions: [
+    "special instructions", "special_instructions",
+    "emergency special instructions", "nominated special instructions",
   ],
 };
 
@@ -831,7 +982,11 @@ function getNearestHeading(el) {
       }
       // Salesforce section titles often use spans/divs with strong text
       var t = (prev.textContent || "").trim();
-      if (t && t.length < 80 && /academic history|employment history|english language|your details|education|qualification/i.test(t)) {
+      if (
+        t &&
+        t.length < 80 &&
+        /academic history|employment history|english language|your details|education|qualification|nominated contact|new nominated|emergency contact/i.test(t)
+      ) {
         return t;
       }
     }
@@ -849,7 +1004,11 @@ function getNearestHeading(el) {
           return parentPrev.textContent.trim();
         }
         var t2 = (parentPrev.textContent || "").trim();
-        if (t2 && t2.length < 80 && /academic history|employment history|english language/i.test(t2)) {
+        if (
+          t2 &&
+          t2.length < 80 &&
+          /academic history|employment history|english language|nominated contact|new nominated|emergency contact/i.test(t2)
+        ) {
           return t2;
         }
       }
@@ -910,21 +1069,41 @@ function getNearbyText(el) {
 
 /**
  * CSS selectors for fillable form fields.
+ * Includes radio for Ulster QA Yes/No + Fee Payment Method groups.
  * Excludes hidden, password, submit, button, reset, file, image,
- * checkbox, radio, color, and range inputs.
+ * checkbox, color, and range inputs.
  */
 const FIELD_SELECTORS = [
   "input:not([type=hidden]):not([type=password]):not([type=submit])" +
   ":not([type=button]):not([type=reset]):not([type=file])" +
-  ":not([type=image]):not([type=checkbox]):not([type=radio])" +
+  ":not([type=image]):not([type=checkbox])" +
   ":not([type=color]):not([type=range])",
   "select",
   "textarea",
 ].join(", ");
 
 /**
- * Query selector across open shadow roots (Salesforce Lightning / LWC).
- * Closed shadow roots cannot be scanned from a content script.
+ * Open or closed shadow root (Chrome extension API).
+ * Ulster QA / Salesforce Flow uses closed LWC shadow for picklists.
+ * @param {Element} el
+ * @returns {ShadowRoot|null}
+ */
+function getAccessibleShadowRoot(el) {
+  if (!el) return null;
+  try {
+    if (el.shadowRoot) return el.shadowRoot;
+  } catch (e0) { /* ignore */ }
+  try {
+    if (typeof chrome !== "undefined" && chrome.dom && typeof chrome.dom.openOrClosedShadowRoot === "function") {
+      return chrome.dom.openOrClosedShadowRoot(el) || null;
+    }
+  } catch (e1) { /* ignore */ }
+  return null;
+}
+
+/**
+ * Query selector across open + closed shadow roots (Salesforce Lightning / LWC).
+ * Closed roots require chrome.dom.openOrClosedShadowRoot (extension-only).
  * @param {string} selector
  * @param {Document|ShadowRoot|Element} [root]
  * @returns {Element[]}
@@ -934,7 +1113,7 @@ function querySelectorAllDeep(selector, root) {
   var seen = typeof WeakSet !== "undefined" ? new WeakSet() : null;
 
   function walk(node, depth) {
-    if (!node || depth > 20) return;
+    if (!node || depth > 24) return;
     try {
       if (node.querySelectorAll) {
         var matches = node.querySelectorAll(selector);
@@ -950,10 +1129,11 @@ function querySelectorAllDeep(selector, root) {
       var all = node.querySelectorAll ? node.querySelectorAll("*") : [];
       for (var j = 0; j < all.length; j++) {
         var child = all[j];
-        if (child.shadowRoot) walk(child.shadowRoot, depth + 1);
+        var sr = getAccessibleShadowRoot(child);
+        if (sr) walk(sr, depth + 1);
       }
     } catch (e) {
-      // Cross-origin or closed shadow — skip
+      // Cross-origin or inaccessible — skip
     }
   }
 
@@ -1053,12 +1233,47 @@ function scanFormFields(opts) {
     var currentVal = el.value || "";
     var autocomplete = el.getAttribute("autocomplete") || "";
     var required = el.hasAttribute("required") || el.getAttribute("aria-required") === "true";
+    // Radios always have a value attribute; "filled" means checked in the group
+    var hasValue = false;
+    if (type === "radio") {
+      hasValue = !!el.checked;
+      if (!hasValue && name) {
+        try {
+          var grp = document.getElementsByName(name);
+          for (var gi = 0; gi < grp.length; gi++) {
+            if (grp[gi].type === "radio" && grp[gi].checked) {
+              hasValue = true;
+              break;
+            }
+          }
+        } catch (eG) { /* ignore */ }
+      }
+    } else {
+      hasValue = !!(currentVal && String(currentVal).trim());
+    }
 
     var label = getLabelForElement(el);
     if (!label || label === id || label === name) {
       var lit = getLightningLabel(el);
       if (lit) label = lit;
     }
+    // Prefer aria-label on Ulster radios ("Self Funding") when generic
+    if (type === "radio") {
+      var aria = el.getAttribute("aria-label");
+      if (aria && aria.trim()) label = aria.trim();
+      // Ulster Relationship radios: Parent / Guardian / … on parent node
+      if (!aria || !aria.trim()) {
+        try {
+          var rParent = el.parentElement;
+          if (rParent && rParent.innerText) {
+            var rLab = rParent.innerText.replace(/\s+/g, " ").trim();
+            if (rLab && rLab.length < 40) label = rLab;
+          }
+        } catch (eR) { /* ignore */ }
+      }
+    }
+
+    var nominatedContext = isInsideNominatedModal(el);
 
     // Lean auto-scan: identity only (no expensive context walks / selector paths)
     if (lean) {
@@ -1071,7 +1286,8 @@ function scanFormFields(opts) {
         tagName: tagName,
         autocomplete: autocomplete,
         currentValue: currentVal,
-        hasValue: !!(currentVal && currentVal.trim()),
+        hasValue: hasValue,
+        nominatedContext: nominatedContext,
         visible: true,
         enabled: true,
       });
@@ -1101,9 +1317,10 @@ function scanFormFields(opts) {
       placeholder: el.getAttribute("placeholder") || "",
       required: required,
       currentValue: currentVal,
-      hasValue: !!(currentVal && currentVal.trim()),
+      hasValue: hasValue,
       fieldsetLegend: getClosestFieldsetLegend(el),
       nearestHeading: getNearestHeading(el),
+      nominatedContext: nominatedContext,
       nearbyText: fillMode ? "" : getNearbyText(el),
       ariaDescribedby: fillMode ? "" : getAriaDescribedbyText(el),
       options: options,
@@ -1139,7 +1356,77 @@ function precomputeFieldMatchMeta(fields) {
  * @returns {string}
  */
 function getFieldIdentifier(field) {
-  return [field.name, field.id, field.label].filter(Boolean).join(" ");
+  // Include section legend/heading so Ulster radios (aria-label Yes/No) still
+  // match via group name + "Have You Previously…" legend text.
+  // nominatedContext is set during scan for Ulster NEW NOMINATED CONTACT modal.
+  return [
+    field.name,
+    field.id,
+    field.label,
+    field.fieldsetLegend,
+    field.nearestHeading,
+    field.nominatedContext ? "nominated contact" : "",
+  ].filter(Boolean).join(" ");
+}
+
+/**
+ * True if element sits in Ulster QA "NEW NOMINATED CONTACT" / emergency Add New modal.
+ * Bare labels (*Phone, *Email, *First Name) need this so they don't map to applicant fields.
+ * @param {Element} el
+ * @returns {boolean}
+ */
+function isInsideNominatedModal(el) {
+  if (!el) return false;
+  var node = el;
+  for (var i = 0; i < 22 && node; i++) {
+    // API name markers on self or Lightning host
+    var nm = (node.name || (node.getAttribute && node.getAttribute("name")) || "").toString();
+    if (/new_contact_|new_text_contact|new_relationship_to_you|new_u18_date|special_instructions/i.test(nm)) {
+      return true;
+    }
+    try {
+      var root = node.getRootNode && node.getRootNode();
+      if (root && root.host) {
+        var host = root.host;
+        var hn = host.getAttribute("name") || host.getAttribute("label") || "";
+        if (/new_contact_|new_text_contact|new_relationship|new_u18|special_instructions/i.test(hn)) {
+          return true;
+        }
+        // Bounded text window — modal panel, not whole body
+        var hostText = "";
+        try {
+          hostText = (host.innerText || "").slice(0, 2200);
+        } catch (eT) { /* ignore */ }
+        if (
+          hostText.length > 40 &&
+          hostText.length < 2200 &&
+          /NEW NOMINATED CONTACT/i.test(hostText) &&
+          /Relationship To You/i.test(hostText)
+        ) {
+          return true;
+        }
+        node = host;
+        continue;
+      }
+    } catch (e1) { /* ignore */ }
+
+    if (node !== document.body && node !== document.documentElement) {
+      var slice = "";
+      try {
+        slice = (node.innerText || "").slice(0, 2200);
+      } catch (e2) { /* ignore */ }
+      if (
+        slice.length > 40 &&
+        slice.length < 2200 &&
+        /NEW NOMINATED CONTACT/i.test(slice) &&
+        /Relationship To You/i.test(slice)
+      ) {
+        return true;
+      }
+    }
+    node = node.parentElement;
+  }
+  return false;
 }
 
 /** CRM keys that belong to academic / education history sections. */
@@ -1147,6 +1434,7 @@ const ACADEMIC_CRM_KEYS = new Set([
   "institutionName", "degree", "major", "studyDates", "startDate", "endDate",
   "graduationYear", "gpa", "previousEducation", "qualificationLevel",
   "qualificationType", "grade", "awardStatus", "studyCountry",
+  "studyStartYear", "studyEndYear",
   "englishFirstLanguage", "otherEnglishLanguageExperience",
   "highestQualification", "hasUniversityDegree",
 ]);
@@ -1157,6 +1445,8 @@ const EMPLOYMENT_CRM_KEYS = new Set([
   "cvYearsExperience", "cvWorkStartDate", "cvWorkEndDate",
   "employerName", "jobTitle", "employmentCountry", "presentEmployment",
   "hasTwoYearsWorkExperience", "cvWorkLocation", "cvJobDescription",
+  "occupation", "mainResponsibilities",
+  "employerContactName", "employerContactEmail", "employerContactPhone",
 ]);
 
 /**
@@ -1333,12 +1623,14 @@ function matchScore(crmKey, fieldId, autocompleteValue, terminalToken, sectionKi
   // ── Funding: main combobox vs "Other funding source" free-text ─────
   // Live Sunderland: "How are you intending to fund this programme?" → Self-Funding
   // "Other funding source" (Otherfundingsource__c) only when type is Other.
+  // Ulster QA: radio group label "Fee Payment Method" → Self Funding / Sponsorship
   var isOtherFundingField =
     /otherfundingsource/.test(nField.replace(/\s+/g, "")) ||
     /\bother funding source\b|\bother source of funding\b/.test(nField);
   var isMainFundingField =
     !isOtherFundingField &&
     (/\bhow are you intending to fund\b/.test(nField) ||
+      /\bfee payment method\b/.test(nField) ||
       (/\bfund(ing)?\b/.test(nField) && /\b(programme|program|tuition|intend)\b/.test(nField)) ||
       nField === "funding" ||
       nField === "funding source");
@@ -1355,6 +1647,247 @@ function matchScore(crmKey, fieldId, autocompleteValue, terminalToken, sectionKi
     return 0;
   }
 
+  // ── Ulster QA exclusive locks (apply.qahighereducation.com, 2026-07-31) ──
+  // Nominated / Emergency Add New modal context (API names + section titles).
+  // nField is already normalize()'d (underscores → spaces).
+  var isNominatedContext =
+    /\bnominated\b|\bnew nominated\b|\bemergency contact\b|\brelationship to you\b|\bnew contact first name\b|\bnew contact last name\b|\bnew text contact email\b|\bnew relationship to you\b|\bnew u18 date of birth\b|\bspecial instructions\b|\bphone country dialing code\b|\bphone country dialling code\b|\bcountry dialing code\b/.test(
+      nField
+    );
+  // Main contact phone country code (not modal "dialing code")
+  var isPhoneCountryCodeField =
+    !isNominatedContext &&
+    (/\b(phone|mobile|telephone)\s+country\s+code\b/.test(nField) ||
+      nField === "phone country code" ||
+      nField === "mobile country code");
+  var isEmergencyDialingCodeField =
+    /\bphone country dialing code\b|\bphone country dialling code\b|\bcountry dialing code\b|\bcountry dialling code\b|\bemergency phone country\b|\bnominated phone country\b/.test(
+      nField
+    ) ||
+    (isNominatedContext &&
+      /\b(phone|mobile|telephone)\b/.test(nField) &&
+      /\b(country|dialing|dialling|code)\b/.test(nField));
+  if (isPhoneCountryCodeField && crmKey !== "phoneCountryCode") {
+    return 0; // phone number must not fill country-code lookup
+  }
+  if (crmKey === "phoneCountryCode" && !isPhoneCountryCodeField) {
+    return 0;
+  }
+  if (isEmergencyDialingCodeField && crmKey !== "emergencyPhoneCountryCode") {
+    return 0;
+  }
+  if (crmKey === "emergencyPhoneCountryCode" && !isEmergencyDialingCodeField) {
+    return 0;
+  }
+  // National phone/mobile number (not country code, not emergency/nominated modal)
+  var isUlsterPhoneNumberField =
+    !isPhoneCountryCodeField &&
+    !isEmergencyDialingCodeField &&
+    !isNominatedContext &&
+    !/\bemergency\b|\bnext of kin\b|\bnominated\b/.test(nField) &&
+    (nField === "phone" ||
+      nField === "mobile" ||
+      /^(phone|mobile|telephone)$/.test(nField) ||
+      (/\b(phone|mobile|telephone)\b/.test(nField) && !/\bcountry\b|\bcode\b|\bdialing\b|\bdialling\b/.test(nField)));
+  var isEmergencyPhoneField =
+    !isEmergencyDialingCodeField &&
+    (/\bemergency (phone|telephone|mobile)\b|\bnominated (phone|telephone|mobile)\b|\bnext of kin (phone|telephone)\b/.test(
+      nField
+    ) ||
+      (isNominatedContext &&
+        (nField === "phone" ||
+          /^(phone|mobile|telephone)$/.test(nField) ||
+          (/\b(phone|mobile|telephone)\b/.test(nField) &&
+            !/\bcountry\b|\bcode\b|\bdialing\b|\bdialling\b|\bemail\b/.test(nField)))));
+  if (crmKey === "phone" && (isPhoneCountryCodeField || isEmergencyDialingCodeField || isEmergencyPhoneField || isNominatedContext)) {
+    return 0;
+  }
+  if (crmKey === "emergencyPhone" && !isEmergencyPhoneField) {
+    return 0;
+  }
+  if (isEmergencyPhoneField && crmKey !== "emergencyPhone") {
+    return 0;
+  }
+  // Nominated First / Last name — must not steal applicant givenName/familyName
+  var isEmergencyFirstNameField =
+    /\bnew contact first name\b|\bemergency first name\b|\bnominated first name\b|\bcontact first name\b/.test(nField) ||
+    (isNominatedContext && /\bfirst name\b/.test(nField));
+  var isEmergencyLastNameField =
+    /\bnew contact last name\b|\bemergency last name\b|\bnominated last name\b|\bcontact last name\b/.test(nField) ||
+    (isNominatedContext && /\blast name\b|\bsurname\b/.test(nField));
+  if (isEmergencyFirstNameField && crmKey !== "emergencyFirstName") return 0;
+  if (crmKey === "emergencyFirstName" && !isEmergencyFirstNameField) return 0;
+  if (isEmergencyLastNameField && crmKey !== "emergencyLastName") return 0;
+  if (crmKey === "emergencyLastName" && !isEmergencyLastNameField) return 0;
+  // Nominated email
+  var isEmergencyEmailField =
+    /\bnew text contact email\b|\bemergency email\b|\bnominated (contact )?email\b|\bnext of kin email\b/.test(nField) ||
+    (isNominatedContext && /\bemail\b/.test(nField));
+  if (isEmergencyEmailField && crmKey !== "emergencyEmail") return 0;
+  if (crmKey === "emergencyEmail" && !isEmergencyEmailField) return 0;
+  if (crmKey === "email" && (isEmergencyEmailField || isNominatedContext)) return 0;
+  // Relationship radios
+  var isEmergencyRelationshipField =
+    /\brelationship to you\b|\bnew relationship to you\b|\bemergency relationship\b|\bnominated relationship\b|\brelationship to applicant\b/.test(
+      nField
+    ) ||
+    (isNominatedContext && /\brelationship\b/.test(nField));
+  if (isEmergencyRelationshipField && crmKey !== "emergencyRelationship") return 0;
+  if (crmKey === "emergencyRelationship" && !isEmergencyRelationshipField) return 0;
+  // Emergency DOB (not applicant DOB)
+  var isEmergencyDobField =
+    /\bnew u18 date of birth\b|\bemergency date of birth\b|\bnominated date of birth\b|\bcontact date of birth\b/.test(
+      nField
+    ) ||
+    (isNominatedContext && /\b(date of birth|dob|birth date)\b/.test(nField));
+  if (isEmergencyDobField && crmKey !== "emergencyDateOfBirth") return 0;
+  if (crmKey === "emergencyDateOfBirth" && !isEmergencyDobField) return 0;
+  if (crmKey === "dateOfBirth" && isEmergencyDobField) return 0;
+  // Special instructions (optional free text on modal)
+  var isSpecialInstructionsField = /\bspecial instructions\b|\bspecial_instructions\b/.test(nField);
+  if (isSpecialInstructionsField && crmKey !== "emergencySpecialInstructions") return 0;
+  if (crmKey === "emergencySpecialInstructions" && !isSpecialInstructionsField) return 0;
+  // Sex Identifier (Ulster) — exclusive to gender
+  if (/\bsex identifier\b|\bsex_identifier\b/.test(nField) && crmKey !== "gender") {
+    return 0;
+  }
+  // Ethnicity exclusive
+  if (/\bethnicity\b|\bethnic (origin|background|group)\b/.test(nField) && crmKey !== "ethnicity") {
+    return 0;
+  }
+  // Dependants exclusive
+  if (/\bdependants?\b/.test(nField) && crmKey !== "dependants") {
+    return 0;
+  }
+  // Current Domicile exclusive (not nationality, not country of residence alone)
+  if (/\b(current\s+)?domicile\b/.test(nField) && crmKey !== "currentDomicile") {
+    return 0;
+  }
+  // Previously applied (Ulster long radio label)
+  if (/\bpreviously applied\b|\benrolled onto a course with ulster\b|\bqahe partner\b/.test(nField) &&
+      crmKey !== "previouslyApplied") {
+    return 0;
+  }
+  // Previously known by other name
+  if (/\bknown by any other name\b|\bprevious(ly)? name\b|\bformer name\b/.test(nField) &&
+      crmKey !== "previousName") {
+    return 0;
+  }
+  // Personal statement free text
+  if (/\bpersonal statement\b|\bstatement of purpose\b/.test(nField) &&
+      crmKey !== "personalStatement" && crmKey !== "cvProfessionalSummary") {
+    return 0;
+  }
+  // Ulster QA: passport field is often labelled "Document Number" (not "Passport Number")
+  var isDocumentNumberField =
+    /\bdocument number\b|\bdocument no\b|\bdocument #\b|\bpassport document number\b|\bidentity document number\b/.test(
+      nField
+    );
+  if (isDocumentNumberField && crmKey !== "passportNumber") {
+    return 0;
+  }
+  // Ulster NEW EMPLOYMENT HISTORY modal
+  var isOccupationField =
+    /\bemployment occupation\b|\boccupation\b/.test(nField) &&
+    !/\bmain responsib|\bjob description\b/.test(nField);
+  if (isOccupationField && crmKey !== "occupation" && crmKey !== "cvCurrentJobTitle" && crmKey !== "jobTitle") {
+    return 0;
+  }
+  // Prefer dedicated occupation key over generic job title when label is Occupation
+  if (isOccupationField && (crmKey === "cvCurrentJobTitle" || crmKey === "jobTitle")) {
+    // allow as fallback only if occupation key not stronger — scored below with lower lock
+  }
+  var isMainResponsibilitiesField =
+    /\bmain responsibilit|\bkey responsibilit|\bmain duties\b|\bjob responsibilit/.test(nField);
+  if (isMainResponsibilitiesField && crmKey !== "mainResponsibilities") {
+    return 0;
+  }
+  if (crmKey === "mainResponsibilities" && !isMainResponsibilitiesField) {
+    return 0;
+  }
+  var isJobDescriptionField =
+    /\bmy job description\b|\bjob description\b|\brole description\b/.test(nField) &&
+    !isMainResponsibilitiesField;
+  if (isJobDescriptionField && crmKey !== "cvJobDescription") {
+    return 0;
+  }
+  if (crmKey === "cvJobDescription" && !isJobDescriptionField) {
+    return 0;
+  }
+  // Company Name vs Employer's Name (person)
+  var isCompanyNameField =
+    /\bcompany name\b|\bnew company name\b|\bnew_company_name\b/.test(nField);
+  var isEmployerContactNameField =
+    /\bemployer'?s? name\b|\bnew employer\b|\bemployer contact name\b/.test(nField) &&
+    !/\bcompany\b|\bemail\b|\bphone\b/.test(nField);
+  if (isCompanyNameField && crmKey !== "cvCurrentEmployer" && crmKey !== "employerName") {
+    return 0;
+  }
+  if (isEmployerContactNameField && crmKey !== "employerContactName") {
+    return 0;
+  }
+  if (crmKey === "employerContactName" && !isEmployerContactNameField) {
+    return 0;
+  }
+  // Don't dump applicant email/phone into employer contact fields
+  if (/\bemployer'?s? email\b|\bemployer email\b/.test(nField) && crmKey !== "employerContactEmail") {
+    return 0;
+  }
+  if (/\bemployer'?s? phone\b|\bemployer phone\b/.test(nField) && crmKey !== "employerContactPhone") {
+    return 0;
+  }
+  if (crmKey === "email" && /\bemployer/.test(nField)) return 0;
+  if (crmKey === "phone" && /\bemployer/.test(nField)) return 0;
+
+  // Ulster NEW EDUCATION HISTORY: Start Year / End Year / Country
+  var isStudyStartYearField =
+    /\bstart year\b|\bstudy start year\b|\beducation start year\b|\bpickist start year\b|\bpicklist start year\b/.test(
+      nField
+    );
+  var isStudyEndYearField =
+    /\bend year\b|\bstudy end year\b|\beducation end year\b|\bpredicted end year\b|\bpicklist end year\b/.test(
+      nField
+    );
+  if (isStudyStartYearField && crmKey !== "studyStartYear" && crmKey !== "startDate") {
+    return 0;
+  }
+  if (isStudyEndYearField && crmKey !== "studyEndYear" && crmKey !== "endDate" && crmKey !== "graduationYear") {
+    return 0;
+  }
+  if (crmKey === "studyStartYear" && !isStudyStartYearField) return 0;
+  if (crmKey === "studyEndYear" && !isStudyEndYearField) return 0;
+  // Don't put graduation year into Start Year
+  if (crmKey === "graduationYear" && isStudyStartYearField) return 0;
+  // Education Country (select) — exclusive to studyCountry when in education modal
+  var isEducationCountryField =
+    (/\bpicklist country\b|\beducation country\b|\bcountry of study\b|\bcountry you studied\b|\bstudy country\b/.test(nField) ||
+      (/\bcountry\b/.test(nField) &&
+        /\beducation|qualification|institution|start year|end year|results\b/.test(nField))) &&
+    !/\bemployment\b|\bemployer\b|\bphone country\b|\bmobile country\b|\bdialing\b|\bdialling\b|\bnationality\b|\bdomicile\b/.test(
+      nField
+    );
+  // Bare "Country" on education form: name picklist_Country
+  if (/\bpicklist_?country\b|\bpicklist country\b/.test(nField)) {
+    isEducationCountryField = true;
+  }
+  if (isEducationCountryField && crmKey !== "studyCountry") {
+    return 0;
+  }
+  // Education Institution combobox
+  var isEducationInstitutionField =
+    /\beducation institution\b|\bname of (school|university|institution)\b/.test(nField);
+  if (isEducationInstitutionField && crmKey !== "institutionName") {
+    return 0;
+  }
+  // Results radios (Completed / In Progress)
+  var isEducationResultsField =
+    /\bresults\b|\bpicklist results\b|\baward status\b|\bcompletion status\b/.test(nField) &&
+    !/\btest\b|\bexam score\b/.test(nField);
+  if (isEducationResultsField && /\bresults\b/.test(nField) && crmKey !== "awardStatus") {
+    // bare "results" only for awardStatus
+    if (crmKey !== "awardStatus") return 0;
+  }
+
   var synMeta = getSynonymMeta(crmKey);
   var synonyms = synMeta.synonyms;
   var baseScore = 0;
@@ -1369,6 +1902,95 @@ function matchScore(crmKey, fieldId, autocompleteValue, terminalToken, sectionKi
   }
   // Main funding combobox → lock score for funding key
   if (crmKey === "funding" && isMainFundingField) {
+    baseScore = Math.max(baseScore, 100);
+  }
+  // Ulster QA locks
+  if (crmKey === "phoneCountryCode" && isPhoneCountryCodeField) {
+    baseScore = Math.max(baseScore, 100);
+  }
+  if (crmKey === "phone" && isUlsterPhoneNumberField) {
+    baseScore = Math.max(baseScore, 100);
+  }
+  if (crmKey === "emergencyPhoneCountryCode" && isEmergencyDialingCodeField) {
+    baseScore = Math.max(baseScore, 100);
+  }
+  if (crmKey === "emergencyPhone" && isEmergencyPhoneField) {
+    baseScore = Math.max(baseScore, 100);
+  }
+  if (crmKey === "emergencyFirstName" && isEmergencyFirstNameField) {
+    baseScore = Math.max(baseScore, 100);
+  }
+  if (crmKey === "emergencyLastName" && isEmergencyLastNameField) {
+    baseScore = Math.max(baseScore, 100);
+  }
+  if (crmKey === "emergencyEmail" && isEmergencyEmailField) {
+    baseScore = Math.max(baseScore, 100);
+  }
+  if (crmKey === "emergencyRelationship" && isEmergencyRelationshipField) {
+    baseScore = Math.max(baseScore, 100);
+  }
+  if (crmKey === "emergencyDateOfBirth" && isEmergencyDobField) {
+    baseScore = Math.max(baseScore, 100);
+  }
+  if (crmKey === "emergencySpecialInstructions" && isSpecialInstructionsField) {
+    baseScore = Math.max(baseScore, 100);
+  }
+  if (crmKey === "gender" && /\bsex identifier\b|\bsex_identifier\b/.test(nField)) {
+    baseScore = Math.max(baseScore, 100);
+  }
+  if (crmKey === "ethnicity" && /\bethnicity\b/.test(nField)) {
+    baseScore = Math.max(baseScore, 100);
+  }
+  if (crmKey === "dependants" && /\bdependants?\b/.test(nField)) {
+    baseScore = Math.max(baseScore, 100);
+  }
+  if (crmKey === "currentDomicile" && /\bdomicile\b/.test(nField)) {
+    baseScore = Math.max(baseScore, 100);
+  }
+  if (crmKey === "previouslyApplied" && /\bpreviously applied\b|\bqahe partner\b/.test(nField)) {
+    baseScore = Math.max(baseScore, 100);
+  }
+  if (crmKey === "previousName" && /\bknown by any other name\b|\bprevious(ly)? name\b/.test(nField)) {
+    baseScore = Math.max(baseScore, 100);
+  }
+  if (crmKey === "passportNumber" && isDocumentNumberField) {
+    baseScore = Math.max(baseScore, 100);
+  }
+  if (crmKey === "occupation" && isOccupationField) {
+    baseScore = Math.max(baseScore, 100);
+  }
+  if (crmKey === "mainResponsibilities" && isMainResponsibilitiesField) {
+    baseScore = Math.max(baseScore, 100);
+  }
+  if (crmKey === "cvJobDescription" && isJobDescriptionField) {
+    baseScore = Math.max(baseScore, 100);
+  }
+  if (crmKey === "employerContactName" && isEmployerContactNameField) {
+    baseScore = Math.max(baseScore, 100);
+  }
+  // Prefer occupation key over job title when both could match Employment Occupation
+  if ((crmKey === "cvCurrentJobTitle" || crmKey === "jobTitle") && isOccupationField) {
+    baseScore = Math.max(baseScore, 70);
+  }
+  if (crmKey === "studyStartYear" && isStudyStartYearField) {
+    baseScore = Math.max(baseScore, 100);
+  }
+  if (crmKey === "studyEndYear" && isStudyEndYearField) {
+    baseScore = Math.max(baseScore, 100);
+  }
+  if (crmKey === "startDate" && isStudyStartYearField) {
+    baseScore = Math.max(baseScore, 80);
+  }
+  if ((crmKey === "endDate" || crmKey === "graduationYear") && isStudyEndYearField) {
+    baseScore = Math.max(baseScore, 80);
+  }
+  if (crmKey === "studyCountry" && isEducationCountryField) {
+    baseScore = Math.max(baseScore, 100);
+  }
+  if (crmKey === "institutionName" && isEducationInstitutionField) {
+    baseScore = Math.max(baseScore, 100);
+  }
+  if (crmKey === "awardStatus" && isEducationResultsField) {
     baseScore = Math.max(baseScore, 100);
   }
 
@@ -1547,7 +2169,14 @@ function formatValueForField(el, value, meta) {
   var isMonthYear =
     /\bmonth year\b/.test(hint) ||
     /\b(from|to) month year\b/.test(hint) ||
-    (/\b(start|end|from|to)\b/.test(hint) && /\b(month|year)\b/.test(hint) && !/\b(date of birth|dob|birth)\b/.test(hint));
+    (/\b(start|end|from|to)\b/.test(hint) && /\b(month|year)\b/.test(hint) && !/\b(date of birth|dob|birth|start year|end year)\b/.test(hint));
+
+  // Ulster education: Start Year / End Year are year-only <select>s
+  var isYearOnly =
+    /\bstart year\b|\bend year\b|\bstudy start year\b|\bstudy end year\b|\bgraduation year\b|\byear of graduation\b/.test(hint) ||
+    /start_year|end_year|pickist_start_year|picklist_start_year|picklist_end_year/i.test(
+      (meta && meta.name) || el.name || ""
+    );
 
   var isBirth =
     /\b(dob|date of birth|birth date|birthdate)\b/.test(hint) ||
@@ -1557,11 +2186,18 @@ function formatValueForField(el, value, meta) {
     type === "date" ||
     type === "datetime-local" ||
     isMonthYear ||
+    isYearOnly ||
     isBirth ||
     /\b(passport (issue|expiry)|expiry date|issue date|test date|start date|end date)\b/.test(hint);
 
   if (!isDateHint && type !== "date" && type !== "datetime-local") {
     return value;
+  }
+
+  // Year-only picklist: ISO / UK dates → "2021"
+  if (isYearOnly) {
+    var yOnly = String(value).trim().match(/(\d{4})/);
+    if (yOnly) return yOnly[1];
   }
 
   // Already MM-YYYY / MM/YYYY / Mon YYYY → normalise to MM-YYYY for Sunderland
@@ -1633,90 +2269,175 @@ function waitMs(ms) {
  * @param {{label?:string,name?:string,id?:string,crmKey?:string}} [meta]
  * @returns {Promise<boolean>} true if value was set / option selected
  */
+/**
+ * Apply a selected option on a native <select>, including Lightning Flow picklists.
+ * Uses the native value setter so LWC / Flow state updates (Ulster QA).
+ * @param {HTMLSelectElement} el
+ * @param {HTMLOptionElement} opt
+ * @returns {boolean}
+ */
+function applySelectOption(el, opt) {
+  if (!el || !opt) return false;
+  try {
+    opt.selected = true;
+    el.selectedIndex = opt.index;
+    var desc = Object.getOwnPropertyDescriptor(window.HTMLSelectElement.prototype, "value");
+    if (desc && desc.set) desc.set.call(el, opt.value);
+    else el.value = opt.value;
+    el.dispatchEvent(new Event("input", { bubbles: true, composed: true }));
+    el.dispatchEvent(new Event("change", { bubbles: true, composed: true }));
+    try {
+      var root = el.getRootNode && el.getRootNode();
+      if (root && root.host) {
+        root.host.dispatchEvent(new CustomEvent("change", {
+          detail: { value: opt.value },
+          bubbles: true,
+          composed: true,
+        }));
+      }
+    } catch (eHost) { /* ignore */ }
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+/**
+ * Select a radio in a group by CRM value (Yes/No, Self Funding, etc.).
+ * Ulster QA uses radios for Fee Payment Method and previous-apply questions.
+ * @param {HTMLInputElement} el - one radio in the group (matched by label)
+ * @param {string} value
+ * @param {string} [crmKey]
+ * @returns {boolean}
+ */
+function setRadioGroupValue(el, value, crmKey) {
+  if (!el || el.type !== "radio") return false;
+  var name = el.name;
+  var radios = [];
+  if (name) {
+    try {
+      radios = Array.prototype.slice.call(
+        document.querySelectorAll('input[type="radio"][name="' + CSS.escape(name) + '"]')
+      );
+    } catch (e0) {
+      radios = Array.prototype.slice.call(document.getElementsByName(name)).filter(function (r) {
+        return r.type === "radio";
+      });
+    }
+  }
+  // Also search closed shadows for same name
+  if (!radios.length || radios.length < 2) {
+    var deep = querySelectorAllDeep('input[type="radio"]');
+    for (var d = 0; d < deep.length; d++) {
+      if (name && deep[d].name === name) radios.push(deep[d]);
+    }
+  }
+  if (!radios.length) radios = [el];
+
+  var candidates = expandComboboxCandidates(crmKey || "", value);
+  candidates.unshift(value);
+  var best = null;
+  var bestScore = 0;
+  for (var i = 0; i < radios.length; i++) {
+    var r = radios[i];
+    var label = (
+      r.getAttribute("aria-label") ||
+      r.value ||
+      ""
+    ).replace(/\s+/g, " ").trim();
+    // Nearby text label (Ulster Lightning radio often has text on parent, not aria-label)
+    try {
+      var labEl = r.closest("label") || (r.id && document.querySelector('label[for="' + CSS.escape(r.id) + '"]'));
+      if (labEl && labEl.innerText) {
+        label = (labEl.innerText || label).replace(/\s+/g, " ").trim();
+      } else if (r.parentElement && r.parentElement.innerText) {
+        var pt = r.parentElement.innerText.replace(/\s+/g, " ").trim();
+        if (pt && pt.length < 80) label = pt;
+      }
+      // Lightning radio group: sibling span/label
+      if ((!labEl || !labEl.innerText) && r.nextElementSibling) {
+        var sib = (r.nextElementSibling.innerText || r.nextElementSibling.textContent || "").replace(/\s+/g, " ").trim();
+        if (sib && sib.length < 60) label = sib;
+      }
+    } catch (e1) { /* ignore */ }
+    for (var c = 0; c < candidates.length; c++) {
+      var sc = scoreComboboxOption(normalize(candidates[c]), label);
+      // also score raw value attribute
+      sc = Math.max(sc, scoreComboboxOption(normalize(candidates[c]), r.value || ""));
+      if (sc > bestScore) {
+        bestScore = sc;
+        best = r;
+      }
+    }
+  }
+  if (!best || bestScore < 55) return false;
+  try {
+    best.checked = true;
+    best.click();
+    best.dispatchEvent(new Event("input", { bubbles: true, composed: true }));
+    best.dispatchEvent(new Event("change", { bubbles: true, composed: true }));
+    return true;
+  } catch (e2) {
+    return false;
+  }
+}
+
 async function setElementValue(el, value, meta) {
   var tagName = el.tagName.toLowerCase();
   var type = (el.getAttribute("type") || "text").toLowerCase();
+  var crmKey = (meta && meta.crmKey) || "";
   value = formatValueForField(el, value, meta || {});
 
-  // Skip checkbox / radio for MVP — no boolean mapping yet.
-  if (type === "checkbox" || type === "radio") {
+  // National phone digits only when filling Ulster Phone/Mobile (country code separate)
+  if ((crmKey === "phone" || crmKey === "emergencyPhone") && (type === "tel" || type === "text")) {
+    var rawPhone = String(value).trim();
+    if (rawPhone.indexOf("+44") === 0) rawPhone = rawPhone.slice(3);
+    else if (/^0044/.test(rawPhone)) rawPhone = rawPhone.slice(4);
+    value = rawPhone.replace(/[^\d]/g, "");
+    // Strip country code 44 if CRM stored 4477… (12+ digits)
+    if (value.indexOf("44") === 0 && value.length >= 12) value = value.slice(2);
+  }
+
+  // Skip checkbox for MVP. Radios supported for Ulster Yes/No + fee method.
+  if (type === "checkbox") {
     return false;
+  }
+  if (type === "radio") {
+    return setRadioGroupValue(el, value, crmKey);
   }
 
   if (tagName === "select") {
     var options = Array.from(el.options);
-    var trimmedValue = value.trim();
-    var normValue = trimmedValue.toLowerCase();
+    var candidates = expandComboboxCandidates(crmKey, value);
+    if (candidates.indexOf(value.trim()) === -1) candidates.unshift(value.trim());
 
     // Helper: skip placeholder/default options (e.g. "— Select —", "Choose one\u2026")
     function isPlaceholderOption(o) {
       var t = o.text.trim().toLowerCase();
-      return !o.value || o.value === "" || /^[\u2014\u2013\u2012]/.test(t) || /^(select|choose|pick|please)/.test(t);
+      return !o.value || o.value === "" ||
+        /none|blank|implicit|defaulttext/.test(o.value.toLowerCase()) ||
+        /^[\u2014\u2013\u2012-]/.test(t) ||
+        /^(select|choose|pick|please|--none--)/.test(t);
     }
 
-    // 1. Exact value match
-    var exactValue = null;
-    for (var i = 0; i < options.length; i++) {
-      if (options[i].value === trimmedValue) { exactValue = options[i]; break; }
-    }
-    if (exactValue) {
-      el.value = exactValue.value;
-      el.dispatchEvent(new Event("change", { bubbles: true }));
-      return true;
-    }
-
-    // 2. Case-insensitive text match (skip placeholders)
-    var textMatch = null;
-    for (var j = 0; j < options.length; j++) {
-      if (!isPlaceholderOption(options[j]) && options[j].text.trim().toLowerCase() === normValue) {
-        textMatch = options[j]; break;
-      }
-    }
-    if (textMatch) {
-      el.value = textMatch.value;
-      el.dispatchEvent(new Event("change", { bubbles: true }));
-      return true;
-    }
-
-    // 3. Starts-with match on option text
-    var startsWithMatch = null;
-    for (var k = 0; k < options.length; k++) {
-      if (!isPlaceholderOption(options[k]) && options[k].text.trim().toLowerCase().startsWith(normValue)) {
-        startsWithMatch = options[k]; break;
-      }
-    }
-    if (startsWithMatch) {
-      el.value = startsWithMatch.value;
-      el.dispatchEvent(new Event("change", { bubbles: true }));
-      return true;
-    }
-
-    // 4. Partial text match (skip placeholders)
-    var partialMatch = null;
-    for (var m = 0; m < options.length; m++) {
-      if (!isPlaceholderOption(options[m]) && options[m].text.trim().toLowerCase().includes(normValue)) {
-        partialMatch = options[m]; break;
-      }
-    }
-    if (partialMatch) {
-      el.value = partialMatch.value;
-      el.dispatchEvent(new Event("change", { bubbles: true }));
-      return true;
-    }
-
-    // 5. Fuzzy: value might be a substring of an option text
-    if (normValue.length >= 3) {
-      var fuzzyMatch = null;
-      for (var n = 0; n < options.length; n++) {
-        if (!isPlaceholderOption(options[n]) && normValue.includes(options[n].text.trim().toLowerCase())) {
-          fuzzyMatch = options[n]; break;
+    var bestOpt = null;
+    var bestSc = 0;
+    for (var oi = 0; oi < options.length; oi++) {
+      if (isPlaceholderOption(options[oi])) continue;
+      var ot = options[oi].text.trim();
+      var ov = options[oi].value || "";
+      for (var ci = 0; ci < candidates.length; ci++) {
+        var sc1 = scoreComboboxOption(normalize(candidates[ci]), ot);
+        var sc2 = scoreComboboxOption(normalize(candidates[ci]), ov);
+        var sc = Math.max(sc1, sc2);
+        if (sc > bestSc) {
+          bestSc = sc;
+          bestOpt = options[oi];
         }
       }
-      if (fuzzyMatch) {
-        el.value = fuzzyMatch.value;
-        el.dispatchEvent(new Event("change", { bubbles: true }));
-        return true;
-      }
+    }
+    if (bestOpt && bestSc >= 55) {
+      return applySelectOption(el, bestOpt);
     }
 
     return false; // no matching option
@@ -1752,8 +2473,12 @@ async function setElementValue(el, value, meta) {
     el.dispatchEvent(new Event("input", { bubbles: true }));
     el.dispatchEvent(new Event("change", { bubbles: true }));
 
-    // Salesforce Experience Cloud comboboxes (type=search): open list and pick option
-    var isSearch = type === "search" || el.getAttribute("role") === "combobox";
+    // Salesforce Experience Cloud comboboxes (type=search / aria-autocomplete list):
+    // Ulster phone country code uses role=textbox + aria-autocomplete=list
+    var isSearch =
+      type === "search" ||
+      el.getAttribute("role") === "combobox" ||
+      el.getAttribute("aria-autocomplete") === "list";
     if (isSearch) {
       try {
         el.focus();
@@ -1964,8 +2689,9 @@ function expandComboboxCandidates(crmKey, value) {
   if (crmKey === "studyCountry" || crmKey === "countryName" || crmKey === "employmentCountry") {
     var nc = normalize(v);
     if (/united kingdom|\buk\b|great britain|england|scotland|wales|britain/.test(nc)) {
-      add("United Kingdom of Great Britain and Northern Ireland (the)");
+      // Ulster education Country select uses short "United Kingdom" (live 2026-07-31)
       add("United Kingdom");
+      add("United Kingdom of Great Britain and Northern Ireland (the)");
       add("UK");
       add("Great Britain");
     }
@@ -1974,6 +2700,44 @@ function expandComboboxCandidates(crmKey, value) {
       add("United Arab Emirates");
       add("UAE");
     }
+    if (/jordan/.test(nc)) add("Jordan");
+    if (/indonesia/.test(nc)) add("Indonesia");
+  }
+
+  // Year-only education picklists (and fallbacks from ISO dates)
+  if (
+    crmKey === "studyStartYear" ||
+    crmKey === "studyEndYear" ||
+    crmKey === "startDate" ||
+    crmKey === "endDate" ||
+    crmKey === "graduationYear"
+  ) {
+    var yMatch = String(v).trim().match(/(\d{4})/);
+    if (yMatch) add(yMatch[1]);
+  }
+
+  // Ulster Results radios
+  if (crmKey === "awardStatus") {
+    var nas = normalize(v);
+    if (/award|complete|finish|pass|granted|yes/.test(nas) && !/progress|pending|still/.test(nas)) {
+      add("Completed");
+      add("choice_Result.Completed");
+    }
+    if (/progress|current|ongoing|still|studying|pending/.test(nas)) {
+      add("In Progress");
+      add("choice_Result.In Progress");
+    }
+  }
+
+  // Ulster Education Institution lookup
+  if (crmKey === "institutionName") {
+    var ni = normalize(v);
+    if (/sheffield/.test(ni) && /university|uni/.test(ni)) {
+      add("The University of Sheffield");
+      add("University of Sheffield");
+    }
+    if (/other uk|not (on )?(the )?list/.test(ni)) add("Other UK institution");
+    if (/other non.?uk|overseas/.test(ni)) add("Other non-UK institution");
   }
 
   if (crmKey === "funding") {
@@ -1981,12 +2745,16 @@ function expandComboboxCandidates(crmKey, value) {
     if (/self/.test(nf)) {
       // Sunderland live option (ego-browser 2026-07-31): "Self-Funding"
       add("Self-Funding");
+      // Ulster QA live radio (ego-browser 2026-07-31): "Self Funding" (no hyphen)
       add("Self Funding");
+      add("Self_Funding");
       add("Self-Funded");
       add("Self Funded");
       add("Private");
     }
     if (/sponsor|company|employer/.test(nf)) {
+      // Ulster QA live radio: "Sponsorship"
+      add("Sponsorship");
       add("Sponsored");
       add("Sponsor");
       add("Company Sponsored");
@@ -2007,12 +2775,193 @@ function expandComboboxCandidates(crmKey, value) {
     }
   }
 
-  if (crmKey === "hasUniversityDegree") {
+  // Ulster Title picklist: Mr. (with period) — Sunderland uses Mr without period
+  if (crmKey === "title") {
+    var nt = normalize(v);
+    if (/^mr\.?$/.test(nt)) {
+      add("Mr.");
+      add("Mr");
+    }
+    if (/^mrs\.?$/.test(nt)) {
+      add("Mrs.");
+      add("Mrs");
+    }
+    if (/^ms\.?$/.test(nt)) {
+      add("Ms.");
+      add("Ms");
+    }
+    if (/^miss$/.test(nt)) add("Miss");
+    if (/^dr\.?$/.test(nt)) {
+      add("Dr.");
+      add("Dr");
+    }
+    if (/^mx$/.test(nt)) add("MX");
+  }
+
+  // Ulster Sex Identifier / gender
+  if (crmKey === "gender") {
+    var ng = normalize(v);
+    if (/^m(ale)?$/.test(ng)) add("Male");
+    if (/^f(emale)?$/.test(ng)) add("Female");
+    if (/other/.test(ng)) add("Other");
+    if (/refus|prefer not|not say/.test(ng)) {
+      add("Information Refused");
+      add("Prefer not to say");
+    }
+  }
+
+  // Ulster Ethnicity (live options include "Any other Asian background")
+  if (crmKey === "ethnicity") {
+    var ne = normalize(v);
+    if (/indonesia|malay|asian|other asian/.test(ne) || !ne) {
+      add("Any other Asian background");
+    }
+    if (/chinese/.test(ne)) add("Asian - Chinese or Chinese British");
+    if (/indian/.test(ne)) add("Asian - Indian or Indian British");
+    if (/pakistani/.test(ne)) add("Asian - Pakistani or Pakistani British");
+    if (/bangladeshi/.test(ne)) add("Asian - Bangladeshi or Bangladeshi British");
+    if (/arab/.test(ne)) add("Arab");
+    if (/african|black african/.test(ne)) add("Black - African or African British");
+    if (/caribbean/.test(ne)) add("Black - Caribbean or Caribbean British");
+    if (/white|british|english|irish/.test(ne)) {
+      add("White - British, Irish, Northern Irish, English, Scottish or Welsh");
+      add("Any other White background");
+    }
+    if (/prefer not|not say/.test(ne)) add("Prefer not to say");
+  }
+
+  // Ulster Dependants
+  if (crmKey === "dependants") {
+    var nd = normalize(v);
+    if (/^no|none|0$|no depend/.test(nd) || !nd) add("No Dependants");
+    if (/child|young/.test(nd)) add("Young People/Children");
+    if (/relative|friend/.test(nd)) add("Other Relative/Friends");
+    if (/both/.test(nd)) add("Both Young people/children & Other relative/friends");
+    if (/prefer not/.test(nd)) add("Prefer not to say");
+  }
+
+  // Ulster Current Domicile / nationality-style country lists
+  if (crmKey === "currentDomicile" || crmKey === "nationality") {
+    var ndom = normalize(v);
+    if (/indonesia/.test(ndom)) add("Indonesia");
+    if (/united kingdom|\buk\b|britain|england/.test(ndom)) {
+      add("United Kingdom");
+      add("United Kingdom of Great Britain and Northern Ireland (the)");
+    }
+    if (/united arab|\buae\b/.test(ndom)) {
+      add("United Arab Emirates");
+      add("United Arab Emirates (the)");
+    }
+  }
+
+  // Ulster phone country code lookup: "United Kingdom (+44)"
+  if (crmKey === "phoneCountryCode" || crmKey === "emergencyPhoneCountryCode") {
+    var ncc = normalize(v);
+    if (/united kingdom|\buk\b|\+?44|britain/.test(ncc) || !ncc) {
+      add("United Kingdom (+44)");
+      add("United Kingdom");
+      add("+44");
+    }
+    if (/indonesia|\+?62/.test(ncc)) {
+      add("Indonesia (+62)");
+      add("Indonesia");
+      add("+62");
+    }
+    if (/united arab|\buae\b|\+?971/.test(ncc)) {
+      add("United Arab Emirates (UAE) (+971)");
+      add("United Arab Emirates");
+      add("+971");
+    }
+    if (/united states|\busa\b|\+?1\b/.test(ncc)) {
+      add("United States (+1)");
+      add("United States");
+    }
+  }
+
+  // Ulster Employment Occupation SOC lookup (live 2026-07-31: typed "Software" →
+  // "Programmers and Software Development Professionals")
+  if (crmKey === "occupation" || crmKey === "cvCurrentJobTitle" || crmKey === "jobTitle") {
+    var noc = normalize(v);
+    if (/software|programmer|developer|engineer|coding|full.?stack|react|ios|web/.test(noc)) {
+      add("Programmers and Software Development Professionals");
+      add("Software Developer");
+      add("Software Engineer");
+    }
+    if (/intern/.test(noc) && /software|engineer|developer/.test(noc)) {
+      add("Programmers and Software Development Professionals");
+    }
+    if (/data scientist|machine learning|ai engineer/.test(noc)) {
+      add("Programmers and Software Development Professionals");
+      add("Data Scientists");
+    }
+    if (/manager|management/.test(noc) && !/software/.test(noc)) {
+      add("Managers and Directors");
+    }
+    if (/teacher|lecturer|tutor/.test(noc)) {
+      add("Teaching Professionals");
+    }
+    if (/nurse|medical|doctor|clinical/.test(noc)) {
+      add("Health Professionals");
+    }
+  }
+
+  // Ulster NEW NOMINATED CONTACT — Relationship To You? radios (live 2026-07-31)
+  // Options: Parent · Guardian · Host · Grandparent · Spouse · Sibling · Other · Next of Kin
+  if (crmKey === "emergencyRelationship") {
+    var nr = normalize(v);
+    if (/parent|mother|father|mum|mom|dad/.test(nr)) {
+      add("Parent");
+      add("parentPicklist");
+    }
+    if (/guardian/.test(nr)) {
+      add("Guardian");
+      add("guardianPicklist");
+    }
+    if (/host/.test(nr)) {
+      add("Host");
+      add("hostPicklist");
+    }
+    if (/grandparent|grandmother|grandfather/.test(nr)) {
+      add("Grandparent");
+      add("choice_Grandparent");
+    }
+    if (/spouse|wife|husband|partner/.test(nr)) {
+      add("Spouse");
+      add("choice_Spouse");
+    }
+    if (/sibling|brother|sister/.test(nr)) {
+      add("Sibling");
+      add("choice_Sibling");
+    }
+    if (/next of kin|nextofkin|kin/.test(nr)) {
+      add("Next of Kin");
+      add("choice_NextofKin");
+    }
+    if (/other|family|relative|friend/.test(nr) && !/parent|guardian|host|grand|spouse|sibling|kin/.test(nr)) {
+      add("Other");
+      add("choice_Other");
+    }
+    // CRM often stores "Family" / "Relative" — prefer Parent for demo family contact
+    if (/^family$|^relative$/.test(nr)) {
+      add("Parent");
+      add("Next of Kin");
+      add("Other");
+    }
+  }
+
+  // Yes/No radios (Ulster previous apply / previous name, Sunderland hasUniversityDegree)
+  if (
+    crmKey === "hasUniversityDegree" ||
+    crmKey === "hasTwoYearsWorkExperience" ||
+    crmKey === "previouslyApplied" ||
+    crmKey === "previousName" ||
+    crmKey === "englishFirstLanguage"
+  ) {
     var ny = normalize(v);
-    if (/^(y|yes|true|1)$/.test(ny) || /have|hold|yes/.test(ny)) {
+    if (/^(y|yes|true|1)$/.test(ny) || (/yes|have|hold/.test(ny) && !/no/.test(ny))) {
       add("Yes");
     }
-    if (/^(n|no|false|0)$/.test(ny)) {
+    if (/^(n|no|false|0)$/.test(ny) || /^no\b/.test(ny)) {
       add("No");
     }
   }
@@ -2378,12 +3327,24 @@ async function autofillPage(fieldMap, fields) {
 
     var didFill = false;
     var notedExisting = false;
+    // Ulster Contact: one CRM phone value fills both Phone + Mobile (and both country codes)
+    var multiFill =
+      crmKey === "phone" ||
+      crmKey === "phoneCountryCode" ||
+      crmKey === "email" ||
+      crmKey === "emergencyPhone" ||
+      crmKey === "emergencyPhoneCountryCode";
 
     for (var r = 0; r < ranked.length; r++) {
       var cand = ranked[r];
       var bestField = cand.field;
       var bestScore = cand.score;
       var existingVal = bestField.element.value || "";
+      var elType = (bestField.type || bestField.element.getAttribute("type") || "").toLowerCase();
+      // Radios: treat as filled only when a choice in the group is checked
+      if (elType === "radio") {
+        existingVal = bestField.hasValue || bestField.element.checked ? "checked" : "";
+      }
 
       // Skip non-empty; try next empty candidate (e.g. countryName → residence)
       if (existingVal.trim()) {
@@ -2408,6 +3369,18 @@ async function autofillPage(fieldMap, fields) {
       });
       if (success) {
         usedElements.add(bestField.element);
+        // Mark whole radio group used so Yes+No don't double-claim CRM keys
+        if (elType === "radio" && bestField.element.name) {
+          for (var uf = 0; uf < fields.length; uf++) {
+            if (
+              fields[uf].element &&
+              fields[uf].element.type === "radio" &&
+              fields[uf].element.name === bestField.element.name
+            ) {
+              usedElements.add(fields[uf].element);
+            }
+          }
+        }
         var matchReason = "";
         if (bestScore >= 100) matchReason = "Exact synonym match";
         else if (bestScore >= 85) matchReason = "Strong prefix/suffix match";
@@ -2423,7 +3396,8 @@ async function autofillPage(fieldMap, fields) {
           matchReason: matchReason,
         });
         didFill = true;
-        break;
+        if (!multiFill) break;
+        // multiFill: continue to next ranked empty field (Phone + Mobile)
       } else {
         skippedSelect.push({
           name: crmKey,
@@ -2525,7 +3499,7 @@ chrome.runtime.onMessage.addListener(function (message, sender, sendResponse) {
   try {
     switch (message.action) {
       case "ping": {
-        sendResponse({ pong: true, version: "2.3.8" });
+        sendResponse({ pong: true, version: "2.3.9" });
         break;
       }
 

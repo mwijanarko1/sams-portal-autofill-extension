@@ -73,8 +73,24 @@ function buildFieldMap(data) {
     if (Array.isArray(c.emails) && c.emails.length > 0) map.email = String(c.emails[0]);
     const em = c.emergency;
     if (em && typeof em === "object") {
-      if (em.name && typeof em.name === "string") map.emergencyName = em.name;
+      if (em.name && typeof em.name === "string") {
+        map.emergencyName = em.name;
+        // Ulster QA modal uses First + Last Name (not a single full-name field)
+        if (!map.emergencyFirstName || !map.emergencyLastName) {
+          const parts = em.name.trim().split(/\s+/).filter(Boolean);
+          if (parts.length >= 2) {
+            if (!map.emergencyFirstName) map.emergencyFirstName = parts[0];
+            if (!map.emergencyLastName) map.emergencyLastName = parts.slice(1).join(" ");
+          } else if (parts.length === 1 && !map.emergencyFirstName) {
+            map.emergencyFirstName = parts[0];
+          }
+        }
+      }
       if (em.phone && typeof em.phone === "string") map.emergencyPhone = em.phone;
+      if (em.email && typeof em.email === "string") map.emergencyEmail = em.email;
+      if (em.relationship && typeof em.relationship === "string") {
+        map.emergencyRelationship = em.relationship;
+      }
     }
   }
 
