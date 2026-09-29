@@ -100,6 +100,10 @@ const config = {
     "#bday_dd",
     "#bday_mm",
     "#bday_yyyy",
+    // Institution address on Previous / Current Education (same #city/#zip as applicant address)
+    "form[action*='P_ProcAppPrvCollege'] #city",
+    "form[action*='P_ProcAppPrvCollege'] #zip",
+    "form[action*='P_ProcAppPrvCollege'] #natn",
     // Referee Details (must not receive applicant CRM contact values)
     "#ud17",
     "#ud18",

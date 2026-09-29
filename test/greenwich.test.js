@@ -4,16 +4,29 @@ const fs = require("node:fs");
 const vm = require("node:vm");
 
 function loadGreenwich(pathname) {
+  function FakeEvent(type, init) {
+    this.type = type;
+    this.bubbles = !!(init && init.bubbles);
+  }
+  function FakeKeyboardEvent(type, init) {
+    FakeEvent.call(this, type, init);
+    this.key = (init && init.key) || "";
+  }
   const context = vm.createContext({
     console,
     setTimeout,
     clearTimeout,
     URL,
+    Event: FakeEvent,
+    KeyboardEvent: FakeKeyboardEvent,
     location: { origin: "https://nelson.gre.ac.uk", pathname },
   });
   context.globalThis = context;
   context.window = {
     getComputedStyle: () => ({ display: "block", visibility: "visible" }),
+    HTMLInputElement: { prototype: {} },
+    HTMLTextAreaElement: { prototype: {} },
+    HTMLSelectElement: { prototype: {} },
   };
   context.document = { querySelector: () => null };
   vm.runInContext(fs.readFileSync("config/synonyms.js", "utf8"), context);
@@ -22,8 +35,14 @@ function loadGreenwich(pathname) {
   return context;
 }
 
-function fakeEl({ id, name = "", label = "", type = "text" }) {
-  return {
+function fakeEl({
+  id,
+  name = "",
+  label = "",
+  type = "text",
+  formAction = "",
+} = {}) {
+  const el = {
     id,
     name,
     tagName: "INPUT",
@@ -46,11 +65,30 @@ function fakeEl({ id, name = "", label = "", type = "text" }) {
       if (selector === `input[name='${name}']` || selector === `input[name="${name}"]`) {
         return true;
       }
+      // Compound form-scoped blocks, e.g. form[action*='P_ProcAppPrvCollege'] #city
+      if (
+        formAction &&
+        selector.includes("form[action*='") &&
+        selector.includes(`#${id}`)
+      ) {
+        const actionMatch = selector.match(/form\[action\*='([^']+)'\]/);
+        if (actionMatch && formAction.includes(actionMatch[1])) return true;
+      }
       return false;
     },
-    closest: () => null,
+    closest: (selector) => {
+      if (!formAction) return null;
+      if (selector.startsWith("form") && formAction.includes("P_ProcAppPrvCollege")) {
+        return { tagName: "FORM", getAttribute: () => formAction };
+      }
+      return null;
+    },
     parentElement: null,
+    dispatchEvent: () => true,
+    focus: () => {},
+    blur: () => {},
   };
+  return el;
 }
 
 function sameJson(actual, expected) {
@@ -113,4 +151,83 @@ test("greenwich still allows applicant name and email overrides", () => {
   sameJson(cfg.selectorOverrides.email, ["#email", "#dup_email"]);
   sameJson(cfg.selectorOverrides.phone, ["#mobiletelno", "#hometelno"]);
   assert.equal(cfg.selectorOverrides.email.includes("#ud18"), false);
+});
+
+test("greenwich blocks institution city/postcode on Previous Education form", () => {
+  const ctx = loadGreenwich("/pls/prod/bwskapcl.P_DispAppPrvCollege");
+  const cfg = ctx.SAMS_PORTALS.find((p) => p.id === "greenwich");
+  assert.ok(
+    cfg.blockedControls.some((s) => s.includes("P_ProcAppPrvCollege") && s.includes("#city"))
+  );
+  assert.ok(
+    cfg.blockedControls.some((s) => s.includes("P_ProcAppPrvCollege") && s.includes("#zip"))
+  );
+  assert.ok(
+    cfg.blockedControls.some((s) => s.includes("P_ProcAppPrvCollege") && s.includes("#natn"))
+  );
+
+  const institutionCity = fakeEl({
+    id: "city",
+    name: "city",
+    label: "City",
+    formAction: "bwskapcl.P_ProcAppPrvCollege",
+  });
+  const institutionZip = fakeEl({
+    id: "zip",
+    name: "zip",
+    label: "Postcode",
+    formAction: "bwskapcl.P_ProcAppPrvCollege",
+  });
+  const applicantCity = fakeEl({
+    id: "city",
+    name: "city",
+    label: "City",
+    formAction: "bwskaadr.P_ProcAppAddr1",
+  });
+
+  assert.equal(ctx.SAMS_ENGINE.isFillable(institutionCity), false);
+  assert.equal(ctx.SAMS_ENGINE.isFillable(institutionZip), false);
+  assert.equal(ctx.SAMS_ENGINE.isFillable(applicantCity), true);
+});
+
+test("greenwich autofill skips institution city and can still fill applicant city", async () => {
+  const ctx = loadGreenwich("/pls/prod/bwskapcl.P_DispAppPrvCollege");
+  const institutionCity = fakeEl({
+    id: "city",
+    name: "city",
+    label: "City",
+    formAction: "bwskapcl.P_ProcAppPrvCollege",
+  });
+  const applicantCity = fakeEl({
+    id: "city",
+    name: "city",
+    label: "City",
+    formAction: "bwskaadr.P_ProcAppAddr1",
+  });
+
+  // Scan-time gate: institution address fields never enter the fillable set.
+  assert.equal(ctx.SAMS_ENGINE.isFillable(institutionCity), false);
+  assert.equal(ctx.SAMS_ENGINE.isFillable(applicantCity), true);
+
+  const fields = [
+    {
+      element: applicantCity,
+      name: "city",
+      id: "city",
+      label: "City",
+      type: "text",
+      tagName: "input",
+      autocomplete: "",
+      currentValue: "",
+      hasValue: false,
+      nominatedContext: false,
+      overrideCrmKey: "",
+      visible: true,
+      enabled: true,
+    },
+  ];
+  const result = await ctx.SAMS_ENGINE.autofillPage({ city: "Leeds" }, fields);
+  assert.equal(applicantCity.value, "Leeds");
+  assert.equal(institutionCity.value, "");
+  assert.ok(result.filled.some((row) => row.name === "city"));
 });
