@@ -4,7 +4,7 @@ const SAMS_ALLOWLIST_CONFIG = {
   sessionMinutes: 30,
   crmOrigins: ["https://app.samscrm.co.uk"],
   camporaOrigins: [],
-  portalOrigins: [],
+  portalOrigins: ["https://nelson.gre.ac.uk"],
   devCrmOrigins: ["http://localhost:3000"],
   devPortalOrigins: ["http://localhost:3001", "http://127.0.0.1:3001"],
 };

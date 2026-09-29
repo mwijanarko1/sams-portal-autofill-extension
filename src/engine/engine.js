@@ -1826,7 +1826,12 @@ async function setElementValue(el, value, meta) {
   value = formatValueForField(el, value, meta || {});
 
   // National phone digits only when filling Ulster Phone/Mobile (country code separate)
-  if ((crmKey === "phone" || crmKey === "emergencyPhone") && (type === "tel" || type === "text")) {
+  if (ACTIVE_PORTAL && ACTIVE_PORTAL.phoneKeepsDialPrefix &&
+    (crmKey === "phone" || crmKey === "emergencyPhone") && (type === "tel" || type === "text")) {
+    // No country-code field: UK numbers go national (07...), others keep +CC.
+    var intlPhone = String(value).trim().replace(/^00/, "+").replace(/[^\d+]/g, "");
+    value = intlPhone.indexOf("+44") === 0 ? "0" + intlPhone.slice(3).replace(/^0/, "") : intlPhone;
+  } else if ((crmKey === "phone" || crmKey === "emergencyPhone") && (type === "tel" || type === "text")) {
     var rawPhone = String(value).trim();
     if (rawPhone.indexOf("+44") === 0) rawPhone = rawPhone.slice(3);
     else if (/^0044/.test(rawPhone)) rawPhone = rawPhone.slice(4);
@@ -2973,6 +2978,7 @@ globalThis.SAMS_ENGINE = {
   enrichFieldsWithMapping,
   formatValueForField,
   safeClick,
+  isFillable,
 };
 
 } // end loaded guard
