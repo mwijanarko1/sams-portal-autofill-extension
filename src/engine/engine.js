@@ -2973,6 +2973,7 @@ globalThis.SAMS_ENGINE = {
   enrichFieldsWithMapping,
   formatValueForField,
   safeClick,
+  isFillable,
 };
 
 } // end loaded guard

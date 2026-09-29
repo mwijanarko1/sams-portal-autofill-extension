@@ -30,10 +30,10 @@ _No fillable fields on this page (nav/menu/checklist)._
 | Previous Name (first name + middle name + family name) | `text` | `plname` / `plname` | `#plname` | - | `previousName` | mapped_guess |
 | Full Legal Name | `text` | `ud50` / `ud50` | `#ud50` | - | `-` | portal_or_unmapped |
 | Passport Number (Non EU applicants only) | `text` | `ud135` / `ud135` | `#ud135` | - | `passportNumber` | mapped_guess |
-| Have you Previously applied to the University of Greenwich? | `radio` | `ud1` / `None` | `[name='ud1']` | `Y` / `N` | `institutionName` | mapped_guess |
-| Have you Previously applied to the University of Greenwich? | `radio` | `ud1` / `ud1` | `#ud1` | `Y` / `N` | `institutionName` | mapped_guess |
+| Have you Previously applied to the University of Greenwich? | `radio` | `ud1` / `None` | `[name='ud1']` | `Y` / `N` | `-` | portal_only |
+| Have you Previously applied to the University of Greenwich? | `radio` | `ud1` / `ud1` | `#ud1` | `Y` / `N` | `-` | portal_only |
 | Please provide your previous 9 digit ID number or student number (if known) | `text` | `ud2` / `ud2` | `#ud2` | - | `-` | portal_or_unmapped |
-| If you applied through an International Agent please state their 9 digit ID number | `text` | `ud3` / `ud3` | `#ud3` | - | `state` | mapped_guess |
+| If you applied through an International Agent please state their 9 digit ID number | `text` | `ud3` / `ud3` | `#ud3` | - | `-` | portal_only |
 
 ## Employment / Supporting Info.
 
@@ -44,9 +44,9 @@ _No fillable fields on this page (nav/menu/checklist)._
 | Name and Address of Employer | `textarea` | `ud11` / `ud11` | `#ud11` | - | `cvCurrentEmployer` | mapped_guess |
 | Description of Job / Nature of Employment | `text` | `ud16` / `ud16` | `#ud16` | - | `-` | portal_or_unmapped |
 | Full or Part Time? | `radio` | `ud12` / `ud12` | `#ud12` | `Y` / `N` | `-` | portal_or_unmapped |
-| Employment Start Date | `select` | `bday_dd` / `bday_dd` | `#bday_dd` |  (``) · 01 (`01`) · 02 (`02`) · 03 (`03`) · 04 (`04`) · 05 (`05`) · 06 (`06`) · 07 (`07`) ... +24 | `preferredIntake` | mapped_guess |
-| Employment Start Date | `select` | `bday_mm` / `bday_mm` | `#bday_mm` |  (``) · 01 (`01`) · 02 (`02`) · 03 (`03`) · 04 (`04`) · 05 (`05`) · 06 (`06`) · 07 (`07`) ... +5 | `preferredIntake` | mapped_guess |
-| Employment Start Date | `select` | `bday_yyyy` / `bday_yyyy` | `#bday_yyyy` |  (``) · 2026 (`2026`) · 2025 (`2025`) · 2024 (`2024`) · 2023 (`2023`) · 2022 (`2022`) · 2021 (`2021`) · 2020 (`2020`) ... +24 | `preferredIntake` | mapped_guess |
+| Employment Start Date | `select` | `bday_dd` / `bday_dd` | `#bday_dd` |  (``) · 01 (`01`) · 02 (`02`) · 03 (`03`) · 04 (`04`) · 05 (`05`) · 06 (`06`) · 07 (`07`) ... +24 | `-` | blocked_until_split_date |
+| Employment Start Date | `select` | `bday_mm` / `bday_mm` | `#bday_mm` |  (``) · 01 (`01`) · 02 (`02`) · 03 (`03`) · 04 (`04`) · 05 (`05`) · 06 (`06`) · 07 (`07`) ... +5 | `-` | blocked_until_split_date |
+| Employment Start Date | `select` | `bday_yyyy` / `bday_yyyy` | `#bday_yyyy` |  (``) · 2026 (`2026`) · 2025 (`2025`) · 2024 (`2024`) · 2023 (`2023`) · 2022 (`2022`) · 2021 (`2021`) · 2020 (`2020`) ... +24 | `-` | blocked_until_split_date |
 | Employment End Date | `select` | `bday_dd2` / `bday_dd2` | `#bday_dd2` |  (``) · 01 (`01`) · 02 (`02`) · 03 (`03`) · 04 (`04`) · 05 (`05`) · 06 (`06`) · 07 (`07`) ... +24 | `-` | portal_or_unmapped |
 | Employment End Date | `select` | `bday_mm2` / `bday_mm2` | `#bday_mm2` |  (``) · 01 (`01`) · 02 (`02`) · 03 (`03`) · 04 (`04`) · 05 (`05`) · 06 (`06`) · 07 (`07`) ... +5 | `-` | portal_or_unmapped |
 | Employment End Date | `select` | `bday_yyyy2` / `bday_yyyy2` | `#bday_yyyy2` |  (``) · 2026 (`2026`) · 2025 (`2025`) · 2024 (`2024`) · 2023 (`2023`) · 2022 (`2022`) · 2021 (`2021`) · 2020 (`2020`) ... +24 | `-` | portal_or_unmapped |
@@ -73,20 +73,20 @@ _No fillable fields on this page (nav/menu/checklist)._
 
 | Portal field | Type | name / id | Selector | Options (sample) | CRM key | Status |
 |---|---|---|---|---|---|---|
-| Name of Referee | `text` | `ud17` / `ud17` | `#ud17` | - | `emergencyName` | mapped_guess |
-| E-mail Address | `text` | `ud18` / `ud18` | `#ud18` | - | `email` | mapped_guess |
-| Address Line 1 | `text` | `ud19` / `ud19` | `#ud19` | - | `location` | mapped_guess |
-| Address Line 2 | `text` | `ud20` / `ud20` | `#ud20` | - | `addressLine2` | mapped_guess |
-| Address Line 3 | `text` | `ud21` / `ud21` | `#ud21` | - | `addressLine3` | mapped_guess |
-| City | `text` | `ud22` / `ud22` | `#ud22` | - | `city` | mapped_guess |
-| Postcode | `text` | `ud23` / `ud23` | `#ud23` | - | `postcode` | mapped_guess |
-| Country | `select` | `ud24` / `ud24` | `#ud24` |  (``) · Afghanistan (`1602`) · Albania (`1603`) · Alderney (`1592`) · Algeria (`1604`) · American Samoa (`2010`) · Andorra (`1605`) · Angola (`1606`) ... +241 | `countryName` | mapped_guess |
-| Telephone Number | `text` | `ud25` / `ud25` | `#ud25` | - | `phone` | mapped_guess |
-| Fax Number | `text` | `ud26` / `ud26` | `#ud26` | - | `-` | portal_or_unmapped |
-| Organisation Name | `text` | `ud27` / `ud27` | `#ud27` | - | `cvCurrentEmployer` | mapped_guess |
-| Post / Occupation / Relationship to Applicant | `text` | `ud28` / `ud28` | `#ud28` | - | `emergencyRelationship` | mapped_guess |
-| How long have you known this applicant / referee? | `text` | `ud29` / `ud29` | `#ud29` | - | `-` | portal_or_unmapped |
-| If you already have a reference please paste here (max 2000 characters) | `textarea` | `ud30` / `ud30` | `#ud30` | - | `-` | portal_or_unmapped |
+| Name of Referee | `text` | `ud17` / `ud17` | `#ud17` | - | `-`17blocked_referee |
+| E-mail Address | `text` | `ud18` / `ud18` | `#ud18` | - | `-`18blocked_referee |
+| Address Line 1 | `text` | `ud19` / `ud19` | `#ud19` | - | `-`19blocked_referee |
+| Address Line 2 | `text` | `ud20` / `ud20` | `#ud20` | - | `-`20blocked_referee |
+| Address Line 3 | `text` | `ud21` / `ud21` | `#ud21` | - | `-`21blocked_referee |
+| City | `text` | `ud22` / `ud22` | `#ud22` | - | `-`22blocked_referee |
+| Postcode | `text` | `ud23` / `ud23` | `#ud23` | - | `-`23blocked_referee |
+| Country | `select` | `ud24` / `ud24` | `#ud24` |  (``) · Afghanistan (`1602`) · Albania (`1603`) · Alderney (`1592`) · Algeria (`1604`) · American Samoa (`2010`) · Andorra (`1605`) · Angola (`1606`) ... +241 | `-`24blocked_referee |
+| Telephone Number | `text` | `ud25` / `ud25` | `#ud25` | - | `-`25blocked_referee |
+| Fax Number | `text` | `ud26` / `ud26` | `#ud26` | - | `-`26blocked_referee |
+| Organisation Name | `text` | `ud27` / `ud27` | `#ud27` | - | `-`27blocked_referee |
+| Post / Occupation / Relationship to Applicant | `text` | `ud28` / `ud28` | `#ud28` | - | `-`28blocked_referee |
+| How long have you known this applicant / referee? | `text` | `ud29` / `ud29` | `#ud29` | - | `-`29blocked_referee |
+| If you already have a reference please paste here (max 2000 characters) | `textarea` | `ud30` / `ud30` | `#ud30` | - | `-`30blocked_referee |
 
 ## Mailing Address
 
@@ -217,10 +217,10 @@ _No fillable fields on this page (nav/menu/checklist)._
 | E-mail Address | `text` | `email` / `email` | `#email` | - | `email` | mapped_guess |
 | Verify e-mail address | `text` | `dup_email` / `dup_email` | `#dup_email` | - | `email` | mapped_guess |
 | Gender | `select` | `gender` / `gender` | `#gender` |  (``) · Male (`M`) · Female (`F`) | `gender` | mapped_guess |
-| Date of Birth | `select` | `bday_dd` / `bday_dd` | `#bday_dd` |  (``) · 01 (`01`) · 02 (`02`) · 03 (`03`) · 04 (`04`) · 05 (`05`) · 06 (`06`) · 07 (`07`) ... +24 | `dateOfBirth` | mapped_guess |
-| Date of Birth | `select` | `bday_mm` / `bday_mm` | `#bday_mm` |  (``) · 01 (`01`) · 02 (`02`) · 03 (`03`) · 04 (`04`) · 05 (`05`) · 06 (`06`) · 07 (`07`) ... +5 | `dateOfBirth` | mapped_guess |
-| Date of Birth | `select` | `bday_yyyy` / `bday_yyyy` | `#bday_yyyy` |  (``) · 2011 (`2011`) · 2010 (`2010`) · 2009 (`2009`) · 2008 (`2008`) · 2007 (`2007`) · 2006 (`2006`) · 2005 (`2005`) ... +54 | `dateOfBirth` | mapped_guess |
-| Ethnicity | `select` | `ethn` / `ethn` | `#ethn` |  (``) · Arab (`50`) · Asian\Asian Brit - Bangladeshi (`33`) · Asian\Asian Brit - Indian (`31`) · Asian\Asian Brit - Pakistani (`32`) · Black\Black Brit - African (`22`) · Black\Black Brit - Caribbean (`21`) · Chinese (`34`) ... +12 | `city` | mapped_guess |
+| Date of Birth | `select` | `bday_dd` / `bday_dd` | `#bday_dd` |  (``) · 01 (`01`) · 02 (`02`) · 03 (`03`) · 04 (`04`) · 05 (`05`) · 06 (`06`) · 07 (`07`) ... +24 | `-` | blocked_until_split_date |
+| Date of Birth | `select` | `bday_mm` / `bday_mm` | `#bday_mm` |  (``) · 01 (`01`) · 02 (`02`) · 03 (`03`) · 04 (`04`) · 05 (`05`) · 06 (`06`) · 07 (`07`) ... +5 | `-` | blocked_until_split_date |
+| Date of Birth | `select` | `bday_yyyy` / `bday_yyyy` | `#bday_yyyy` |  (``) · 2011 (`2011`) · 2010 (`2010`) · 2009 (`2009`) · 2008 (`2008`) · 2007 (`2007`) · 2006 (`2006`) · 2005 (`2005`) ... +54 | `-` | blocked_until_split_date |
+| Ethnicity | `select` | `ethn` / `ethn` | `#ethn` |  (``) · Arab (`50`) · Asian\Asian Brit - Bangladeshi (`33`) · Asian\Asian Brit - Indian (`31`) · Asian\Asian Brit - Pakistani (`32`) · Black\Black Brit - African (`22`) · Black\Black Brit - Caribbean (`21`) · Chinese (`34`) ... +12 | `-` | portal_only |
 | Disability/Special Needs Information (Hold down the Ctrl (windows) / Command (Mac) button to select multiple options.) | `select` | `medi` / `medi` | `#medi` | No disability (`00`) · You have two or more impairments and/or disabling medical conditions (`08`) · You have a specific learning difficulty such as dyslexia, dyspraxia or AD(H)D (`51`) · You have a social/communication impairment such as Asperger's syndrome/other autistic spectrum disorder (`53`) · You have a long standing illness or health condition such as cancer, HIV, diabetes, chronic heart disease, or epilepsy (`54`) · You have a mental health condition, such as depression, schizophrenia or anxiety disorder (`55`) · You have physical impairment or mobility issues, such as difficulty using your arms or using a wheelchair or crutches (`56`) · You are deaf or have a serious hearing impairment (`57`) ... +2 | `-` | portal_or_unmapped |
 | Enter any disability not listed above | `text` | `ud80` / `ud80` | `#ud80` | - | `-` | portal_or_unmapped |
 | Have you been in care? | `radio` | `ud4` / `ud4` | `#ud4` | `1` / `2` / `7` | `-` | portal_or_unmapped |
@@ -280,39 +280,35 @@ _No fillable fields on this page (nav/menu/checklist)._
 
 
 
-## Extension mapping caveats (reviewed)
+## Extension mapping status (config)
 
-1. **Ethnicity** (`#ethn`): portal-only. Do not map to `city` (substring false positive on "ethni**city**").
-2. **Referee Details** (`ud17`-`ud30`): separate person. Do not fill from applicant `email`/`location` without section rules.
-3. **Qualifications**: repeating rows `ud91`..`ud110` (and more). Overrides use first row only (`#ud91*`).
-4. **Date of Birth**: three dropdowns `#bday_dd`, `#bday_mm`, `#bday_yyyy` on Statistical Information. Employment dates reuse `bday_*` ids on Employment page; need section-aware fill.
-5. **Personal Statement**: `#p_sarstmt_desc` -> `personalStatement`.
-6. **Funding**: `#ud35` "Who do you expect to pay your fees?" -> `funding` (options need live picklist capture).
-7. **Signature**: `#ud130` / `#ud131` blocked; never auto-tick.
-8. **Address postcode search**: `#search_btn` blocked.
+Inventory rows above may still say `mapped_guess` from the live scrape. That is the discovery label, not a guarantee that the extension will fill the field.
 
-## Confident selectorOverrides shipped in greenwich.js
+### Shipped in `config/portals/greenwich.js` (safe overrides only)
 
-- `givenName`: `#fname`
-- `middleName`: `#mname`
-- `familyName`: `#lname`
-- `previousName`: `#plname`
-- `title`: `#pfx`
-- `passportNumber`: `#ud135`
-- `email`: `#email`, `#dup_email`
-- `gender`: `#gender`
-- `dateOfBirth`: `#bday_dd`, `#bday_mm`, `#bday_yyyy`
-- `nationality`: `#ud65`
-- `countryOfBirth`: `#ud60`
-- `city`: `#city`
-- `postcode`: `#zip`
-- `phone`: `#mobiletelno`, `#hometelno`
-- `location`: `#addr1`
-- `institutionName`: `#col_name`
-- `qualificationLevel`: `#ud91qualtype`
-- `major`: `#ud91subject`
-- `grade`: `#ud91grade`
-- `preferredCourse`: `#p_program_code`
-- `cvCurrentEmployer`: `#ud11`
-- `personalStatement`: `#p_sarstmt_desc`
-- `funding`: `#ud35`
+- Name: `#fname` `#mname` `#lname` `#plname` `#pfx`
+- Passport: `#ud135`
+- Applicant email: `#email` `#dup_email` (not referee)
+- Applicant phone: `#mobiletelno` `#hometelno` (not referee)
+- Personal: `#gender` `#ud65` `#ud60`
+- Education first row: `#col_name` `#ud91qualtype` `#ud91subject` `#ud91grade`
+- Programme: `#p_program_code`
+- Employment employer text: `#ud11`
+- Personal statement: `#p_sarstmt_desc`
+- Funding: `#ud35`
+
+### Explicitly NOT overridden (unsafe until engine support)
+
+- `dateOfBirth` / `#bday_dd` `#bday_mm` `#bday_yyyy` (split selects; also reused on Employment Start Date)
+- `location` `city` `postcode` / `#addr1` `#city` `#zip` (shared with institution address on education)
+
+### Blocked from fill (`blockedControls`)
+
+- Auth, submits, signature, postcode search
+- All `#bday_dd` `#bday_mm` `#bday_yyyy`
+- Referee `#ud17` through `#ud30`
+- Ethnicity remains unmapped (`#ethn`); do not treat as `city`
+
+### Fixtures
+
+Live HTML/screenshots stay local under `tmp/` (gitignored). No sanitized fixtures are in-repo yet.
