@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Synthetic Greenwich form</title></head>
+<body>
+  <h1>Application Details</h1>
+  <form action="/e2e-forbidden-save" method="post">
+    <label for="fname">First name</label><input id="fname">
+    <label for="lname">Last name</label><input id="lname">
+    <label for="email">Email</label><input id="email" type="email">
+    <label for="mobiletelno">Mobile Telephone No.</label><input id="mobiletelno">
+    <label for="ud91qualtype">Level of qualification</label><select id="ud91qualtype"><option value="">Select</option><option value="B">Bachelor</option></select>
+    <label for="ud91subject">Subject</label><input id="ud91subject">
+    <label for="ud91grade">Grade</label><input id="ud91grade" value="Existing grade">
+    <label for="ud91year">Passing year</label><input id="ud91year">
+    <label for="ud92qualtype">Level of qualification</label><select id="ud92qualtype"><option value="">Select</option><option value="B">Bachelor</option></select>
+    <label for="ud92subject">Subject</label><input id="ud92subject">
+    <label for="ud92grade">Grade</label><input id="ud92grade">
+    <label for="ud92year">Passing year</label><input id="ud92year">
+    <label for="ud17">Referee name</label><input id="ud17">
+    <label for="ud18">Referee email</label><input id="ud18" type="email">
+    <label for="bday_dd">Date of birth day</label><select id="bday_dd"><option value="">Select</option><option value="15">15</option></select>
+    <label for="bday_mm">Date of birth month</label><select id="bday_mm"><option value="">Select</option><option value="2">February</option></select>
+    <label for="bday_yyyy">Date of birth year</label><select id="bday_yyyy"><option value="">Select</option><option value="2000">2000</option></select>
+    <label for="ud130">Signature</label><input id="ud130">
+    <label for="transcript">Transcript</label><input id="transcript" type="file">
+    <button type="submit">Continue</button>
+    <button type="button">Submit</button>
+    <button type="button">Pay</button>
+  </form>
+  <script>
+    window.activity = { submissions: 0, clicks: 0, changes: [] };
+    document.addEventListener("submit", (event) => { event.preventDefault(); activity.submissions++; });
+    document.addEventListener("click", (event) => { if (event.target.closest("button, a")) activity.clicks++; });
+    document.addEventListener("change", (event) => { activity.changes.push(event.target.id); });
+  </script>
+</body>
+</html>
