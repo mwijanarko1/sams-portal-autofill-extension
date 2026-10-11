@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>CRM expanded sections fixture</title>
+  <style>body { font-family: sans-serif; } dd, dt { display: block; margin: 4px; } [hidden] { display: none; } .select2-hidden-accessible { position: absolute; width: 1px; height: 1px; clip: rect(0 0 0 0); overflow: hidden; } .col { display: inline-block; margin: 4px; }</style>
+</head>
+<body>
+  <div class="content">
+    <div class="col-lg-3 pro_left_side_part">
+      <section class="pf_info">
+        <div class="card p-3">
+          <div class="load_primary_information">
+            <dd>Given Name</dd>
+            <dt>Rahim</dt>
+            <dd>Family Name</dd>
+            <dt>Uddin</dt>
+          </div>
+          <ul>
+            <li class="only_present_address_div">
+              <div class="present_address_inner_right">
+                <dd>Present Address</dd>
+                <dt>1 Test Street, Example Area Dhaka 1207 Bangladesh</dt>
+              </div>
+            </li>
+          </ul>
+        </div>
+      </section>
+    </div>
+    <div class="col-lg-9">
+      <ul class="list-group">
+        <li class="list-group-item incomplete_li btn_collapse_personal_info"><strong>Personal Information</strong></li>
+        <li class="list-group-item incomplete_li btn_collapse_educational_add"><strong>Educational Information</strong></li>
+        <li class="list-group-item incomplete_li btn_collapse_passport_details"><strong>Passport Details</strong></li>
+        <li class="list-group-item incomplete_li btn_collapse_test_score"><strong>Test Score</strong></li>
+        <li class="list-group-item incomplete_li btn_collapse_reference_and_work"><strong>Reference &amp; Work</strong></li>
+      </ul>
+      <div class="collapse_common" hidden></div>
+    </div>
+  </div>
+
+  <template id="personal_info">
+    <form>
+      <div class="form-group"><span><label class="form_label">Given Name <span>*</span></label></span><input id="given_name" type="text" value="Rahim"></div>
+      <div class="form-group"><span><label class="form_label">Date of Birth</label></span>
+        <div class="input-group"><input class="flatpickr-input" type="hidden" value="2001-04-15"><input class="form-control input" type="text" readonly value="15 Apr, 2001"></div></div>
+      <div class="form-group"><span><label class="form_label">Funding Status</label></span>
+        <select id="funding_status"><option>Choose one..</option><option>Self-Funded</option></select></div>
+      <div class="form-group"><span><label class="form_label">Present Address</label></span><textarea id="present_address">1 Test Street, Example Area</textarea></div>
+      <div class="form-group"><span><label class="form_label">City (Present)</label></span><input id="city" type="text" value="Dhaka"></div>
+      <div class="form-group"><span><label class="form_label">Zip Code (Present)</label></span><input id="zip_code_present" type="text" value="1207"></div>
+      <div class="form-group"><span><label class="form_label">Country (Present)</label></span>
+        <select id="nationality_present" class="select2-photo select2-hidden-accessible"><option>Choose one..</option><option>Bangladesh (BGD)</option></select></div>
+      <button type="submit">Save</button>
+    </form>
+  </template>
+
+  <template id="educational_add">
+    <form>
+      <div class="form-group"><span><label class="form_label">Subject *</label></span><input type="text" value=""></div>
+      <div class="form-group"><span><label class="form_label">Result *</label></span>
+        <div class="input-group"><input type="text" placeholder="Result" value=""><select class="select_unit"><option>GPA</option><option>%</option></select></div></div>
+    </form>
+    <div class="title_in_border">List of Education History</div>
+    <div class="scrolled_content_part">
+      <div class="single_part">
+        <div class="middle">
+          <span class="progress-lbl">Example Test University</span>
+          <span>• September 2019 - June 2023</span>
+          <span>• Counsellor Name</span>
+          <span>Computer Science (TEST) (<span>3.50</span>)</span>
+          <span class="label_badge_light">Bachelor  Year 1</span>
+          •
+          <span class="label_badge_light">Passing Year - 2023</span>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <template id="passport_details">
+    <div class="title_in_border">List of Passport Details</div>
+    <div class="single_part">
+      <span class="progress-lbl">TEST1234567</span>
+      <span>10 Jan 2022 - 09 Jan 2032</span>
+    </div>
+  </template>
+
+  <template id="test_score">
+    <div class="title_in_border">List of Test Scores</div>
+    <div class="single_part">
+      <h3><span class="progress-lbl">International English Language Testing System(IELTS)</span></h3>
+      <span>Test Date: 01 Mar 2025</span>
+      <div class="row">
+        <div class="col"><div>Overall<br>7</div></div>
+        <div class="col"><div>Listening<br>7</div></div>
+        <div class="col"><div>Speaking<br>6.5</div></div>
+        <div class="col"><div>Writing<br>6.5</div></div>
+        <div class="col"><div>Reading<br>7.5</div></div>
+      </div>
+    </div>
+  </template>
+
+  <template id="reference_and_work">
+    <div class="title_in_borders">List of Work Details</div>
+    <div class="single_part">
+      <span class="progress-lbl mr-1">Example Test Ltd</span>
+      <span>01 Jul 2023 - 30 Jun 2024</span>
+      •
+      <span>0 years, 11 months</span>
+      <span>Intern (TEST)</span>
+    </div>
+  </template>
+
+  <pre id="result"></pre>
+  <script>
+    const panel = document.querySelector(".collapse_common");
+    document.querySelectorAll("li[class*='btn_collapse_']").forEach((toggle) => {
+      toggle.addEventListener("click", () => {
+        const key = Array.from(toggle.classList).find((name) => name.startsWith("btn_collapse_")).replace("btn_collapse_", "");
+        setTimeout(() => {
+          panel.replaceChildren(document.getElementById(key).content.cloneNode(true));
+          panel.hidden = false;
+          setTimeout(() => {
+            panel.querySelectorAll("select:not(.select_unit)").forEach((select) => { select.selectedIndex = 1; });
+          }, 300);
+        }, 200);
+      });
+    });
+    globalThis.SAMS_ALLOWLIST = { isCrmOrigin: () => true };
+    globalThis.chrome = { runtime: { onMessage: { addListener() {} } } };
+  </script>
+  <script src="../../config/crm-source.js"></script>
+  <script>
+    SAMS_CRM_SOURCE.profilePathPatterns = [/.*/];
+  </script>
+  <script src="../../src/crm-reader.js"></script>
+  <script>
+    SAMS_CRM_READER.readProfile().then((profile) => { document.getElementById("result").textContent = JSON.stringify(profile); }, (error) => { document.getElementById("result").textContent = JSON.stringify({ error: error.message }); });
+  </script>
+</body>
+</html>

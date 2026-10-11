@@ -78,7 +78,7 @@ async function inject(tabId, frameIds, files) {
 
 async function copyFromCrm() {
   btnCopy.disabled = true;
-  setStatus("info", "Reading visible student fields from this CRM page...");
+  setStatus("info", "Opening CRM sections and reading student fields...");
   try {
     const tab = await activeTab();
     if (!SAMS_ALLOWLIST.isCrmOrigin(originOf(tab.url))) {
@@ -96,7 +96,7 @@ async function copyFromCrm() {
     if (stored.error) throw new Error(stored.error);
     cache = stored.cache;
     renderCache();
-    setStatus("success", `${Object.keys(cache.fields).length} visible CRM fields copied. Student data expires after 30 minutes of inactivity.`);
+    setStatus("success", `${Object.keys(cache.fields).length} CRM fields copied. Student data expires after 30 minutes of inactivity.`);
   } catch (error) {
     setStatus("error", error.message || String(error));
   } finally {

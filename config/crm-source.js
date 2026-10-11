@@ -1,7 +1,7 @@
 {
 const SAMS_CRM_SOURCE = {
-  profilePathPatterns: [/^\/leads\/full-profile\/[^/?#]+\/?$/i],
-  profileMarkers: ["student profile", "personal information", "profile at a glance"],
+  profilePathPatterns: [/^\/(?:agent\/)?leads\/full-profile\/[^/?#]+\/?$/i],
+  profileMarkers: ["student profile", "personal information", "profile at a glance", "given name"],
   labels: {
     "student id": "studentId",
     "lead id": "studentId",
@@ -68,6 +68,7 @@ const SAMS_CRM_SOURCE = {
     "emergency contact phone": "emergencyPhone",
     "emergency contact email": "emergencyEmail",
     "emergency relationship": "emergencyRelationship",
+    "emergency contact relation": "emergencyRelationship",
   },
 };
 
