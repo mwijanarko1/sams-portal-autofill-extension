@@ -3,6 +3,19 @@
 **Origin:** `https://nelson.gre.ac.uk`  
 **System:** Ellucian Banner Self-Service Admissions RELEASE 8.7.2  
 
+## Completed in PR #1
+
+[PR #1](https://github.com/mwijanarko1/sams-portal-autofill-extension/pull/1) merged on 2026-09-29 as `8d0f534`, including regression fixes from `a35ea9a`.
+
+- [x] ~~Confirm the origin and inventory all ten checklist sections (191 fields).~~
+- [x] ~~Ship reviewed selector overrides and block auth, navigation, signature, shared date selects, referee fields, and institution city/postcode/country.~~
+- [x] ~~Prevent repeated Autofill from duplicating qualifications into rows 2-20.~~
+- [x] ~~Map first-row Level to the CRM's `degree` key.~~
+- [x] ~~Correct UK phone formatting without changing the existing digits-only fallback for other portals.~~
+- [x] ~~Verify regression tests (16/16 total), the development build, and sanitized saved-form replay in Helium.~~
+
+These checks do not establish a live authenticated Copy-from-CRM + Autofill journey or complete every discovered field.
+
 ## Checklist sections discovered
 
 Name, Employment / Supporting Info., Permanent Address, Referee Details, Mailing Address, Qualifications, Statistical Information, Previous / Current Education, Programme Information, Signature
@@ -107,7 +120,7 @@ _No fillable fields on this page (nav/menu/checklist)._
 
 | Portal field | Type | name / id | Selector | Options (sample) | CRM key | Status |
 |---|---|---|---|---|---|---|
-| Level | `text` | `ud91qualtype` / `ud91qualtype` | `#ud91qualtype` | - | `qualificationLevel` | mapped_guess |
+| Level | `text` | `ud91qualtype` / `ud91qualtype` | `#ud91qualtype` | - | ~~`qualificationLevel`~~ `degree` | ~~mapped_guess~~ verified_first_row |
 | Subject including Modules or Units | `text` | `ud91subject` / `ud91subject` | `#ud91subject` | - | `major` | mapped_guess |
 | Grade leave blank if pending | `text` | `ud91grade` / `ud91grade` | `#ud91grade` | - | `grade` | mapped_guess |
 | Date Awarded / Expected | `select` | `ud91month` / `ud91month` | `#ud91month` |  (``) · 01 (`01`) · 02 (`02`) · 03 (`03`) · 04 (`04`) · 05 (`05`) · 06 (`06`) · 07 (`07`) ... +5 | `degree` | mapped_guess |
@@ -308,7 +321,22 @@ Inventory rows above may still say `mapped_guess` from the live scrape. That is 
 - All `#bday_dd` `#bday_mm` `#bday_yyyy`
 - Institution address on Previous / Current Education (`form[action*='P_ProcAppPrvCollege']` `#city` `#zip` `#natn`)
 - Referee `#ud17` through `#ud30`
+- Qualification rows 2-20: `#ud92*` through `#ud110*` Level, Subject, Grade, Month, and Year fields. Only row 1 may receive the single CRM qualification.
 - Ethnicity remains unmapped (`#ethn`); do not treat as `city`
+
+### Phone formatting and manual review
+
+Greenwich sets `phoneKeepsDialPrefix: true`. UK values beginning `+44`, `+44 (0)`, or `0044` become national format (for example, `07700900123`); other international values retain their country code (for example, `+8801712345678`).
+
+Home Telephone permits 11 characters; Mobile permits 16. Autofill can assign a longer international value to Home Telephone and report it as filled. Staff must correct or clear that value before continuing. Existing non-empty phone values are not overwritten.
+
+### Still open
+
+- [ ] Live authenticated Copy-from-CRM + Autofill with a CRM test student, recording filled/skipped/manual fields per step.
+- [ ] Section-aware split-date support; DOB and Employment Start Date remain manual.
+- [ ] Separate referee data and safe section-scoped mappings; referee fields remain manual.
+- [ ] Complete select-option coverage audit and remaining CRM-field coverage review.
+- [ ] Committed sanitized step fixtures and the full staff journey demo.
 
 ### Fixtures
 

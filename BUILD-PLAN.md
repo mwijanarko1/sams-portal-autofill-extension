@@ -117,6 +117,22 @@ docs/
 
 ## Phase 5: Portal mappings (Week 2, needs access)
 
+### Greenwich progress after PR #1
+
+Completed in [PR #1](https://github.com/mwijanarko1/sams-portal-autofill-extension/pull/1), merged as `8d0f534` on 2026-09-29. These completions apply to Greenwich only, not the three-portal feature-complete gate.
+
+- [x] ~~Confirm and allowlist the Greenwich application origin (`https://nelson.gre.ac.uk`).~~
+- [x] ~~Inventory Greenwich checklist sections and document the 191 discovered fields.~~
+- [x] ~~Add reviewed Greenwich selector overrides, synonyms, and blocked controls.~~
+- [x] ~~Block shared DOB/employment date selects, referee fields, and institution city/postcode/country from unsafe applicant fills.~~
+- [x] ~~Prevent duplicate qualifications on repeat Autofill by blocking rows 2-20.~~
+- [x] ~~Fill first-row qualification Level from the CRM's `degree` key.~~
+- [x] ~~Preserve phone dialling prefixes, using UK national format where needed.~~
+- [x] ~~Add regression coverage and verify the development build (16/16 tests pass).~~
+- [x] ~~Replay qualification and phone fills against sanitized saved Greenwich forms in Helium.~~
+
+Still open for Greenwich: live Copy + Autofill with a CRM test student, a per-step filled/skipped/manual summary, committed sanitized fixtures, split-date and section-aware support, and a complete select-option audit. Non-UK Home Telephone values need manual correction or clearing when they exceed the 11-character limit; Mobile permits 16 characters. See `docs/history/GREENWICH.md`.
+
 Per portal (Greenwich, Greater Manchester, Bangor), per form step:
 
 1. Inventory fields with PinchTab during supervised access.
@@ -162,7 +178,7 @@ Per portal (Greenwich, Greater Manchester, Bangor), per form step:
 | CRM test account + exact student profile URL | 2 |
 | Campora URL | 1, 2 |
 | Test student records | 2, 5 |
-| Access to Greenwich, Greater Manchester, Bangor application journeys | 5 |
+| Access to ~~Greenwich~~, Greater Manchester, Bangor application journeys | 5 (Greenwich mapping access completed; live CRM-to-portal journey still pending) |
 | Named approver for demos/acceptance | 5, 8 |
 | CWS developer account owner + privacy policy owner/host | 7 |
 
