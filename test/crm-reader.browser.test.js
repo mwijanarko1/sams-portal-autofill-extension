@@ -6,8 +6,8 @@ const path = require("node:path");
 
 const browser = "/Applications/Helium.app/Contents/MacOS/Helium";
 
-function readFixture(name) {
-  const fixture = pathToFileURL(path.resolve("test/fixtures", name)).href;
+function readFixture(name, search = "") {
+  const fixture = pathToFileURL(path.resolve("test/fixtures", name)).href + search;
   const run = spawnSync(browser, ["--headless=new", "--disable-gpu", "--virtual-time-budget=30000", "--dump-dom", fixture], {
     encoding: "utf8",
     timeout: 15000,
@@ -24,6 +24,7 @@ test("CRM reader extracts the mock profile in a real browser DOM", () => {
   assert.equal(profile.fields.givenName, "Aisha");
   assert.equal(profile.fields.familyName, "Rahman");
   assert.equal(profile.fields.gender, "Female");
+  assert.equal(profile.fields.title, "Ms");
   assert.equal(profile.fields.nationality, "Bangladeshi");
   assert.equal(profile.fields.institutionName, "Dhaka College");
   assert.equal(profile.fields.major, "Computer Science");
@@ -45,6 +46,7 @@ test("CRM reader extracts the live layout with label dd before value dt", () => 
     familyName: "Uddin",
     nationality: "Bangladeshi",
     gender: "Male",
+    title: "Mr",
     maritalStatus: "Single",
     phone: "+447700900123",
     email: "rahim.uddin@example.com",
@@ -88,4 +90,77 @@ test("CRM reader opens collapsed sections and reads their forms and lists", () =
     studyStartYear: "2019",
     studyEndYear: "2023",
   });
+});
+
+test("CRM reader derives a missing title from gender", () => {
+  const cases = [
+    ["?gender=Female", "Ms"],
+    ["?gender=Male", "Mr"],
+    ["?gender=%20%20fEmAlE%20", "Ms"],
+    ["?gender=%20mALE%20", "Mr"],
+    ["?gender=F", "Ms"],
+    ["?gender=m", "Mr"],
+    ["?gender=%20f%20", "Ms"],
+  ];
+  for (const [search, title] of cases) {
+    const profile = readFixture("crm-title-profile.html", search);
+    assert.equal(profile.error, undefined, search);
+    assert.equal(profile.fields.title, title, search);
+  }
+});
+
+test("CRM reader leaves title unset for unknown or missing gender", () => {
+  for (const search of ["", "?gender=Other", "?gender=Non-binary", "?gender=X", "?gender=Prefer%20not%20to%20say", "?gender=%20%20"]) {
+    const profile = readFixture("crm-title-profile.html", search);
+    assert.equal(profile.error, undefined, search);
+    assert.equal("title" in profile.fields, false, `${search || "no gender"} must not derive a title`);
+  }
+});
+
+test("CRM reader preserves an explicit CRM title over gender", () => {
+  const explicit = readFixture("crm-title-profile.html", "?gender=Female&title=Dr");
+  assert.equal(explicit.fields.title, "Dr");
+  assert.equal(explicit.fields.gender, "Female");
+  const mismatched = readFixture("crm-title-profile.html", "?gender=Male&title=Mrs");
+  assert.equal(mismatched.fields.title, "Mrs");
+  const withoutGender = readFixture("crm-title-profile.html", "?title=Prof");
+  assert.equal(withoutGender.fields.title, "Prof");
+});
+
+test("CRM reader reads the selected gender radio through its shared field label", () => {
+  for (const [selected, gender, title] of [["Male", "Male", "Mr"], ["Female", "Female", "Ms"]]) {
+    const profile = readFixture("crm-radio-profile.html", `?selected=${selected}`);
+    assert.equal(profile.error, undefined, selected);
+    assert.equal(profile.fields.gender, gender, selected);
+    assert.equal(profile.fields.title, title, selected);
+    assert.equal(profile.fields.givenName, "Rahim");
+  }
+  // The selected radio wins over a saved summary because the open form holds the current value.
+  const conflicting = readFixture("crm-radio-profile.html", "?selected=Female&summary=Male");
+  assert.equal(conflicting.fields.gender, "Female");
+  assert.equal(conflicting.fields.title, "Ms");
+  const inline = readFixture("crm-radio-profile.html", "?selected=Male&placement=inline");
+  assert.equal(inline.fields.gender, "Male");
+  assert.equal(inline.fields.title, "Mr");
+});
+
+test("CRM reader never joins unselected gender radio choices into a value", () => {
+  const withSummary = readFixture("crm-radio-profile.html", "?summary=Male");
+  assert.equal(withSummary.error, undefined);
+  assert.equal(withSummary.fields.gender, "Male");
+  assert.equal(withSummary.fields.title, "Mr");
+
+  for (const search of ["", "?placement=inline"]) {
+    const none = readFixture("crm-radio-profile.html", search);
+    assert.equal(none.error, undefined, search);
+    assert.equal("gender" in none.fields, false, `${search || "default"} must not pick a gender`);
+    assert.equal("title" in none.fields, false, `${search || "default"} must not derive a title`);
+    assert.equal(none.fields.givenName, "Rahim");
+  }
+});
+
+test("CRM reader keeps an explicit title when gender comes from a radio group", () => {
+  const profile = readFixture("crm-radio-profile.html", "?selected=Female&title=Dr");
+  assert.equal(profile.fields.gender, "Female");
+  assert.equal(profile.fields.title, "Dr");
 });

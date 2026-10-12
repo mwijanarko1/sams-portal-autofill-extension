@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>CRM title derivation fixture</title>
+</head>
+<body>
+  <main data-sams-profile>
+    <h1>Student Profile</h1>
+    <h2>Personal Information</h2>
+    <label><span>Given Name *</span><input value="Aisha"></label>
+    <label><span>Family Name *</span><input value="Rahman"></label>
+    <div id="optional"></div>
+  </main>
+  <pre id="result"></pre>
+  <script>
+    globalThis.SAMS_ALLOWLIST = { isCrmOrigin: () => true };
+    globalThis.chrome = { runtime: { onMessage: { addListener() {} } } };
+    // Optional ?gender= and ?title= query values become labelled CRM inputs before the reader runs.
+    const query = new URLSearchParams(location.search);
+    const optional = document.getElementById("optional");
+    for (const [name, label] of [["gender", "Gender"], ["title", "Title"]]) {
+      if (!query.has(name)) continue;
+      const wrapper = document.createElement("label");
+      const caption = document.createElement("span");
+      const input = document.createElement("input");
+      caption.textContent = label;
+      input.value = query.get(name);
+      wrapper.append(caption, input);
+      optional.append(wrapper);
+    }
+  </script>
+  <script src="../../config/crm-source.js"></script>
+  <script>
+    SAMS_CRM_SOURCE.profilePathPatterns = [/.*/];
+  </script>
+  <script src="../../src/crm-reader.js"></script>
+  <script>
+    SAMS_CRM_READER.readProfile().then((profile) => { document.getElementById("result").textContent = JSON.stringify(profile); }, (error) => { document.getElementById("result").textContent = JSON.stringify({ error: error.message }); });
+  </script>
+</body>
+</html>

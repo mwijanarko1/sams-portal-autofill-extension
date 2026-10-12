@@ -16,7 +16,7 @@ const portalCases = [
     url: "https://apps.bangor.ac.uk/apply/personal/",
     fixture: "bangor.html",
     values: {
-      "#id_forename": "Aisha", "#id_surname": "Rahman", "#id_sex": "F",
+      "#id_title": "MS", "#id_forename": "Aisha", "#id_surname": "Rahman", "#id_sex": "F",
       "#id_nationality": "BD", "#id_city": "Existing city", "#id_postcode": "1205",
       "#id_phone_number": "07700900123", "#id_dob_day": "15", "#id_dob_month": "2", "#id_dob_year": "2000",
     },
@@ -28,7 +28,7 @@ const portalCases = [
     url: "https://nelson.gre.ac.uk/pls/prod/bwskaudf.P_DispAppUserDef?appno=1&wsct=ADDITIONAL",
     fixture: "greenwich.html",
     values: {
-      "#fname": "Aisha", "#lname": "Rahman", "#email": "aisha.rahman@example.com",
+      "#pfx": "Ms", "#fname": "Aisha", "#lname": "Rahman", "#email": "aisha.rahman@example.com",
       "#mobiletelno": "07700900123", "#ud91qualtype": "B", "#ud91subject": "Computer Science",
       "#ud91grade": "Existing grade", "#ud91year": "2024",
     },

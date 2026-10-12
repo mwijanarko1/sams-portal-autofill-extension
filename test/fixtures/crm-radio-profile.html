@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>CRM radio gender fixture</title>
+  <style>body { font-family: sans-serif; } dd, dt { display: block; margin: 4px; } [hidden] { display: none; }</style>
+</head>
+<body>
+  <div class="content">
+    <section class="pf_info">
+      <div class="load_primary_information">
+        <dd>Given Name</dd>
+        <dt>Rahim</dt>
+        <dd>Family Name</dd>
+        <dt>Uddin</dt>
+      </div>
+    </section>
+    <ul class="list-group">
+      <li class="list-group-item incomplete_li btn_collapse_personal_info"><strong>Personal Information</strong></li>
+    </ul>
+    <div class="collapse_common" hidden></div>
+    <div id="inline"></div>
+  </div>
+
+  <template id="personal_info">
+    <form>
+      <div class="form-group"><span><label class="form_label">Given Name <span>*</span></label></span><input id="given_name" type="text" value="Rahim"></div>
+      <div id="optional"></div>
+      <div class='col-lg-6'><label class='form_label mb-1'> Gender </label><div class='radio_box'><label><input type='radio' value='Male'><span>Male</span></label><label><input type='radio' value='Female'><span>Female</span></label></div></div>
+      <button type="submit">Save</button>
+    </form>
+  </template>
+
+  <pre id="result"></pre>
+  <script>
+    // Query options: selected=Male|Female (checked radio), summary=Male|Female (saved dd/dt),
+    // title=<text> (explicit CRM title input), placement=inline (radio group outside the expandable panel).
+    const query = new URLSearchParams(location.search);
+    const template = document.getElementById("personal_info");
+    const panel = document.querySelector(".collapse_common");
+    function prepare(root) {
+      const selected = query.get("selected");
+      if (selected) root.querySelector(`input[type=radio][value="${selected}"]`).checked = true;
+      if (query.has("title")) {
+        const wrapper = document.createElement("label");
+        const input = document.createElement("input");
+        input.value = query.get("title");
+        wrapper.append(document.createTextNode("Title "), input);
+        root.querySelector("#optional").append(wrapper);
+      }
+    }
+    if (query.has("summary")) {
+      document.querySelector(".load_primary_information").insertAdjacentHTML("beforeend", `<dd>Gender</dd><dt>${query.get("summary")}</dt>`);
+    }
+    if (query.get("placement") === "inline") {
+      const fragment = template.content.cloneNode(true);
+      prepare(fragment);
+      document.getElementById("inline").append(fragment);
+    } else {
+      document.querySelector("li[class*='btn_collapse_']").addEventListener("click", () => {
+        setTimeout(() => {
+          const fragment = template.content.cloneNode(true);
+          panel.replaceChildren(fragment);
+          prepare(panel);
+          panel.hidden = false;
+        }, 200);
+      });
+    }
+    globalThis.SAMS_ALLOWLIST = { isCrmOrigin: () => true };
+    globalThis.chrome = { runtime: { onMessage: { addListener() {} } } };
+  </script>
+  <script src="../../config/crm-source.js"></script>
+  <script>
+    SAMS_CRM_SOURCE.profilePathPatterns = [/.*/];
+  </script>
+  <script src="../../src/crm-reader.js"></script>
+  <script>
+    SAMS_CRM_READER.readProfile().then((profile) => { document.getElementById("result").textContent = JSON.stringify(profile); }, (error) => { document.getElementById("result").textContent = JSON.stringify({ error: error.message }); });
+  </script>
+</body>
+</html>

@@ -20,7 +20,20 @@ if (!globalThis.__SAMS_CRM_READER_LOADED__) {
       .join(" ");
   }
 
+  // A radio's own label is its option text; the field label is a sibling label before the choice container.
+  function radioGroupLabel(element) {
+    const choices = (element.closest("label") || element).parentElement;
+    for (let sibling = choices?.previousElementSibling; sibling; sibling = sibling.previousElementSibling) {
+      if (sibling.tagName === "LABEL" && !sibling.querySelector("input")) return sibling.textContent;
+    }
+    return "";
+  }
+
   function labelFor(element) {
+    if (element.type === "radio") {
+      const group = radioGroupLabel(element);
+      if (group) return group;
+    }
     if (element.labels && element.labels[0]) return labelTextWithoutControl(element.labels[0], element);
     const aria = element.getAttribute("aria-label");
     if (aria) return aria;
@@ -188,7 +201,8 @@ if (!globalThis.__SAMS_CRM_READER_LOADED__) {
     });
     profileRoot.querySelectorAll("div, li").forEach((row) => {
       const children = row.children;
-      if (children.length === 2 && !isEmptyState(children[1])) {
+      // Radio choice containers hold only option text; the checked input supplies the selected value.
+      if (children.length === 2 && !isEmptyState(children[1]) && !children[1].querySelector("input[type=radio]")) {
         addField(fields, children[0].textContent, children[1].textContent, contextFor(row));
       }
     });
@@ -231,6 +245,9 @@ if (!globalThis.__SAMS_CRM_READER_LOADED__) {
 
   }
 
+  // The CRM stores gender but no salutation; unknown genders deliberately map to nothing.
+  const TITLE_BY_GENDER = new Map([["male", "Mr"], ["m", "Mr"], ["female", "Ms"], ["f", "Ms"]]);
+
   async function readProfile() {
     profileGuard();
     const fields = {};
@@ -251,6 +268,9 @@ if (!globalThis.__SAMS_CRM_READER_LOADED__) {
       const year = fields[source] && fields[source].match(/\b\d{4}\b/);
       if (year) fields[target] = year[0];
     }
+
+    const derivedTitle = TITLE_BY_GENDER.get(normalizeLabel(fields.gender));
+    if (!fields.title && derivedTitle) fields.title = derivedTitle;
 
     const studentName = [fields.givenName, fields.familyName].filter(Boolean).join(" ");
     if (!studentName || Object.keys(fields).length < 2) {
