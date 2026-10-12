@@ -10,7 +10,8 @@
     "build:safari:app": "node scripts/package-safari.mjs",
     "test": "node --test",
     "test:e2e": "node --test --test-concurrency=1 e2e/extension.e2e.mjs",
-    "test:e2e:live": "node e2e/live.mjs"
+    "test:e2e:live": "node e2e/live.mjs",
+    "safari:fixtures": "node e2e/safari/serve-fixtures.mjs"
   },
   "devDependencies": {
     "playwright-core": "1.56.1"
