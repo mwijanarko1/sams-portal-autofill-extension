@@ -74,6 +74,12 @@ const config = {
     personalStatement: ["personal statement (max 3950 characters)"],
     funding: ["who do you expect to pay your fees?"],
   },
+  // #bday_* is date of birth on Statistical Information but employment start on Employment.
+  splitDates: [
+    { key: "dateOfBirth", page: "bwskaper\\.P_DispAppPersonal", day: "#bday_dd", month: "#bday_mm", year: "#bday_yyyy" },
+    { key: "cvWorkStartDate", page: "bwskaess\\.P_DispAppEssay", day: "#bday_dd", month: "#bday_mm", year: "#bday_yyyy" },
+    { key: "cvWorkEndDate", page: "bwskaess\\.P_DispAppEssay", day: "#bday_dd2", month: "#bday_mm2", year: "#bday_yyyy2" },
+  ],
   blockedControls: [
     // Auth
     "#login_id",
@@ -103,6 +109,9 @@ const config = {
     "#bday_dd",
     "#bday_mm",
     "#bday_yyyy",
+    "#bday_dd2",
+    "#bday_mm2",
+    "#bday_yyyy2",
     // Institution address on Previous / Current Education (same #city/#zip as applicant address)
     "form[action*='P_ProcAppPrvCollege'] #city",
     "form[action*='P_ProcAppPrvCollege'] #zip",

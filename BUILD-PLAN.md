@@ -2,8 +2,9 @@
 
 **Created:** 2026-09-29
 **Scope source:** `../SAMS-PORTAL-AUTOFILL-AGREED-CONTEXT.md` (canonical), PRD `../sams-crm-ai-demo/docs/SAMS-PORTAL-AUTOFILL-UPDATED-PRD-AND-QUOTATION.md` (section 02A), Agreed Project Terms.
-**Browser focus:** Chrome MV3 now. Safari after Chrome is feature-complete.
+**Browser focus:** Chrome MV3 primary. Safari macOS development scaffold is in tree; runtime acceptance still pending.
 **Baseline:** commit `bb3e1e4` is the localhost demo snapshot (was v2.3.10). Versioning restarts at **0.1.0**.
+**Map:** current layout and workflows are in `docs/CODEBASE_MAP.md` (refresh that map when structure changes).
 
 ---
 
@@ -22,22 +23,24 @@ Timeline assumes the 3-week PRD cadence. If SAMS picks the 6-week terms, gates m
 
 ## Current state (what exists)
 
-**Keep (reusable engine in `content.js`):**
-- Synonym-scored matching, label/aria/legend/heading discovery, shadow DOM walk
-- Date, select, radio, and Lightning combobox fill
-- Skip-if-filled (`skippedExisting`)
-- Checkboxes already excluded from `FIELD_SELECTORS`; never clicks submit
+The demo-era `content.js` / localhost API path has been replaced. Current shared source:
 
-**Replace:**
-- `popup.js` student search + `BACKEND_URL = "http://localhost:3000"` + `fetchProfile` / `buildFieldMap` API path
-- Student picker UI in `popup.html`
+- `src/engine/engine.js` with synonym matching, skip-if-filled, click guard, split dates
+- `src/crm-reader.js`, `src/portal-fill.js`, `src/background.js` (session cache only)
+- `config/allowlist.js`, `config/crm-source.js`, `config/synonyms.js`, `config/portals/{greenwich,bangor,manchester}.js`
+- Chrome + Safari packaging via `scripts/build.mjs` and `scripts/package-safari.mjs`
+- Tests: `npm test` (61), `npm run test:e2e`, Safari manual checklist under `e2e/safari/`
 
-**Fix:**
-- `host_permissions` is localhost only; no origin allowlist
-- `runAcrossFrames` injects into `allFrames` and sends `fieldMap` to every frame, including cross-origin (payment, analytics) iframes
-- `selectedStudent` persisted in `chrome.storage.local`
-- Radio and combobox paths call `.click()` with no guard against declaration or action controls
-- Summary lists unmatched CRM keys, but not portal fields left empty (PRD Q6 asks for these)
+Still open relative to the original gates: Campora + Greater Manchester origins, live CRM-to-portal journeys, committed `fixtures/<portal>/` warranty HTML, production packaging, Safari runtime acceptance and signing.
+
+Historical demo problems below are **done** (kept for audit trail):
+
+- ~~`popup.js` student search + localhost backend fetch~~
+- ~~localhost-only host permissions / no allowlist~~
+- ~~`allFrames` fieldMap leaks to cross-origin iframes~~
+- ~~`chrome.storage.local` student persistence~~
+- ~~unguarded radio/combobox clicks~~
+- ~~summary missing portal fields left empty~~
 
 ---
 
@@ -117,19 +120,37 @@ docs/
 
 ## Phase 5: Portal mappings (Week 2, needs access)
 
+### Greenwich progress after PR #1
+
+Completed in [PR #1](https://github.com/mwijanarko1/sams-portal-autofill-extension/pull/1), merged as `8d0f534` on 2026-09-29. These completions apply to Greenwich only, not the three-portal feature-complete gate.
+
+- [x] ~~Confirm and allowlist the Greenwich application origin (`https://nelson.gre.ac.uk`).~~
+- [x] ~~Inventory Greenwich checklist sections and document the 191 discovered fields.~~
+- [x] ~~Add reviewed Greenwich selector overrides, synonyms, and blocked controls.~~
+- [x] ~~Block shared DOB/employment date selects, referee fields, and institution city/postcode/country from unsafe applicant fills.~~
+- [x] ~~Prevent duplicate qualifications on repeat Autofill by blocking rows 2-20.~~
+- [x] ~~Fill first-row qualification Level from the CRM's `degree` key.~~
+- [x] ~~Preserve phone dialling prefixes, using UK national format where needed.~~
+- [x] ~~Add regression coverage and verify the development build (16/16 tests pass).~~
+- [x] ~~Replay qualification and phone fills against sanitized saved Greenwich forms in Helium.~~
+
+Still open for Greenwich: live Copy + Autofill with a CRM test student, a per-step filled/skipped/manual summary, committed sanitized fixtures, split-date and section-aware support, and a complete select-option audit. Non-UK Home Telephone values need manual correction or clearing when they exceed the 11-character limit; Mobile permits 16 characters. See `docs/history/GREENWICH.md`.
+
 Per portal (Greenwich, Greater Manchester, Bangor), per form step:
 
 1. Inventory fields with PinchTab during supervised access.
 2. Write/adjust `config/portals/<portal>.js`.
 3. Run Copy + Autofill; record filled / skipped / manual per step in a new `PORTALS.md` matrix.
-4. Save sanitized step HTML to `fixtures/<portal>/` for regression and the 30-day warranty.
+4. Save sanitized step HTML to `fixtures/<portal>/` for regression and the 30-day warranty (synthetic coverage already lives in `e2e/fixtures/` and `test/fixtures/`).
 5. Target: every applicable field available on the CRM profile page, per PRD Q6.
 
 ## Phase 6: Tests (ongoing)
 
-1. Playwright with the Helium executable, loading unpacked `dist/chrome` (dev build).
-2. Flows: Copy on mock CRM profile, refuse on mock dashboard, Autofill on `university-portal-demo` and fixtures.
-3. Assertions: expected values filled, filled fields untouched, cross-origin frame receives nothing, no forbidden control clicked, session cleared by Clear and by expiry (shortened in test).
+1. `npm test`: Node unit/config plus Chromium DOM fixtures (CRM reader, portals, session lifecycle, Safari build checks).
+2. `npm run test:e2e`: Playwright-core + Helium, real loaded MV3 extension, synthetic HTTPS fixtures in `e2e/fixtures/`.
+3. `npm run test:e2e:live`: explicit opt-in no-save smoke with approved profile and `.env.local` credentials only.
+4. Safari: manual checklist in `e2e/safari/README.md` (no automated Safari extension runner yet).
+5. Assertions: expected values filled, existing values untouched, cross-origin frame receives nothing, no forbidden control clicked, session cleared by Clear and by expiry.
 
 ## Phase 7: Packaging (Week 3)
 
@@ -145,11 +166,14 @@ Per portal (Greenwich, Greater Manchester, Bangor), per form step:
 4. Rewrite `README.md` for the contracted product; move demo docs to `docs/history/`.
 5. Verified demo on three portal journeys + live or recorded handover.
 
-## Safari (after Chrome feature-complete)
+## Safari (macOS development scaffold in tree)
 
-- Convert with `xcrun safari-web-extension-converter` from `dist/chrome`.
-- Verify `storage.session`, `alarms`, and `scripting` behaviour in Safari before relying on them.
-- Distribution method agreed at kickoff (controlled, not public search).
+- Shared JS packaged by `npm run build:safari` into `dist/safari-webextension`.
+- Checked-in Xcode project under `safari/`; `npm run build:safari:app` builds an unsigned app and hash-checks embedded resources.
+- Do not regenerate the Xcode project with `--force` / `--copy-resources`.
+- Installed Safari runtime acceptance still pending (see `e2e/safari/README.md`).
+- Verify `storage.session`, `alarms`, and `scripting` on supported Safari versions before release reliance.
+- Signing, notarization, and distribution channel remain SAMS decisions (`docs/SAFARI-ARCHITECTURE-AND-PARITY.md`).
 
 ---
 
@@ -162,7 +186,7 @@ Per portal (Greenwich, Greater Manchester, Bangor), per form step:
 | CRM test account + exact student profile URL | 2 |
 | Campora URL | 1, 2 |
 | Test student records | 2, 5 |
-| Access to Greenwich, Greater Manchester, Bangor application journeys | 5 |
+| Access to ~~Greenwich~~, Greater Manchester, Bangor application journeys | 5 (Greenwich mapping access completed; live CRM-to-portal journey still pending) |
 | Named approver for demos/acceptance | 5, 8 |
 | CWS developer account owner + privacy policy owner/host | 7 |
 

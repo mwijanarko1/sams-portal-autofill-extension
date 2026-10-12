@@ -17,6 +17,16 @@ test("core CRM labels map to canonical keys", () => {
   assert.equal(crmSource.labels["primary email"], "email");
 });
 
+test("CRM profile guard accepts agent and original profiles, not lists or dashboards", () => {
+  const allowed = (path) => crmSource.profilePathPatterns.some((pattern) => pattern.test(path));
+  for (const path of ["/leads/full-profile/student-1", "/agent/leads/full-profile/student-1/"]) {
+    assert.equal(allowed(path), true, path);
+  }
+  for (const path of ["/agent/dashboard", "/agent/new-direct-leads", "/agent/leads/full-profile/", "/leads/full-profile/student-1/edit", "/unapproved/leads/full-profile/student-1"]) {
+    assert.equal(allowed(path), false, path);
+  }
+});
+
 test("manifest has no blanket host permission or local persistence path", () => {
   assert.ok(!manifest.host_permissions.includes("<all_urls>"));
   assert.ok(manifest.permissions.includes("alarms"));

@@ -1706,6 +1706,62 @@ function waitMs(ms) {
  * @param {{label?:string,name?:string,id?:string,crmKey?:string}} [meta]
  * @returns {Promise<boolean>} true if value was set / option selected
  */
+var SPLIT_MONTHS = ["january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december"];
+
+/** Parse an ISO / DD/MM/YYYY date, "September 2019", or a bare year into {y, m, d} parts. */
+function splitDateParts(raw) {
+  var full = parseDateParts(raw);
+  if (full) return full;
+  var text = String(raw || "").trim();
+  var monthYear = text.match(/^([A-Za-z]+)\s+(\d{4})$/);
+  if (monthYear) {
+    var month = SPLIT_MONTHS.findIndex(function (name) { return name.slice(0, 3) === monthYear[1].toLowerCase().slice(0, 3); });
+    if (month >= 0) return { y: monthYear[2], m: String(month + 1).padStart(2, "0"), d: "" };
+  }
+  var year = text.match(/^(\d{4})$/);
+  return year ? { y: year[1], m: "", d: "" } : null;
+}
+
+function splitDateOption(select, part, kind) {
+  var number = String(parseInt(part, 10));
+  var wanted = [part, number];
+  if (kind === "month") wanted.push(SPLIT_MONTHS[number - 1], SPLIT_MONTHS[number - 1].slice(0, 3));
+  wanted = wanted.map(function (value) { return String(value).toLowerCase(); });
+  return Array.from(select.options).find(function (option) {
+    return wanted.indexOf(String(option.value).trim().toLowerCase()) >= 0 ||
+      wanted.indexOf(String(option.textContent).trim().toLowerCase()) >= 0;
+  }) || null;
+}
+
+/**
+ * Fill day / month / year selects declared by the portal for this page.
+ * Generic matching never touches these selects (portals block them), because ids such as
+ * Greenwich #bday_* mean date of birth on one page and employment start on another.
+ */
+function fillSplitDates(fieldMap, filled) {
+  var specs = (ACTIVE_PORTAL && ACTIVE_PORTAL.splitDates) || [];
+  var here = location.pathname + location.search;
+  specs.forEach(function (spec) {
+    if (!new RegExp(spec.page).test(here)) return;
+    var parts = splitDateParts(fieldMap[spec.key]);
+    if (!parts) return;
+    [["day", parts.d], ["month", parts.m], ["year", parts.y]].forEach(function (entry) {
+      var selector = spec[entry[0]];
+      if (!selector || !entry[1]) return;
+      var select = document.querySelector(selector);
+      if (!select || select.tagName !== "SELECT" || select.disabled) return;
+      var current = select.options[select.selectedIndex];
+      var placeholder = !select.value || (select.selectedIndex === 0 &&
+        /^(month|year|day|select\b.*|choose\b.*|-+|)$/i.test(String(current && current.textContent || "").trim()));
+      if (!placeholder) return;
+      var option = splitDateOption(select, entry[1], entry[0]);
+      if (option && applySelectOption(select, option)) {
+        filled.push({ name: spec.key, value: entry[1], fieldName: select.id || select.name || "", fieldLabel: entry[0], score: 1000, matchReason: "Split date" });
+      }
+    });
+  });
+}
+
 /**
  * Apply a selected option on a native <select>, including Lightning Flow picklists.
  * Uses the native value setter so LWC / Flow state updates (Ulster QA).
@@ -2788,6 +2844,14 @@ async function autofillPage(fieldMap, fields) {
 
       // Skip non-empty; try next empty candidate (e.g. countryName → residence)
       if (existingVal.trim()) {
+        // A portal override target or a field already holding this value means the key is done;
+        // falling through would copy the value into a second field on repeat Autofill.
+        var selectedText = bestField.element.tagName === "SELECT" && bestField.element.selectedOptions && bestField.element.selectedOptions[0]
+          ? bestField.element.selectedOptions[0].textContent || ""
+          : "";
+        var satisfied = bestField.overrideCrmKey === crmKey ||
+          normalize(existingVal) === normalize(String(value)) ||
+          (selectedText && normalize(selectedText) === normalize(String(value)));
         if (!notedExisting) {
           skippedExisting.push({
             name: crmKey,
@@ -2798,6 +2862,7 @@ async function autofillPage(fieldMap, fields) {
           });
           notedExisting = true;
         }
+        if (satisfied && !multiFill) break;
         continue;
       }
 
@@ -2909,6 +2974,8 @@ async function autofillPage(fieldMap, fields) {
       noCrmValue.push(Object.assign({ name: topKey }, manualItem));
     }
   }
+
+  fillSplitDates(fieldMap, filled);
 
   return {
     filled: filled,

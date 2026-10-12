@@ -45,7 +45,7 @@
   </script>
   <script src="../../src/crm-reader.js"></script>
   <script>
-    document.getElementById("result").textContent = JSON.stringify(SAMS_CRM_READER.readProfile());
+    SAMS_CRM_READER.readProfile().then((profile) => { document.getElementById("result").textContent = JSON.stringify(profile); }, (error) => { document.getElementById("result").textContent = JSON.stringify({ error: error.message }); });
   </script>
 </body>
 </html>

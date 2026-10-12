@@ -5,6 +5,15 @@
   "scripts": {
     "build": "node scripts/build.mjs dev",
     "build:prod": "node scripts/build.mjs prod",
-    "test": "node --test"
+    "build:safari": "node scripts/build.mjs dev safari",
+    "build:safari:prod": "node scripts/build.mjs prod safari",
+    "build:safari:app": "node scripts/package-safari.mjs",
+    "test": "node --test",
+    "test:e2e": "node --test --test-concurrency=1 e2e/extension.e2e.mjs",
+    "test:e2e:live": "node e2e/live.mjs",
+    "safari:fixtures": "node e2e/safari/serve-fixtures.mjs"
+  },
+  "devDependencies": {
+    "playwright-core": "1.56.1"
   }
 }

@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Synthetic Bangor form</title></head>
+<body>
+  <h1>Personal Details</h1>
+  <form action="/e2e-forbidden-save" method="post">
+    <label for="id_forename">Given name</label><input id="id_forename">
+    <label for="id_surname">Family name</label><input id="id_surname">
+    <label for="id_sex">Gender</label><select id="id_sex"><option value="">Select</option><option value="F">Female</option></select>
+    <label for="id_nationality">Nationality</label><select id="id_nationality"><option value="">Select</option><option value="BD">Bangladeshi</option></select>
+    <label for="id_city">Postal town / city</label><input id="id_city" value="Existing city">
+    <label for="id_postcode">Postcode / zip</label><input id="id_postcode">
+    <label for="id_phone_number">Phone number</label><input id="id_phone_number">
+    <label for="id_dob_day">Date of birth day</label><select id="id_dob_day"><option value="">Select</option><option value="15">15</option></select>
+    <label for="id_dob_month">Date of birth month</label><select id="id_dob_month"><option value="">Select</option><option value="2">February</option></select>
+    <label for="id_dob_year">Date of birth year</label><select id="id_dob_year"><option value="">Select</option><option value="2000">2000</option></select>
+    <label for="login_email">Email</label><input id="login_email" type="email">
+    <label for="login_password">Password</label><input id="login_password" type="password">
+    <label for="id_prefname">Preferred name</label><input id="id_prefname">
+    <label for="id_prompt_text">Given name</label><textarea id="id_prompt_text" name="prompt_text"></textarea>
+    <label for="id_name">Name</label><input id="id_name" name="name">
+    <label for="id_country">Country</label><select id="id_country" name="country"><option value="">Select</option><option value="BD">Bangladesh</option></select>
+    <label for="id_transcript_file">Transcript</label><input id="id_transcript_file" type="file">
+    <button type="submit">Save and continue</button>
+    <button type="button">Submit application</button>
+    <button type="button">Pay</button>
+  </form>
+  <script>
+    window.activity = { submissions: 0, clicks: 0, changes: [] };
+    document.addEventListener("submit", (event) => { event.preventDefault(); activity.submissions++; });
+    document.addEventListener("click", (event) => { if (event.target.closest("button, a")) activity.clicks++; });
+    document.addEventListener("change", (event) => { activity.changes.push(event.target.id); });
+  </script>
+</body>
+</html>

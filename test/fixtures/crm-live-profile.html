@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>CRM live layout fixture</title>
+  <style>body { font-family: sans-serif; } dd, dt { display: block; margin: 4px; } [hidden] { display: none; }</style>
+</head>
+<body>
+  <nav>
+    <span>Dashboard</span>
+    <span>Lead Management</span>
+    <span>Application Dashboard</span>
+  </nav>
+  <div class="fixedElement_left_info" hidden>
+    <div class="student_infos ml-2"><span class="name">Rahim Uddin</span></div>
+  </div>
+  <div class="content">
+    <section>
+      <div class="card profile_top_part_info">
+        <div class="left_circle_box_part">
+          <div class="basic_circle_box"><span>Nationality</span><div class="text-center"><img alt=""></div></div>
+          <div class="basic_circle_box"><span>Gender</span><div><button type="button"><i class="fa fa-male"></i></button></div></div>
+          <div class="basic_circle_box"><span>Funding</span><div><button type="button"><i class="fa fa-dollar"></i></button></div></div>
+        </div>
+        <div class="right_part_left">
+          <div class="review-block-title mb-0"><span>Rahim</span> <span>Uddin</span></div>
+        </div>
+      </div>
+    </section>
+    <div class="col-lg-3 pro_left_side_part">
+      <section class="pf_info">
+        <div class="card p-3">
+          <div class="info-palate mt-0">
+            <div><div class="left"><div class="stage_form_header"><span class="main_title">Rahim Uddin</span></div></div></div>
+            <div class="load_primary_information">
+              <dd>Given Name</dd>
+              <dt>Rahim</dt>
+              <dd>Family Name</dd>
+              <dt>Uddin</dt>
+              <dd>Nationality</dd>
+              <dt>Bangladeshi</dt>
+              <dd>Gender</dd>
+              <dt>Male</dt>
+              <dd>Marital Status</dd>
+              <dt>Single</dt>
+            </div>
+          </div>
+          <div class="info-palate mt-0 mb-0">
+            <div><div class="left"><div class="content_title"><span class="fa fa-circle"></span><strong>Address</strong></div></div></div>
+            <ul>
+              <li class="only_present_address_div">
+                <div class="present_address_inner">
+                  <div class="present_address_inner_left"><i class="fa fa-map-marker"></i></div>
+                  <div class="present_address_inner_right">
+                    <dd>Present Address</dd>
+                    <dt class="text-danger">No Present Address Found.<span class="bottom_dashed_btn ml-2">Add New</span></dt>
+                  </div>
+                </div>
+              </li>
+            </ul>
+          </div>
+        </div>
+        <div class="card p-3">
+          <div class="content_title"><span class="fa fa-book"></span><strong>Contact Information</strong></div>
+          <div class="info-palate mb-0 only_contact_detail_div">
+            <div hidden><a role="menuitem">Add Another Number</a><a role="menuitem">Add Another Email</a></div>
+            <dl>
+              <dt class="hover_for_edit_phone"><i class="fa fa-phone mr-1"></i>+447700900123<span class="btn-hover-btn"><i class="fa fa-pencil"></i></span></dt>
+              <dt class="hover_for_edit_mail"><i class="fa fa-envelope-o mr-1"></i>rahim.uddin@example.com<span class="btn-hover-btn"><i class="fa fa-pencil"></i></span></dt>
+            </dl>
+          </div>
+          <div class="info-palate mb-0">
+            <div><div class="left"><div class="content_title"><strong>Emergency Contact</strong></div></div></div>
+            <dl class="only_emg_contact_div mb-0">
+              <dt class="text-danger">No Emergency Contact Found.</dt>
+            </dl>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+  <pre id="result"></pre>
+  <script>
+    globalThis.SAMS_ALLOWLIST = { isCrmOrigin: () => true };
+    globalThis.chrome = { runtime: { onMessage: { addListener() {} } } };
+  </script>
+  <script src="../../config/crm-source.js"></script>
+  <script>
+    SAMS_CRM_SOURCE.profilePathPatterns = [/.*/];
+  </script>
+  <script src="../../src/crm-reader.js"></script>
+  <script>
+    SAMS_CRM_READER.readProfile().then((profile) => { document.getElementById("result").textContent = JSON.stringify(profile); }, (error) => { document.getElementById("result").textContent = JSON.stringify({ error: error.message }); });
+  </script>
+</body>
+</html>

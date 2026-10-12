@@ -1,0 +1,70 @@
+* {
+    -webkit-user-select: none;
+    -webkit-user-drag: none;
+    cursor: default;
+}
+
+:root {
+    color-scheme: light dark;
+
+    --spacing: 20px;
+}
+
+html {
+    height: 100%;
+}
+
+body {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+
+    gap: var(--spacing);
+    margin: 0 calc(var(--spacing) * 2);
+    /* The window is a fixed 425x325, so content taller than it must grow and scroll from the top. */
+    box-sizing: border-box;
+    min-height: 100%;
+    padding: var(--spacing) 0;
+
+    font: -apple-system-short-body;
+    text-align: center;
+}
+
+body:not(.state-on, .state-off) :is(.state-on, .state-off) {
+    display: none;
+}
+
+body.state-on :is(.state-off, .state-unknown) {
+    display: none;
+}
+
+body.state-off :is(.state-on, .state-unknown) {
+    display: none;
+}
+
+button {
+    font-size: 1em;
+}
+
+.guidance {
+    max-width: 420px;
+    margin: 0;
+    text-align: start;
+}
+
+.note {
+    max-width: 420px;
+    margin: 0;
+    font: -apple-system-footnote;
+}
+
+.error {
+    max-width: 420px;
+    margin: 0;
+    color: #b42318;
+}
+
+.error[hidden] {
+    display: none;
+}

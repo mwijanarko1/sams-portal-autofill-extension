@@ -1,0 +1,601 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 110;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		74B25B0E307CF92400951071 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74B25B0D307CF92400951071 /* AppDelegate.swift */; };
+		74B25B12307CF92400951071 /* Main.html in Resources */ = {isa = PBXBuildFile; fileRef = 74B25B10307CF92400951071 /* Main.html */; };
+		74B25B14307CF92400951071 /* Icon.png in Resources */ = {isa = PBXBuildFile; fileRef = 74B25B13307CF92400951071 /* Icon.png */; };
+		74B25B16307CF92400951071 /* Style.css in Resources */ = {isa = PBXBuildFile; fileRef = 74B25B15307CF92400951071 /* Style.css */; };
+		74B25B18307CF92400951071 /* Script.js in Resources */ = {isa = PBXBuildFile; fileRef = 74B25B17307CF92400951071 /* Script.js */; };
+		74B25B1A307CF92400951071 /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74B25B19307CF92400951071 /* ViewController.swift */; };
+		74B25B1D307CF92400951071 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 74B25B1B307CF92400951071 /* Main.storyboard */; };
+		74B25B1F307CF92500951071 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 74B25B1E307CF92500951071 /* Assets.xcassets */; };
+		74B25B26307CF92500951071 /* SAMS Portal Autofill Extension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 74B25B25307CF92500951071 /* SAMS Portal Autofill Extension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		74B25B2B307CF92500951071 /* SafariWebExtensionHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74B25B2A307CF92500951071 /* SafariWebExtensionHandler.swift */; };
+		74B25B40307CF92500951071 /* icon16.png in Resources */ = {isa = PBXBuildFile; fileRef = 74B25B37307CF92500951071 /* icon16.png */; };
+		74B25B41307CF92500951071 /* popup.js in Resources */ = {isa = PBXBuildFile; fileRef = 74B25B38307CF92500951071 /* popup.js */; };
+		74B25B42307CF92500951071 /* config in Resources */ = {isa = PBXBuildFile; fileRef = 74B25B39307CF92500951071 /* config */; };
+		74B25B43307CF92500951071 /* popup.html in Resources */ = {isa = PBXBuildFile; fileRef = 74B25B3A307CF92500951071 /* popup.html */; };
+		74B25B44307CF92500951071 /* icon48.png in Resources */ = {isa = PBXBuildFile; fileRef = 74B25B3B307CF92500951071 /* icon48.png */; };
+		74B25B45307CF92500951071 /* icon128.png in Resources */ = {isa = PBXBuildFile; fileRef = 74B25B3C307CF92500951071 /* icon128.png */; };
+		74B25B46307CF92500951071 /* manifest.json in Resources */ = {isa = PBXBuildFile; fileRef = 74B25B3D307CF92500951071 /* manifest.json */; };
+		74B25B47307CF92500951071 /* sams-logo.svg in Resources */ = {isa = PBXBuildFile; fileRef = 74B25B3E307CF92500951071 /* sams-logo.svg */; };
+		74B25B48307CF92500951071 /* src in Resources */ = {isa = PBXBuildFile; fileRef = 74B25B3F307CF92500951071 /* src */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		74B25B27307CF92500951071 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 74B25B02307CF92400951071 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 74B25B24307CF92500951071;
+			remoteInfo = "SAMS Portal Autofill Extension";
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		74B25B32307CF92500951071 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			dstPath = "";
+			dstSubfolder = PlugIns;
+			files = (
+				74B25B26307CF92500951071 /* SAMS Portal Autofill Extension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		74B25B0A307CF92400951071 /* SAMS Portal Autofill.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "SAMS Portal Autofill.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		74B25B0D307CF92400951071 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		74B25B11307CF92400951071 /* Base */ = {isa = PBXFileReference; lastKnownFileType = text.html; name = Base; path = Base.lproj/Main.html; sourceTree = "<group>"; };
+		74B25B13307CF92400951071 /* Icon.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = Icon.png; sourceTree = "<group>"; };
+		74B25B15307CF92400951071 /* Style.css */ = {isa = PBXFileReference; lastKnownFileType = text.css; path = Style.css; sourceTree = "<group>"; };
+		74B25B17307CF92400951071 /* Script.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = Script.js; sourceTree = "<group>"; };
+		74B25B19307CF92400951071 /* ViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewController.swift; sourceTree = "<group>"; };
+		74B25B1C307CF92400951071 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/Main.storyboard; sourceTree = "<group>"; };
+		74B25B1E307CF92500951071 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		74B25B20307CF92500951071 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		74B25B25307CF92500951071 /* SAMS Portal Autofill Extension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = "SAMS Portal Autofill Extension.appex"; sourceTree = BUILT_PRODUCTS_DIR; };
+		74B25B2A307CF92500951071 /* SafariWebExtensionHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SafariWebExtensionHandler.swift; sourceTree = "<group>"; };
+		74B25B2C307CF92500951071 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		74B25B37307CF92500951071 /* icon16.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = icon16.png; path = "../../../dist/safari-webextension/icon16.png"; sourceTree = "<group>"; };
+		74B25B38307CF92500951071 /* popup.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; name = popup.js; path = "../../../dist/safari-webextension/popup.js"; sourceTree = "<group>"; };
+		74B25B39307CF92500951071 /* config */ = {isa = PBXFileReference; lastKnownFileType = folder; name = config; path = "../../../dist/safari-webextension/config"; sourceTree = "<group>"; };
+		74B25B3A307CF92500951071 /* popup.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; name = popup.html; path = "../../../dist/safari-webextension/popup.html"; sourceTree = "<group>"; };
+		74B25B3B307CF92500951071 /* icon48.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = icon48.png; path = "../../../dist/safari-webextension/icon48.png"; sourceTree = "<group>"; };
+		74B25B3C307CF92500951071 /* icon128.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = icon128.png; path = "../../../dist/safari-webextension/icon128.png"; sourceTree = "<group>"; };
+		74B25B3D307CF92500951071 /* manifest.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = manifest.json; path = "../../../dist/safari-webextension/manifest.json"; sourceTree = "<group>"; };
+		74B25B3E307CF92500951071 /* sams-logo.svg */ = {isa = PBXFileReference; lastKnownFileType = text; name = "sams-logo.svg"; path = "../../../dist/safari-webextension/sams-logo.svg"; sourceTree = "<group>"; };
+		74B25B3F307CF92500951071 /* src */ = {isa = PBXFileReference; lastKnownFileType = folder; name = src; path = "../../../dist/safari-webextension/src"; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		74B25B07307CF92400951071 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			files = (
+			);
+		};
+		74B25B22307CF92500951071 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			files = (
+			);
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		74B25B01307CF92400951071 = {
+			isa = PBXGroup;
+			children = (
+				74B25B0C307CF92400951071 /* SAMS Portal Autofill */,
+				74B25B29307CF92500951071 /* SAMS Portal Autofill Extension */,
+				74B25B0B307CF92400951071 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		74B25B0B307CF92400951071 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				74B25B0A307CF92400951071 /* SAMS Portal Autofill.app */,
+				74B25B25307CF92500951071 /* SAMS Portal Autofill Extension.appex */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		74B25B0C307CF92400951071 /* SAMS Portal Autofill */ = {
+			isa = PBXGroup;
+			children = (
+				74B25B0D307CF92400951071 /* AppDelegate.swift */,
+				74B25B19307CF92400951071 /* ViewController.swift */,
+				74B25B1B307CF92400951071 /* Main.storyboard */,
+				74B25B1E307CF92500951071 /* Assets.xcassets */,
+				74B25B20307CF92500951071 /* Info.plist */,
+				74B25B0F307CF92400951071 /* Resources */,
+			);
+			path = "SAMS Portal Autofill";
+			sourceTree = "<group>";
+		};
+		74B25B0F307CF92400951071 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				74B25B10307CF92400951071 /* Main.html */,
+				74B25B13307CF92400951071 /* Icon.png */,
+				74B25B15307CF92400951071 /* Style.css */,
+				74B25B17307CF92400951071 /* Script.js */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		74B25B29307CF92500951071 /* SAMS Portal Autofill Extension */ = {
+			isa = PBXGroup;
+			children = (
+				74B25B36307CF92500951071 /* Resources */,
+				74B25B2A307CF92500951071 /* SafariWebExtensionHandler.swift */,
+				74B25B2C307CF92500951071 /* Info.plist */,
+			);
+			path = "SAMS Portal Autofill Extension";
+			sourceTree = "<group>";
+		};
+		74B25B36307CF92500951071 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				74B25B37307CF92500951071 /* icon16.png */,
+				74B25B38307CF92500951071 /* popup.js */,
+				74B25B39307CF92500951071 /* config */,
+				74B25B3A307CF92500951071 /* popup.html */,
+				74B25B3B307CF92500951071 /* icon48.png */,
+				74B25B3C307CF92500951071 /* icon128.png */,
+				74B25B3D307CF92500951071 /* manifest.json */,
+				74B25B3E307CF92500951071 /* sams-logo.svg */,
+				74B25B3F307CF92500951071 /* src */,
+			);
+			name = Resources;
+			path = "SAMS Portal Autofill Extension";
+			sourceTree = SOURCE_ROOT;
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		74B25B09307CF92400951071 /* SAMS Portal Autofill */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 74B25B33307CF92500951071 /* Build configuration list for PBXNativeTarget "SAMS Portal Autofill" */;
+			buildPhases = (
+				74B25B06307CF92400951071 /* Sources */,
+				74B25B07307CF92400951071 /* Frameworks */,
+				74B25B08307CF92400951071 /* Resources */,
+				74B25B32307CF92500951071 /* Embed Foundation Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				74B25B28307CF92500951071 /* PBXTargetDependency */,
+			);
+			name = "SAMS Portal Autofill";
+			productName = "SAMS Portal Autofill";
+			productReference = 74B25B0A307CF92400951071 /* SAMS Portal Autofill.app */;
+			productType = "com.apple.product-type.application";
+		};
+		74B25B24307CF92500951071 /* SAMS Portal Autofill Extension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 74B25B2F307CF92500951071 /* Build configuration list for PBXNativeTarget "SAMS Portal Autofill Extension" */;
+			buildPhases = (
+				74B25B21307CF92500951071 /* Sources */,
+				74B25B22307CF92500951071 /* Frameworks */,
+				74B25B23307CF92500951071 /* Resources */,
+			);
+			buildRules = (
+			);
+			name = "SAMS Portal Autofill Extension";
+			productName = "SAMS Portal Autofill Extension";
+			productReference = 74B25B25307CF92500951071 /* SAMS Portal Autofill Extension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		74B25B02307CF92400951071 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 2700;
+				LastUpgradeCheck = 2700;
+				TargetAttributes = {
+					74B25B09307CF92400951071 = {
+						CreatedOnToolsVersion = 27.0;
+					};
+					74B25B24307CF92500951071 = {
+						CreatedOnToolsVersion = 27.0;
+					};
+				};
+			};
+			buildConfigurationList = 74B25B05307CF92400951071 /* Build configuration list for PBXProject "SAMS Portal Autofill" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 74B25B01307CF92400951071;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 74B25B0B307CF92400951071 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				74B25B09307CF92400951071 /* SAMS Portal Autofill */,
+				74B25B24307CF92500951071 /* SAMS Portal Autofill Extension */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		74B25B08307CF92400951071 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			files = (
+				74B25B14307CF92400951071 /* Icon.png in Resources */,
+				74B25B1D307CF92400951071 /* Main.storyboard in Resources */,
+				74B25B18307CF92400951071 /* Script.js in Resources */,
+				74B25B12307CF92400951071 /* Main.html in Resources */,
+				74B25B1F307CF92500951071 /* Assets.xcassets in Resources */,
+				74B25B16307CF92400951071 /* Style.css in Resources */,
+			);
+		};
+		74B25B23307CF92500951071 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			files = (
+				74B25B48307CF92500951071 /* src in Resources */,
+				74B25B40307CF92500951071 /* icon16.png in Resources */,
+				74B25B46307CF92500951071 /* manifest.json in Resources */,
+				74B25B43307CF92500951071 /* popup.html in Resources */,
+				74B25B45307CF92500951071 /* icon128.png in Resources */,
+				74B25B42307CF92500951071 /* config in Resources */,
+				74B25B47307CF92500951071 /* sams-logo.svg in Resources */,
+				74B25B41307CF92500951071 /* popup.js in Resources */,
+				74B25B44307CF92500951071 /* icon48.png in Resources */,
+			);
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		74B25B06307CF92400951071 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			files = (
+				74B25B1A307CF92400951071 /* ViewController.swift in Sources */,
+				74B25B0E307CF92400951071 /* AppDelegate.swift in Sources */,
+			);
+		};
+		74B25B21307CF92500951071 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			files = (
+				74B25B2B307CF92500951071 /* SafariWebExtensionHandler.swift in Sources */,
+			);
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		74B25B28307CF92500951071 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 74B25B24307CF92500951071 /* SAMS Portal Autofill Extension */;
+			targetProxy = 74B25B27307CF92500951071 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin PBXVariantGroup section */
+		74B25B10307CF92400951071 /* Main.html */ = {
+			isa = PBXVariantGroup;
+			children = (
+				74B25B11307CF92400951071 /* Base */,
+			);
+			name = Main.html;
+			sourceTree = "<group>";
+		};
+		74B25B1B307CF92400951071 /* Main.storyboard */ = {
+			isa = PBXVariantGroup;
+			children = (
+				74B25B1C307CF92400951071 /* Base */,
+			);
+			name = Main.storyboard;
+			sourceTree = "<group>";
+		};
+/* End PBXVariantGroup section */
+
+/* Begin XCBuildConfiguration section */
+		74B25B2D307CF92500951071 /* Debug configuration for PBXProject "SAMS Portal Autofill" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 27.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		74B25B2E307CF92500951071 /* Release configuration for PBXProject "SAMS Portal Autofill" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 27.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+			};
+			name = Release;
+		};
+		74B25B30307CF92500951071 /* Debug configuration for PBXNativeTarget "SAMS Portal Autofill Extension" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "SAMS Portal Autofill Extension/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "SAMS Portal Autofill Extension";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@executable_path/../../../../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 12.0;
+				MARKETING_VERSION = 0.1.0;
+				OTHER_LDFLAGS = (
+					"-framework",
+					SafariServices,
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.dev.SAMSPortalAutofill.Extension;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		74B25B31307CF92500951071 /* Release configuration for PBXNativeTarget "SAMS Portal Autofill Extension" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "SAMS Portal Autofill Extension/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "SAMS Portal Autofill Extension";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@executable_path/../../../../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 12.0;
+				MARKETING_VERSION = 0.1.0;
+				OTHER_LDFLAGS = (
+					"-framework",
+					SafariServices,
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.dev.SAMSPortalAutofill.Extension;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		74B25B34307CF92500951071 /* Debug configuration for PBXNativeTarget "SAMS Portal Autofill" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "SAMS Portal Autofill/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "SAMS Portal Autofill";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_NSMainStoryboardFile = Main;
+				INFOPLIST_KEY_NSPrincipalClass = NSApplication;
+				INFOPLIST_KEY_NSViewGestureRecognizerIsExclusive = NO;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 0.1.0;
+				OTHER_LDFLAGS = (
+					"-framework",
+					SafariServices,
+					"-framework",
+					WebKit,
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.dev.SAMSPortalAutofill;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		74B25B35307CF92500951071 /* Release configuration for PBXNativeTarget "SAMS Portal Autofill" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "SAMS Portal Autofill/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "SAMS Portal Autofill";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_NSMainStoryboardFile = Main;
+				INFOPLIST_KEY_NSPrincipalClass = NSApplication;
+				INFOPLIST_KEY_NSViewGestureRecognizerIsExclusive = NO;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 0.1.0;
+				OTHER_LDFLAGS = (
+					"-framework",
+					SafariServices,
+					"-framework",
+					WebKit,
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.dev.SAMSPortalAutofill;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		74B25B05307CF92400951071 /* Build configuration list for PBXProject "SAMS Portal Autofill" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				74B25B2D307CF92500951071 /* Debug configuration for PBXProject "SAMS Portal Autofill" */,
+				74B25B2E307CF92500951071 /* Release configuration for PBXProject "SAMS Portal Autofill" */,
+			);
+			defaultConfigurationName = Release;
+		};
+		74B25B2F307CF92500951071 /* Build configuration list for PBXNativeTarget "SAMS Portal Autofill Extension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				74B25B30307CF92500951071 /* Debug configuration for PBXNativeTarget "SAMS Portal Autofill Extension" */,
+				74B25B31307CF92500951071 /* Release configuration for PBXNativeTarget "SAMS Portal Autofill Extension" */,
+			);
+			defaultConfigurationName = Release;
+		};
+		74B25B33307CF92500951071 /* Build configuration list for PBXNativeTarget "SAMS Portal Autofill" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				74B25B34307CF92500951071 /* Debug configuration for PBXNativeTarget "SAMS Portal Autofill" */,
+				74B25B35307CF92500951071 /* Release configuration for PBXNativeTarget "SAMS Portal Autofill" */,
+			);
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 74B25B02307CF92400951071 /* Project object */;
+	validationLevel = 1;
+}
