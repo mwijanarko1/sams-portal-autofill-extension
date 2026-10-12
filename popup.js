@@ -5,6 +5,11 @@ const studentCard = document.getElementById("studentCard");
 const studentName = document.getElementById("studentName");
 const studentMeta = document.getElementById("studentMeta");
 const statusArea = document.getElementById("statusArea");
+const copiedDetails = document.getElementById("copiedDetails");
+const copiedDetailsSummary = document.getElementById("copiedDetailsSummary");
+const copiedFields = document.getElementById("copiedFields");
+const copiedSearch = document.getElementById("copiedSearch");
+const copiedEmpty = document.getElementById("copiedEmpty");
 let cache = null;
 let expiryTimer = null;
 const SITE_ACCESS_HINT = "If it is already open, allow SAMS Portal Autofill to access this website, then try again.";
@@ -67,10 +72,60 @@ function addList(title, items) {
   statusArea.appendChild(details);
 }
 
+function fieldLabel(key) {
+  const words = key.replace(/(?<=[a-z0-9])(?=[A-Z])|(?<=[a-z])(?=[0-9])/g, " ").toLowerCase();
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
+async function copyValue(button, value) {
+  try {
+    await navigator.clipboard.writeText(value);
+    button.textContent = "Copied";
+    setTimeout(() => { button.textContent = "Copy"; }, 1500);
+  } catch {
+    setStatus("error", "Could not copy to the clipboard. Select the value and copy it manually.");
+  }
+}
+
+function renderFields(fields) {
+  const entries = Object.entries(fields || {});
+  copiedDetails.hidden = !entries.length;
+  if (!entries.length) {
+    copiedDetails.open = false;
+    copiedSearch.value = "";
+  }
+  copiedDetailsSummary.textContent = `Copied details (${entries.length})`;
+  const query = copiedSearch.value.trim().toLowerCase();
+  const matches = ([key, value]) => `${fieldLabel(key)} ${value}`.toLowerCase().includes(query);
+  copiedEmpty.hidden = !entries.length || entries.some(matches);
+  copiedFields.replaceChildren(...entries.map(([key, value]) => {
+    const row = document.createElement("div");
+    row.className = "field-row";
+    row.hidden = !matches([key, value]);
+    const text = document.createElement("div");
+    text.className = "field-text";
+    const label = document.createElement("div");
+    label.className = "field-label";
+    label.textContent = fieldLabel(key);
+    const shown = document.createElement("div");
+    shown.className = "field-value";
+    shown.textContent = value;
+    text.append(label, shown);
+    const button = document.createElement("button");
+    button.className = "copy";
+    button.textContent = "Copy";
+    button.setAttribute("aria-label", `Copy ${fieldLabel(key)}`);
+    button.addEventListener("click", () => copyValue(button, value));
+    row.append(text, button);
+    return row;
+  }));
+}
+
 function renderCache() {
   clearInterval(expiryTimer);
   studentCard.hidden = !cache;
   btnAutofill.disabled = !cache;
+  renderFields(cache && cache.fields);
   if (!cache) {
     studentName.textContent = "";
     studentMeta.textContent = "";
@@ -207,4 +262,5 @@ async function clearStudent() {
 btnCopy.addEventListener("click", copyFromCrm);
 btnAutofill.addEventListener("click", autofill);
 btnClear.addEventListener("click", clearStudent);
+copiedSearch.addEventListener("input", () => renderFields(cache && cache.fields));
 refreshCache().catch((error) => setStatus("error", error.message || String(error)));

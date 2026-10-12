@@ -82,10 +82,11 @@ const settle = () => new Promise((resolve) => setImmediate(resolve));
 function element(tag = "div") {
   const listeners = {};
   return {
-    tag, hidden: false, disabled: false, textContent: "", className: "", children: [],
+    tag, hidden: false, disabled: false, textContent: "", value: "", className: "", children: [],
     append(...nodes) { this.children.push(...nodes); },
     appendChild(node) { this.children.push(node); },
-    replaceChildren() { this.children = []; },
+    replaceChildren(...nodes) { this.children = nodes; },
+    setAttribute(name, value) { this[name] = value; },
     addEventListener(type, fn) { listeners[type] = fn; },
     click() { return listeners.click(); },
   };
@@ -97,7 +98,8 @@ function textOf(node) {
 
 // Loads the real popup against the real worker with fake tab, frame and page APIs.
 async function openPopup(worker, page) {
-  const ids = ["btnCopy", "btnAutofill", "btnClear", "studentCard", "studentName", "studentMeta", "statusArea"];
+  const ids = ["btnCopy", "btnAutofill", "btnClear", "studentCard", "studentName", "studentMeta", "statusArea",
+    "copiedDetails", "copiedDetailsSummary", "copiedFields", "copiedSearch", "copiedEmpty"];
   const elements = Object.fromEntries(ids.map((id) => [id, element()]));
   const calls = { injected: [], sent: [] };
   const workerActions = [];

@@ -181,6 +181,37 @@ for (const portal of portalCases) {
   });
 }
 
+test("Copied details list every CRM field and copy one value", { timeout: 15000 }, async () => {
+  await clear();
+  assert.equal(await popup.locator("#copiedDetails").isVisible(), false);
+  const crm = await copyStudent();
+  const student = await cache();
+  await popup.bringToFront();
+  await popup.locator("#copiedDetailsSummary").click();
+  assert.equal(await popup.locator("#copiedDetailsSummary").textContent(), `Copied details (${Object.keys(student.fields).length})`);
+  assert.equal(await popup.locator("#copiedFields .field-row").count(), Object.keys(student.fields).length);
+  const emailRow = popup.locator("#copiedFields .field-row", { hasText: "aisha.rahman@example.com" });
+  assert.equal(await emailRow.locator(".field-label").textContent(), "Email");
+  await emailRow.getByRole("button", { name: "Copy Email" }).click();
+  await emailRow.getByRole("button", { name: "Copy Email" }).filter({ hasText: "Copied" }).waitFor();
+  // Chrome refuses clipboard grants for extension origins, so an approved page reads the shared clipboard back.
+  await context.grantPermissions(["clipboard-read"], { origin: new URL(crmUrl).origin });
+  await crm.bringToFront();
+  assert.equal(await crm.evaluate(() => navigator.clipboard.readText()), "aisha.rahman@example.com");
+  await popup.bringToFront();
+  await popup.locator("#copiedSearch").fill("RAHMAN@EXAMPLE");
+  assert.deepEqual(await popup.locator("#copiedFields .field-row:visible .field-label").allTextContents(), ["Email", "Emergency email"]);
+  assert.equal(await popup.locator("#copiedEmpty").isVisible(), false);
+  await popup.locator("#copiedSearch").fill("no such field");
+  assert.equal(await popup.locator("#copiedFields .field-row:visible").count(), 0);
+  assert.equal(await popup.locator("#copiedEmpty").isVisible(), true);
+  await clear();
+  assert.equal(await popup.locator("#copiedDetails").isVisible(), false);
+  assert.equal(await popup.locator("#copiedSearch").inputValue(), "");
+  assert.deepEqual(popupErrors, []);
+  await crm.close();
+});
+
 test("Origin guards reject Copy and Autofill outside the allowlist", { timeout: 15000 }, async () => {
   await clear();
   const page = await openPage("https://example.com/e2e-not-approved");

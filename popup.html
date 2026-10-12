@@ -19,6 +19,17 @@
     button { width: 100%; margin-top: 8px; padding: 10px 12px; border: 0; border-radius: 9px; background: #312e81; color: white; font: inherit; font-weight: 700; cursor: pointer; }
     button.clear { width: auto; margin: 0; padding: 6px 8px; background: transparent; color: #64748b; }
     button:disabled { cursor: not-allowed; opacity: .45; }
+    #copiedDetails { margin-top: 10px; border: 1px solid #e0e7ff; }
+    #copiedDetails[hidden] { display: none; }
+    #copiedFields { max-height: 260px; overflow-y: auto; }
+    #copiedSearch { width: 100%; margin-top: 8px; padding: 6px 8px; border: 1px solid #e0e7ff; border-radius: 7px; font: inherit; }
+    .field-row[hidden] { display: none; }
+    .field-row { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-top: 1px solid #eef2ff; }
+    .field-row:first-of-type { margin-top: 6px; }
+    .field-text { flex: 1; min-width: 0; }
+    .field-label { color: #64748b; }
+    .field-value { color: #312e81; font-size: 12px; overflow-wrap: anywhere; }
+    button.copy { width: auto; margin: 0; padding: 4px 8px; background: #eef2ff; color: #312e81; font-size: 11px; }
     .status { margin-bottom: 8px; padding: 9px 10px; border-left: 3px solid; border-radius: 7px; line-height: 1.4; }
     .info { border-color: #818cf8; background: #eef2ff; }
     .success { border-color: #22c55e; background: #f0fdf4; }
@@ -42,6 +53,12 @@
         <div><strong id="studentName"></strong><div id="studentMeta" class="meta"></div></div>
         <button id="btnClear" class="clear">Clear</button>
       </div>
+      <details id="copiedDetails" hidden>
+        <summary id="copiedDetailsSummary">Copied details</summary>
+        <input id="copiedSearch" type="search" placeholder="Search fields or values" aria-label="Search copied details">
+        <div id="copiedFields"></div>
+        <p id="copiedEmpty" class="meta" hidden>No matching fields.</p>
+      </details>
       <button id="btnAutofill" disabled>Autofill this portal page</button>
     </section>
     <section id="statusArea" aria-live="polite"></section>
