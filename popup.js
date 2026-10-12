@@ -7,6 +7,18 @@ const studentMeta = document.getElementById("studentMeta");
 const statusArea = document.getElementById("statusArea");
 let cache = null;
 let expiryTimer = null;
+const SITE_ACCESS_HINT = "If it is already open, allow SAMS Portal Autofill to access this website, then try again.";
+const PAGE_ACCESS_ERROR = "Could not access this page. If it is an approved website, allow SAMS Portal Autofill to access it, reload the page, and try again.";
+const PORTAL_FILES = [
+  "config/build-mode.js",
+  "config/allowlist.js",
+  "config/synonyms.js",
+  "config/portals/greenwich.js",
+  "config/portals/manchester.js",
+  "config/portals/bangor.js",
+  "src/engine/engine.js",
+  "src/portal-fill.js",
+];
 
 function runtimeMessage(message) {
   return chrome.runtime.sendMessage(message);
@@ -20,6 +32,14 @@ async function activeTab() {
 
 function originOf(url) {
   try { return new URL(url).origin; } catch { return ""; }
+}
+
+// A missing tab URL can mean the browser withholds site access, so it never counts as approved.
+async function approvedTab(isApproved, wrongSiteMessage) {
+  const tab = await activeTab();
+  if (!tab.url) throw new Error(`${wrongSiteMessage} ${SITE_ACCESS_HINT}`);
+  if (!isApproved(originOf(tab.url))) throw new Error(wrongSiteMessage);
+  return tab;
 }
 
 function setStatus(type, text) {
@@ -73,17 +93,18 @@ async function refreshCache() {
 }
 
 async function inject(tabId, frameIds, files) {
-  await chrome.scripting.executeScript({ target: { tabId, frameIds }, files });
+  try {
+    await chrome.scripting.executeScript({ target: { tabId, frameIds }, files });
+  } catch {
+    throw new Error(PAGE_ACCESS_ERROR);
+  }
 }
 
 async function copyFromCrm() {
   btnCopy.disabled = true;
   setStatus("info", "Opening CRM sections and reading student fields...");
   try {
-    const tab = await activeTab();
-    if (!SAMS_ALLOWLIST.isCrmOrigin(originOf(tab.url))) {
-      throw new Error("Open an approved SAMS CRM or Campora student profile first.");
-    }
+    const tab = await approvedTab(SAMS_ALLOWLIST.isCrmOrigin, "Open an approved SAMS CRM or Campora student profile first.");
     await inject(tab.id, [0], [
       "config/build-mode.js",
       "config/allowlist.js",
@@ -111,6 +132,17 @@ async function allowedPortalFrames(tab) {
     .map((frame) => frame.frameId);
 }
 
+async function fillFrame(tabId, frameId, fieldMap) {
+  try {
+    const response = await chrome.tabs.sendMessage(tabId, { action: "autofill", fieldMap }, { frameId });
+    if (!response) return { frameId, error: "The page frame did not respond." };
+    if (response.error) return { frameId, error: response.error };
+    return { frameId, report: response };
+  } catch {
+    return { frameId, error: "The page frame did not respond." };
+  }
+}
+
 function mergeResults(results) {
   const merged = { filled: [], skippedExisting: [], noCrmValue: [], manualReview: [], unmatched: [] };
   const filledKeys = new Set();
@@ -128,32 +160,31 @@ async function autofill() {
   btnAutofill.disabled = true;
   setStatus("info", "Filling empty fields on this portal page...");
   try {
-    const tab = await activeTab();
-    if (!SAMS_ALLOWLIST.isPortalOrigin(originOf(tab.url))) {
-      throw new Error("Open an approved university portal form first.");
-    }
+    const tab = await approvedTab(SAMS_ALLOWLIST.isPortalOrigin, "Open an approved university portal form first.");
     const frameIds = await allowedPortalFrames(tab);
     if (!frameIds.length) throw new Error("No approved portal frames were found on this page.");
-    await inject(tab.id, frameIds, [
-      "config/build-mode.js",
-      "config/allowlist.js",
-      "config/synonyms.js",
-      "config/portals/greenwich.js",
-      "config/portals/manchester.js",
-      "config/portals/bangor.js",
-      "src/engine/engine.js",
-      "src/portal-fill.js",
-    ]);
-    const responses = await Promise.all(frameIds.map((frameId) =>
-      chrome.tabs.sendMessage(tab.id, { action: "autofill", fieldMap: cache.fields }, { frameId })
+    const injected = await Promise.all(frameIds.map((frameId) =>
+      inject(tab.id, [frameId], PORTAL_FILES).then(() => ({ frameId }), (error) => ({ frameId, error: error.message }))
     ));
-    const errors = responses.filter((response) => response && response.error);
-    if (errors.length === responses.length) throw new Error(errors[0].error);
-    const result = mergeResults(responses.filter((response) => response && !response.error));
+    // The worker cache is authoritative: Clear, expiry, or a new Copy elsewhere must win over this popup's memory.
+    await refreshCache();
+    if (!cache) throw new Error("No copied student is available. Copy from CRM again before Autofill.");
+    const fieldMap = cache.fields;
+    const outcomes = await Promise.all(injected.map((frame) => frame.error ? frame : fillFrame(tab.id, frame.frameId, fieldMap)));
+    const reports = outcomes.filter((outcome) => outcome.report).map((outcome) => outcome.report);
+    const failures = outcomes.filter((outcome) => outcome.error);
+    if (!reports.length) throw new Error(failures[0].error);
+    const result = mergeResults(reports);
+    // Kept from Chrome: one successful approved frame counts as activity. All-frame failure threw above.
     const touched = await runtimeMessage({ action: "touchStudentCache" });
-    cache = touched.cache || cache;
+    cache = touched.cache || null;
     renderCache();
-    setStatus("success", `${result.filled.length} fields filled. Draft only: review the form and submit it yourself.`);
+    if (failures.length) {
+      setStatus("warning", `${result.filled.length} fields filled in ${reports.length} of ${outcomes.length} page frames. Some frames were not filled: review the whole page before continuing.`);
+      addList("Frames not filled", failures.map((failure) => `Frame ${failure.frameId}: ${failure.error}`));
+    } else {
+      setStatus("success", `${result.filled.length} fields filled. Draft only: review the form and submit it yourself.`);
+    }
     addList("Filled", result.filled);
     addList("Skipped, already had a value", result.skippedExisting);
     addList("No CRM value", result.noCrmValue);

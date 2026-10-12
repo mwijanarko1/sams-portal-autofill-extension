@@ -199,6 +199,30 @@ test("Origin guards reject Copy and Autofill outside the allowlist", { timeout: 
   await crm.close();
 });
 
+test("Clear in another popup stops a stale popup from filling", { timeout: 15000 }, async () => {
+  await clear();
+  const portal = portalCases[0];
+  const page = await openPage(portal.url);
+  await page.locator(Object.keys(portal.values)[0]).waitFor();
+  const crm = await copyStudent();
+  const other = await context.newPage();
+  await other.goto(`chrome-extension://${extensionId}/popup.html`);
+  await other.locator("#studentCard").waitFor();
+  await other.locator("#btnClear").click();
+  await other.locator("#studentCard").waitFor({ state: "hidden" });
+  await other.close();
+  await activate(page);
+  assert.equal(await popup.locator("#studentCard").isVisible(), true, "The first popup still shows its earlier copy");
+  await popup.locator("#btnAutofill").click();
+  await popup.locator("#statusArea .error").waitFor();
+  assert.match(await popup.locator("#statusArea").innerText(), /No copied student is available/);
+  assert.equal(await popup.locator("#studentCard").isVisible(), false);
+  assert.deepEqual((await page.evaluate(() => activity)).changes, [], "No field may change after Clear");
+  assert.deepEqual(popupErrors, []);
+  await page.close();
+  await crm.close();
+});
+
 test("Session expiry disables Autofill and removes the student cache", { timeout: 10000 }, async () => {
   const crm = await copyStudent();
   await worker.evaluate(async () => {
