@@ -19,6 +19,18 @@ npm run build
 
 Load `dist/chrome` from `chrome://extensions` with Developer mode enabled. The development build permits the mock CRM at `http://localhost:3000` and mock portal at `http://localhost:3001`.
 
+## Safari for macOS (development)
+
+```bash
+npm run build:safari        # dist/safari-webextension from the same shared source
+npm run build:safari:app    # unsigned local macOS app, embedded-resource check
+```
+
+The Xcode project lives in `safari/`. It has development-only placeholder identifiers
+and no signing or distribution setup. Safari runtime behavior has not been verified yet.
+See [safari/README.md](safari/README.md) and the
+[Safari acceptance checklist](e2e/safari/README.md).
+
 ## Staff flow
 
 1. Open an individual student profile in SAMS CRM or Campora.
@@ -38,7 +50,8 @@ Load `dist/chrome` from `chrome://extensions` with Developer mode enabled. The d
 - `src/engine/engine.js`: scan, match, format, and fill engine
 - `src/portal-fill.js`: allowlisted portal message handler
 - `src/background.js`: session cache and expiry alarm
-- `scripts/build.mjs`: development and production Chrome packaging
+- `scripts/build.mjs`: development and production packaging for the `chrome` (default) and `safari` targets
+- `safari/`: macOS containing app and Safari extension target, no copied extension code
 - `docs/`: staff, deployment, and mapping guides
 
 No extension login, licence server, AI inference, backend integration, document upload, or automatic irreversible actions are included.
