@@ -3,7 +3,8 @@
 This folder holds only the native macOS containing app and the Safari Web Extension
 target. The extension's JavaScript, popup, configuration and icons stay in the
 repository root, `src/` and `config/`, shared with Chrome. Nothing here is a release
-artifact, and nothing here has been tested in a running Safari yet.
+artifact, and nothing here has been tested in a running Safari yet. Full repo map:
+[docs/CODEBASE_MAP.md](../docs/CODEBASE_MAP.md).
 
 ## Layout
 

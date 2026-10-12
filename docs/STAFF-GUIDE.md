@@ -1,5 +1,7 @@
 # Staff guide
 
+Supported browsers for staff use are decided by SAMS release policy. Development builds exist for Chrome and Safari for macOS; only a SAMS-approved package should be installed on staff machines.
+
 1. Sign into SAMS CRM or Campora normally and open one individual student profile.
 2. Open the extension and select **Copy from CRM**. If a section is collapsed or not loaded, open it and copy again.
 3. Confirm the student name shown in the extension.

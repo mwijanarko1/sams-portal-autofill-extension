@@ -1,5 +1,7 @@
 # Safari manual acceptance (synthetic fixtures)
 
+See also [docs/CODEBASE_MAP.md](../../docs/CODEBASE_MAP.md) and [safari/README.md](../../safari/README.md).
+
 No automated runner exists for the installed Safari extension. Playwright WebKit,
 SafariDriver and `npm run test:e2e` do not exercise Safari's extension popup, worker,
 permissions or messaging. Use this manual checklist, and record each case as Passed,

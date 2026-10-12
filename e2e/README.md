@@ -1,5 +1,7 @@
 # Extension E2E
 
+Repository layout and related docs: [docs/CODEBASE_MAP.md](../docs/CODEBASE_MAP.md). Safari has a separate manual checklist under [e2e/safari/README.md](safari/README.md).
+
 ## Offline regression
 
 ```sh

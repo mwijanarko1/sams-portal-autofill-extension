@@ -6,9 +6,9 @@ Private Chrome Manifest V3 extension for authorised SAMS staff. It copies visibl
 
 The Chrome architecture, CRM page reader, 30 minute session cache, runtime origin checks, safe frame targeting, draft-only fill engine, development build, and documentation are implemented.
 
-~~Production packaging and the three portal mappings remain blocked until SAMS provides the exact Campora, Greenwich, Greater Manchester, and Bangor application origins plus supervised test access.~~ Greenwich's origin, field inventory, reviewed mappings, and safety fixes are complete in [PR #1](https://github.com/mwijanarko1/sams-portal-autofill-extension/pull/1), merged as `8d0f534`. All 16 automated tests and the development build pass; qualification and phone fixes also passed sanitized saved-form replay in Helium.
+~~Production packaging and the three portal mappings remain blocked until SAMS provides the exact Campora, Greenwich, Greater Manchester, and Bangor application origins plus supervised test access.~~ Greenwich and Bangor origins, field inventories, and reviewed mappings are in tree. PR #1 (Greenwich) merged as `8d0f534`. Automated coverage is currently **61** Node/Chromium tests (`npm test`) plus the loaded-extension suite (`npm run test:e2e`). Qualification and phone fixes also passed sanitized saved-form replay in Helium.
 
-Live CRM-to-portal verification, committed sanitized fixtures, and the remaining Greenwich manual fields are still open. Campora, Greater Manchester, and Bangor origins/access remain pending, so `npm run build:prod` intentionally refuses the incomplete production allowlist. Non-UK numbers exceeding Home Telephone's 11-character limit need manual correction or clearing. See `BUILD-PLAN.md`, `PORTALS.md`, and `docs/history/GREENWICH.md` for completed and remaining work.
+Live CRM-to-portal verification, committed sanitized per-step fixtures under `fixtures/<portal>/`, remaining Greenwich manual fields, and Greater Manchester / Campora origins remain open, so `npm run build:prod` intentionally refuses the incomplete production allowlist. A macOS Safari development scaffold exists (`npm run build:safari:app`); installed Safari runtime acceptance is still pending. Non-UK numbers exceeding Home Telephone's 11-character limit need manual correction or clearing. See `PORTALS.md`, `docs/CODEBASE_MAP.md`, `BUILD-PLAN.md`, and `docs/history/GREENWICH.md`.
 
 ## Development build
 
@@ -51,8 +51,10 @@ See [safari/README.md](safari/README.md) and the
 - `src/portal-fill.js`: allowlisted portal message handler
 - `src/background.js`: session cache and expiry alarm
 - `scripts/build.mjs`: development and production packaging for the `chrome` (default) and `safari` targets
+- `scripts/package-safari.mjs`: unsigned macOS app build and embedded-resource check
 - `safari/`: macOS containing app and Safari extension target, no copied extension code
-- `docs/`: staff, deployment, and mapping guides
+- `test/`, `e2e/`: unit/DOM tests, Chromium loaded-extension E2E, Safari fixture checklist
+- `docs/`: staff, deployment, mapping guides, Safari architecture, and [CODEBASE_MAP.md](docs/CODEBASE_MAP.md)
 
 No extension login, licence server, AI inference, backend integration, document upload, or automatic irreversible actions are included.
 

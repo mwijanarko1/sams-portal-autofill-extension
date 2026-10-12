@@ -4,16 +4,25 @@
 
 Run `npm test && npm run build`, then load `dist/chrome` as an unpacked extension from `chrome://extensions`.
 
-## Production package
+Safari development uses the same shared source:
+
+```sh
+npm run build:safari        # dist/safari-webextension
+npm run build:safari:app    # unsigned macOS app in dist/safari-app
+```
+
+Enablement steps and resource ownership are in [safari/README.md](../safari/README.md). Manual Safari acceptance is in [e2e/safari/README.md](../e2e/safari/README.md). Repository layout is in [CODEBASE_MAP.md](CODEBASE_MAP.md).
+
+## Production package (Chrome)
 
 1. Add the confirmed exact origins to `config/allowlist.js`.
 2. Complete and verify all three portal configs and fixtures.
-3. Set the release version in `manifest.json` and `package.json`.
+3. Set the release version in `manifest.json`, `package.json`, and the Safari Xcode `MARKETING_VERSION`.
 4. Run `npm test && npm run build:prod`.
 5. Inspect `dist/chrome/manifest.json` and the generated `dist/sams-portal-autofill-prod.zip`.
 6. Upload the zip to SAMS's Chrome Web Store developer account as an unlisted item, or deploy the extension ID through Chrome enterprise force-install policy.
 
-The production build rejects an incomplete Campora or portal allowlist. It never includes localhost or `<all_urls>`.
+The production build rejects an incomplete Campora or portal allowlist. It never includes localhost or `<all_urls>`. Each build target cleans only its own `dist` paths, so a Chrome build does not delete Safari output.
 
 Chrome Web Store submission also needs a SAMS-owned privacy policy URL, data-use disclosures, and host-permission justification. Store and device-management fees are SAMS costs.
 
@@ -21,6 +30,13 @@ Chrome Web Store submission also needs a SAMS-owned privacy policy URL, data-use
 
 Change config or code, increment the version, rerun checks, generate a production package, and publish it through the same controlled channel. End users cannot edit approved origins.
 
-## Safari after Chrome acceptance
+## Safari packaging
 
-Convert the verified Chrome package with `xcrun safari-web-extension-converter dist/chrome`. Before distribution, verify `storage.session`, `alarms`, and `scripting` on the supported Safari versions and agree the controlled signing/distribution route with SAMS.
+The checked-in Xcode project under `safari/` embeds resources from `dist/safari-webextension` (built by `scripts/build.mjs`). Do not regenerate the project with `--force` or `--copy-resources`.
+
+```sh
+npm run build:safari:prod   # refused until the production allowlist is complete
+npm run build:safari:app    # local unsigned Debug app + embedded-resource hash check
+```
+
+Before distribution: verify `storage.session`, `alarms`, and `scripting` on the supported Safari versions; complete the Safari acceptance checklist; replace development bundle identifiers; and agree the controlled signing/distribution route with SAMS (Developer ID notarized app or App Store). See [SAFARI-ARCHITECTURE-AND-PARITY.md](SAFARI-ARCHITECTURE-AND-PARITY.md).

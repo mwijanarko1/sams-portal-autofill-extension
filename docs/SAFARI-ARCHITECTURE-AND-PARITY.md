@@ -91,9 +91,9 @@ The production build currently rejects an empty Campora list or fewer than three
 
 The source now has `splitDates` mappings and `fillSplitDates()` support. Dedicated tests cover Greenwich DOB, Greenwich employment dates, Bangor education dates, and preserving an existing date selection. Older comments and guides still describe split-date controls as blocked. Generic scanning continues to block these controls; the explicit page-scoped split-date path handles them separately.
 
-The repository also now contains synthetic fixtures in `e2e/fixtures/`. Older `PORTALS.md` entries describing no fixtures or a 16-test baseline are historical, not the current test inventory.
+The repository contains synthetic fixtures in `e2e/fixtures/` and CRM HTML under `test/fixtures/`. Older notes describing no fixtures or a 16-test baseline are historical, not the current test inventory. Navigation for the whole repo is in [CODEBASE_MAP.md](CODEBASE_MAP.md).
 
-Do not infer live acceptance from those files. In this documentation task, `npm test` passed **28/28** tests. The loaded-extension E2E suite, production build, authenticated journeys, and Safari runtime were not run.
+Do not infer live acceptance from docs alone. Verification snapshot on 2026-10-12: `npm test` **61/61**; Chromium `npm run test:e2e` documented 5/5 when Helium is available. Production packaging, authenticated CRM-to-portal journeys, and installed Safari runtime acceptance remain open.
 
 ## 3. Target architecture
 
@@ -391,19 +391,18 @@ Session cache cleanup removes extension-controlled storage. It cannot guarantee 
 
 ### 9.1 Build changes
 
-`scripts/build.mjs` currently deletes the entire `dist` directory and always writes `dist/chrome`. Refactor output ownership before adding Safari: each target cleans only its own output. A Chrome build must not delete Safari resources or invalidate an Xcode project reference.
+**Implemented.** `scripts/build.mjs` takes `dev|prod` and optional `chrome|safari`. Each target deletes only its own owned paths (`dist/chrome` + zips, or `dist/safari-webextension`). A Chrome build does not wipe Safari output.
 
-The checked-in `manifest.json` does not include Greenwich or Bangor host permissions; the build generates them from `config/allowlist.js`. Package the generated, validated resources, not a raw copy of the repository root. Otherwise the Safari spike could incorrectly diagnose missing portal permissions as an API incompatibility.
+The checked-in `manifest.json` does not include Greenwich or Bangor host permissions; the build generates them from `config/allowlist.js`. Package the generated, validated resources, not a raw copy of the repository root.
 
-Proposed build contract:
+Current build contract:
 
-- Preserve `npm run build` and `npm run build:prod` as Chrome commands for compatibility.
-- Add explicit Safari dev/prod scripts, names agreed during implementation, such as `build:safari` and `build:safari:prod`.
-- Extract shared resource copy, version validation and exact-host generation rather than duplicating allowlists.
-- Generate target manifests into separate output directories; never edit generated files as source.
-- Retain the existing incomplete-production-origin rejection for both targets.
-- Validate icon paths, popup/scripts, worker import paths, resource existence and referenced files.
-- Keep app/extension version aligned with the shared release version; Apple build numbers increase independently as required.
+- `npm run build` / `npm run build:prod` remain Chrome commands.
+- `npm run build:safari` / `npm run build:safari:prod` write `dist/safari-webextension`.
+- `npm run build:safari:app` runs `scripts/package-safari.mjs` (unsigned Xcode Debug build + embedded resource hash check into `dist/safari-app`).
+- Shared resource copy, version validation, exact-host generation, and incomplete-production-origin rejection apply to both targets.
+- Generated files under `dist/` are never edited as source.
+- App/extension `MARKETING_VERSION` stays aligned with `package.json` / `manifest.json` (`0.1.0`); Apple build numbers can move independently when signing is introduced.
 
 ### 9.2 Xcode resource strategy
 
@@ -467,11 +466,11 @@ For rollback, retain the last accepted signed artifact and instructions for cont
 
 ### 11.1 What existing tests prove
 
-`npm test` runs Node's test runner, including unit/config tests and CRM reader DOM tests using the installed Chromium executable. It passed 28 tests during this task. Passing it does not prove WebKit, Safari extension APIs, native popover behavior, signing, or current live portal layouts.
+`npm test` runs Node's test runner, including unit/config tests, CRM reader DOM tests, session lifecycle tests, and Safari packaging/fixture checks (61 tests on 2026-10-12). Passing it does not prove installed Safari extension APIs, native popover behavior, signing, or current live portal layouts.
 
 `npm run test:e2e` loads the extension in Helium with synthetic HTTPS routing. It covers real Chromium popup-to-worker-to-content-script flow, but opens the popup as an extension tab. Keep it as a Chrome regression gate. It cannot be converted into a Safari-extension test merely by changing the Playwright browser to WebKit.
 
-Playwright WebKit can help exercise shared DOM logic, but it is not Apple's Safari Web Extension runtime. SafariDriver or ordinary browser-page automation alone also does not establish permission/popup/worker integration. Start with a reproducible manual Safari acceptance script; automate only the parts the selected tools can actually control.
+Playwright WebKit can help exercise shared DOM logic, but it is not Apple's Safari Web Extension runtime. SafariDriver or ordinary browser-page automation alone also does not establish permission/popup/worker integration. The reproducible manual Safari acceptance script is [e2e/safari/README.md](../e2e/safari/README.md); automate only the parts the selected tools can actually control.
 
 ### 11.2 Verification layers
 
@@ -595,23 +594,27 @@ No reliable effort estimate is assigned before the compatibility spike, staff pl
 
 ### Local observations for this document
 
-- Repository baseline: `1b774cb` (`Document Greenwich progress and portal matrix updates`).
-- `npm test`: 28 passed, 0 failed on 2026-10-12. No loaded-extension or Safari runtime test executed.
+- Original architecture baseline: `1b774cb` (`Document Greenwich progress and portal matrix updates`).
+- Implementation commits after that baseline added the Safari Xcode project, shared Safari build, fixture server/checklist, and session/frame hardening (see `safari/README.md` verification snapshot).
+- Cartographer refresh 2026-10-12: `npm test` 61 passed, 0 failed. Loaded-extension E2E and Safari runtime were not re-executed for the doc-only map pass.
 - `xcode-select -p`: `/Applications/Xcode.app/Contents/Developer`.
-- Installed Safari app metadata: version `27.0.1`, build `22625.1.29.11.28`. This is one local environment, not the proposed support minimum.
-- `xcrun safari-web-extension-packager --help`: current packaging tool/options available. The help invocation printed usage and exited with code 64; it did not package or build anything.
-- No Safari manifest, native project, app, signed archive, distribution account, host-policy change, authenticated test or upload was created by this task.
+- Installed Safari app metadata (one local environment, not a support minimum): version `27.0.1`, build `22625.1.29.11.28`.
+- Packaging tool: `safari-web-extension-packager` (project already generated and hand-edited under `safari/`).
+- Still not done by docs work alone: signed archive, distribution account, host-policy change, authenticated Safari journey, or production upload.
 
 ### Repository references
 
+- [Codebase map](CODEBASE_MAP.md)
 - [Chrome README](../README.md)
 - [Technical and mapping guide](TECHNICAL-AND-MAPPING.md)
 - [Install and controlled deployment](INSTALL-AND-DEPLOY.md)
+- [Safari build and enablement](../safari/README.md)
+- [Safari acceptance checklist](../e2e/safari/README.md)
 - [Portal verification matrix](../PORTALS.md), with the historical limitations noted in section 2.3
 - [Existing E2E architecture and live safeguards](../e2e/README.md)
-- [Chrome manifest](../manifest.json), [build](../scripts/build.mjs), [allowlist](../config/allowlist.js)
+- [Chrome manifest](../manifest.json), [build](../scripts/build.mjs), [Safari app package](../scripts/package-safari.mjs), [allowlist](../config/allowlist.js)
 - [Popup orchestration](../popup.js), [worker](../src/background.js), [CRM reader](../src/crm-reader.js), [portal handler](../src/portal-fill.js), [engine](../src/engine/engine.js)
-- [Split-date regression tests](../test/split-dates.test.js)
+- [Split-date regression tests](../test/split-dates.test.js), [Safari build tests](../test/safari-build.test.js)
 
 ### Apple documentation
 
