@@ -15,8 +15,9 @@ CRM reader, and portal engine. It selects the actual active browser tab, rather
 than mocking Chrome APIs. The popup runs as an extension tab, not the native
 toolbar popover.
 
-Synthetic HTTPS pages reproduce the confirmed CRM agent route and mapped Bangor
-and Greenwich control IDs. Browser routing supplies fixture HTML and blocks all
+Synthetic HTTPS pages reproduce the confirmed CRM agent route, mapped Bangor
+and Greenwich control IDs, and an unmapped university origin that has no
+allowlist entry, mapping, or host permission. Browser routing supplies fixture HTML and blocks all
 other HTTP requests. No live credentials or applicant data are used.
 
 Coverage:
@@ -29,6 +30,17 @@ Coverage:
 - Clear removes the session cache and visibly hides the student card.
 - Session expiry disables Autofill and clears the cache.
 - Unapproved origins rejected; no local or sync storage of student data.
+- Unmapped university through the real toolbar popup: the tab-popup page cannot
+  reach it and shows website-access guidance; after the browser's toolbar action
+  trigger grants `activeTab`, shared fields fill in the top page and a same-origin
+  child frame only. Login, emergency, referee, agent, education, payment, and
+  declaration fields, a sandboxed same-URL frame, a `srcdoc` frame, and an
+  embedded Greenwich portal stay unchanged. Repeat Autofill changes nothing.
+
+The toolbar popup is opened with the CDP `Extensions.triggerAction` command,
+which the test-only `--enable-unsafe-extension-debugging` flag enables. Playwright
+does not expose that popup, so the test drives it through its own CDP target
+session. Screenshots are written to `tmp/general-portal-evidence/`.
 
 Helium is visible by default. The installed executable is
 `/Applications/Helium.app/Contents/MacOS/Helium`. Override `SAMS_E2E_BROWSER` only

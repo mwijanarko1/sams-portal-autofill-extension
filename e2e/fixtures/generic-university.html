@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Synthetic unmapped university application</title></head>
+<body>
+  <h1>Example University online application</h1>
+  <form id="login" action="/e2e-forbidden-login" method="post">
+    <h2>Returning applicants</h2>
+    <label for="login_email">Email</label><input id="login_email" name="email" type="email">
+    <label for="login_password">Password</label><input id="login_password" type="password">
+  </form>
+  <form id="application" action="/e2e-forbidden-save" method="post">
+    <h2>Personal details</h2>
+    <label for="title">Title</label><select id="title" name="title"><option value="">Select</option><option>Mr</option><option>Ms</option></select>
+    <label for="first_name">First name *</label><input id="first_name" name="applicant[first_name]" autocomplete="section-applicant given-name">
+    <label for="middle_names">Middle name(s)</label><input id="middle_names" name="middle_names">
+    <label for="surname">Surname</label><input id="surname" name="surname" autocomplete="family-name">
+    <label for="full_name">Full name</label><input id="full_name" autocomplete="name">
+    <label for="preferred_name">Preferred first name</label><input id="preferred_name">
+    <label for="known_as">Known as</label><input id="known_as" autocomplete="nickname">
+    <label for="dob">Date of birth (DD/MM/YYYY)</label><input id="dob" name="dob">
+    <fieldset><legend>Date of birth</legend>
+      <label for="dob_day">Day</label><select id="dob_day" autocomplete="bday-day"><option value="">Day</option><option>15</option></select>
+      <label for="dob_month">Month</label><select id="dob_month" autocomplete="bday-month"><option value="">Month</option><option value="2">February</option></select>
+      <label for="dob_year">Year</label><select id="dob_year" autocomplete="bday-year"><option value="">Year</option><option>2000</option></select>
+    </fieldset>
+    <label for="gender">Gender</label><select id="gender"><option value="">Select</option><option value="F">Female</option><option value="M">Male</option></select>
+    <label for="nationality">Nationality</label><select id="nationality"><option value="">Select</option><option>Bangladeshi</option><option>British</option></select>
+    <label for="passport">Passport number</label><input id="passport" readonly>
+    <div hidden><label for="hidden_city">City</label><input id="hidden_city"></div>
+    <div inert><label for="inert_email">Email address</label><input id="inert_email" type="email"></div>
+
+    <h2>Contact details</h2>
+    <label for="email">Email address</label><input id="email" type="email" autocomplete="email">
+    <label for="phone_cc">Mobile country code</label><input id="phone_cc" autocomplete="tel-country-code">
+    <label for="mobile">Mobile number</label><input id="mobile" type="tel">
+    <label for="phone_ext">Extension</label><input id="phone_ext" autocomplete="tel-extension">
+    <label for="addr1">Address line 1</label><input id="addr1" autocomplete="address-line1">
+    <label for="addr2">Address line 2</label><input id="addr2" autocomplete="address-line2">
+    <label for="town">Town / City</label><input id="town">
+    <label for="postcode">Postcode</label><input id="postcode" value="EXISTING">
+    <label for="country">Country</label><select id="country"><option value="">Select</option><option>Bangladesh</option><option>United Kingdom</option></select>
+    <label for="billing_postcode">Postal code</label><input id="billing_postcode" autocomplete="billing postal-code">
+
+    <h2>Emergency contact</h2>
+    <label for="ec_name">Name</label><input id="ec_name">
+    <label for="ec_email">Email</label><input id="ec_email" type="email">
+    <label for="ec_phone">Phone</label><input id="ec_phone" type="tel">
+
+    <fieldset><legend>Referee</legend>
+      <label for="ref_first">First name</label><input id="ref_first">
+      <label for="ref_email">Email</label><input id="ref_email" name="referee_email">
+    </fieldset>
+
+    <h2>Agent details</h2>
+    <label for="agent_email">Email</label><input id="agent_email">
+
+    <h2>Education</h2>
+    <label for="qual_institution">Institution</label><input id="qual_institution">
+    <label for="qual_country">Country</label><select id="qual_country"><option value="">Select</option><option>Bangladesh</option></select>
+    <label for="qual2_institution">Institution</label><input id="qual2_institution">
+
+    <h2>Payment</h2>
+    <label for="card_name">Name on card</label><input id="card_name" autocomplete="cc-name">
+    <label for="card_first">First name</label><input id="card_first" autocomplete="cc-given-name">
+
+    <h2>Declaration</h2>
+    <label for="signature">Type your full name as your signature</label><input id="signature">
+    <label for="declare_first">First name</label><input id="declare_first">
+
+    <button type="submit">Save and continue</button>
+    <button type="button">Submit application</button>
+  </form>
+  <iframe title="Same-origin section" src="/apply/child"></iframe>
+  <iframe title="Sandboxed section" sandbox="allow-scripts allow-forms" src="/apply/sandboxed"></iframe>
+  <iframe title="Inline section" srcdoc="<label for='srcdoc_first'>First name</label><input id='srcdoc_first'>"></iframe>
+  <iframe title="Mapped portal from another origin" src="https://nelson.gre.ac.uk/pls/prod/bwskaudf.P_DispAppUserDef?appno=1&amp;wsct=ADDITIONAL"></iframe>
+  <script>
+    window.activity = { submissions: 0, clicks: 0, changes: [] };
+    document.addEventListener("submit", (event) => { event.preventDefault(); activity.submissions++; });
+    document.addEventListener("click", (event) => { if (event.target.closest("button, a")) activity.clicks++; });
+    document.addEventListener("change", (event) => { activity.changes.push(event.target.id); });
+  </script>
+</body>
+</html>

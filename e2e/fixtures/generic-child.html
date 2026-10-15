@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Synthetic university form section</title></head>
+<body>
+  <form action="/e2e-forbidden-save" method="post">
+    <label for="child_first_name">First name</label><input id="child_first_name">
+  </form>
+  <script>
+    window.activity = { submissions: 0, clicks: 0, changes: [] };
+    document.addEventListener("submit", (event) => { event.preventDefault(); activity.submissions++; });
+    document.addEventListener("change", (event) => { activity.changes.push(event.target.id); });
+  </script>
+</body>
+</html>

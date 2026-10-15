@@ -40,7 +40,7 @@ requests, and logs and refuses any other method.
 | CRM non-profile | `http://localhost:3000/agent/dashboard` | Approved origin, rejected path |
 | Bangor DOM | `http://localhost:3001/bangor/` | Approved development portal origin |
 | Greenwich DOM | `http://localhost:3001/greenwich/` | Approved development portal origin |
-| Frames | `http://localhost:3001/frames/` | Approved top frame, approved `127.0.0.1:3001` child, unapproved `localhost:3002` child |
+| Frames | `http://localhost:3001/frames/` | Selected top frame, cross-origin `127.0.0.1:3001` development portal child, cross-origin `localhost:3002` child |
 
 Portal pages show a **Fixture snapshot** with each control's value and the page's
 click, submit and change counters. Compare snapshots instead of reading each field.
@@ -56,6 +56,12 @@ unverified until one is approved.
 Run the same cases in Chrome with `npm run build` and `dist/chrome` loaded unpacked.
 Record the Chrome snapshot for each portal case. Safari passes a fill case only when its
 snapshot matches Chrome's on the same page.
+
+**Superseded 2026-10-15:** generic matching and frame targeting changed after this run.
+Unmapped pages now use the conservative generic registry (no login, referee, or split-DOB
+fills) and only frames with the top page's exact origin are filled, so the `127.0.0.1:3001`
+child is no longer filled. Re-record the Chrome reference before comparing Safari; the
+numbers below are kept only as history.
 
 A reference run on 2026-10-12 (Helium, development build, source after this Safari
 change) observed these results on the fixture pages:
@@ -85,7 +91,7 @@ accepted portal behavior.
 | S5 | Choose Copy on the CRM non-profile page. | Refused. The earlier student is still shown. |
 | S6 | Autofill the Bangor and Greenwich DOM pages. | Snapshot matches the Chrome reference. Clicks 0, submissions 0. Password and file controls empty. |
 | S7 | Autofill again on the same page. | Snapshot matches the Chrome reference repeat run. |
-| S8 | Autofill the Frames page. | Top frame and approved child filled. Unapproved child's snapshot unchanged. |
+| S8 | Autofill the Frames page. | Top frame filled. Both cross-origin children's snapshots unchanged, and the popup does not report them as failed frames. |
 | S9 | Open the popup in two windows. Choose Clear in one, then Autofill in the other. | Second popup reports no copied student and hides it. Page snapshot unchanged. |
 | S10 | Copy, close the popup, wait for Safari to suspend the worker, reopen. | Same student and expiry. |
 | S11 | Copy, then quit and relaunch Safari. | No student shown. |

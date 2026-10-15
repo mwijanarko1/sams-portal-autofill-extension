@@ -101,8 +101,9 @@ async function openPopup(worker, page) {
   const ids = ["btnCopy", "btnAutofill", "btnClear", "studentCard", "studentName", "studentMeta", "statusArea",
     "copiedDetails", "copiedDetailsSummary", "copiedFields", "copiedSearch", "copiedEmpty"];
   const elements = Object.fromEntries(ids.map((id) => [id, element()]));
-  const calls = { injected: [], sent: [] };
+  const calls = { injected: [], sent: [], connected: [], injectTargets: [] };
   const workerActions = [];
+  const frameByDocumentId = (documentId) => page.frames.find((frame) => frame.documentId === documentId);
   const chrome = {
     runtime: { sendMessage: (message) => { workerActions.push(message.action); return worker.send(message); } },
     tabs: {
@@ -111,10 +112,46 @@ async function openPopup(worker, page) {
         calls.sent.push({ frameId: options.frameId, message: structuredClone(message) });
         return page.respond(options.frameId, message);
       },
+      // A document-bound port: a thrown page response closes the port, like a navigated document.
+      connect: (tabId, options) => {
+        calls.connected.push(options.documentId || options.frameId);
+        const frame = options.documentId ? frameByDocumentId(options.documentId) : null;
+        const frameId = frame ? frame.frameId : options.frameId;
+        const listeners = { message: [], disconnect: [] };
+        let open = true;
+        const close = () => {
+          if (!open) return;
+          open = false;
+          listeners.disconnect.forEach((fn) => fn());
+        };
+        return {
+          name: options.name,
+          onMessage: { addListener: (fn) => listeners.message.push(fn) },
+          onDisconnect: { addListener: (fn) => listeners.disconnect.push(fn) },
+          disconnect: () => { open = false; },
+          postMessage(message) {
+            if (!open) throw new Error("Attempting to use a disconnected port object");
+            calls.sent.push({ frameId, documentId: options.documentId, message: structuredClone(message) });
+            const handler = message.action === "prepare" ? (page.prepare || (async () => ({ ready: true }))) : page.respond;
+            Promise.resolve().then(() => handler(frameId, message)).then(
+              (reply) => open && listeners.message.forEach((fn) => fn(structuredClone(reply))),
+              close,
+            );
+          },
+        };
+      },
     },
     webNavigation: { getAllFrames: async () => page.frames },
     scripting: {
       executeScript: async ({ target }) => {
+        calls.injectTargets.push(structuredClone(target));
+        if (target.documentIds) {
+          calls.injected.push([...target.documentIds]);
+          if (target.documentIds.some((documentId) => (page.injectFails || []).includes(documentId))) {
+            throw new Error(`No document with id ${target.documentIds[0]}`);
+          }
+          return;
+        }
         calls.injected.push([...target.frameIds]);
         if (target.frameIds.some((frameId) => (page.injectFails || []).includes(frameId))) {
           throw new Error(`Cannot access contents of url "${page.tab.url}?token=secret"`);
@@ -133,13 +170,23 @@ async function openPopup(worker, page) {
   return { elements, calls, status, workerActions };
 }
 
+function withDocumentIds(frames, prefix = "doc") {
+  return frames.map((frame, index) => (
+    frame.documentId || frame.documentId === ""
+      ? frame
+      : { ...frame, documentId: `${prefix}-${frame.frameId ?? index}` }
+  ));
+}
+
 function portalPage(overrides = {}) {
-  return {
+  const base = {
     tab: { id: 7, url: PORTAL_URL },
     frames: [{ frameId: 0, url: PORTAL_URL }],
-    respond: async () => ({ filled: [{ name: "givenName", fieldLabel: "Forename" }], skippedExisting: [], noCrmValue: [], manualReview: [], unmatched: [] }),
+    respond: async () => ({ mapping: "Bangor University", filled: [{ name: "givenName", fieldLabel: "Forename" }], skippedExisting: [], noCrmValue: [], manualReview: [], unmatched: [] }),
     ...overrides,
   };
+  base.frames = withDocumentIds(base.frames, "portal");
+  return base;
 }
 
 const autofillMessages = (calls) => calls.sent.filter((call) => call.message.action === "autofill");
@@ -348,15 +395,16 @@ test("mixed frame outcomes keep successful counts and name each failed frame", a
       { frameId: 5, url: "https://evil.example/frame" },
       { frameId: 9, url: "https://apps.bangor.ac.uk/apply/locked" },
     ],
-    injectFails: [9],
+    injectFails: ["portal-9"],
     respond: async (frameId) => {
       if (frameId === 3) throw new Error("Could not establish connection. Receiving end does not exist.");
-      return { filled: [{ name: "givenName", fieldLabel: "Forename" }, { name: "email", fieldLabel: "Email" }], skippedExisting: [], noCrmValue: [], manualReview: [], unmatched: [] };
+      return { mapping: "Bangor University", filled: [{ name: "givenName", fieldLabel: "Forename" }, { name: "email", fieldLabel: "Email" }], skippedExisting: [], noCrmValue: [], manualReview: [], unmatched: [] };
     },
   }));
   await popup.elements.btnAutofill.click();
-  assert.deepEqual(popup.calls.injected, [[0], [3], [9]]);
+  assert.deepEqual(popup.calls.injected, [["portal-0"], ["portal-3"], ["portal-9"]]);
   assert.deepEqual(autofillMessages(popup.calls).map((call) => call.frameId), [0, 3]);
+  assert.equal(popup.calls.injectTargets.every((target) => target.documentIds && !target.frameIds), true);
   const [summary, failures, filled] = popup.status();
   assert.deepEqual(summary, {
     className: "status warning",
@@ -365,7 +413,7 @@ test("mixed frame outcomes keep successful counts and name each failed frame", a
   assert.equal(failures.text, [
     "Frames not filled (2)",
     "Frame 3: The page frame did not respond.",
-    "Frame 9: Could not access this page. If it is an approved website, allow SAMS Portal Autofill to access it, reload the page, and try again.",
+    "Frame 9: Could not access this page. Allow SAMS Portal Autofill to access this website, reload the page, and try again.",
   ].join("\n"));
   assert.equal(filled.text, "Filled (2)\nForename\nEmail");
   assert.equal(popup.elements.studentCard.hidden, false);
@@ -391,12 +439,14 @@ test("a withheld tab URL fails closed with website-access guidance", async () =>
   await popup.elements.btnAutofill.click();
   assert.deepEqual(popup.status(), [{
     className: "status error",
-    text: "Open an approved university portal form first. If it is already open, allow SAMS Portal Autofill to access this website, then try again.",
+    text: "Open the university application form first. Autofill does not run on SAMS CRM, Campora, or browser pages. If it is already open, allow SAMS Portal Autofill to access this website, then try again.",
   }]);
   await popup.elements.btnCopy.click();
   assert.equal(popup.status()[0].text,
     "Open an approved SAMS CRM or Campora student profile first. If it is already open, allow SAMS Portal Autofill to access this website, then try again.");
-  assert.deepEqual(popup.calls, { injected: [], sent: [] });
+  assert.deepEqual(popup.calls.injected, []);
+  assert.deepEqual(popup.calls.sent, []);
+  assert.deepEqual(popup.calls.connected, []);
 });
 
 test("a denied CRM injection reports website access without the page URL and keeps the cache", async () => {
@@ -407,8 +457,162 @@ test("a denied CRM injection reports website access without the page URL and kee
   await popup.elements.btnCopy.click();
   assert.deepEqual(popup.status(), [{
     className: "status error",
-    text: "Could not access this page. If it is an approved website, allow SAMS Portal Autofill to access it, reload the page, and try again.",
+    text: "Could not access this page. Allow SAMS Portal Autofill to access this website, reload the page, and try again.",
   }]);
   assert.deepEqual(popup.calls.sent, []);
   assert.equal((await worker.send({ action: "getStudentCache" })).cache.studentName, "Aisha Rahman");
+});
+
+const GENERIC_URL = "https://apply.example-university.test/apply/personal";
+
+function genericPage(overrides = {}) {
+  const page = portalPage({
+    tab: { id: 7, url: GENERIC_URL },
+    frames: [{ frameId: 0, url: GENERIC_URL }],
+    respond: async () => ({ mapping: null, filled: [{ name: "givenName", fieldLabel: "First name" }], skippedExisting: [], noCrmValue: [], manualReview: [], unmatched: [] }),
+    ...overrides,
+  });
+  page.frames = page.frames.map((frame, index) => (
+    frame.documentId === ""
+      ? frame
+      : { ...frame, documentId: `generic-${frame.frameId ?? index}` }
+  ));
+  if (Array.isArray(page.injectFails)) {
+    page.injectFails = page.injectFails.map((value) => (
+      typeof value === "number" ? `generic-${value}` : value
+    ));
+  }
+  return page;
+}
+
+test("Autofill fills an unmapped university page and only frames with its exact origin", async () => {
+  const worker = loadWorker();
+  await worker.send({ action: "cacheStudent", profile: studentA });
+  const popup = await openPopup(worker, genericPage({
+    frames: [
+      { frameId: 0, url: GENERIC_URL },
+      { frameId: 2, url: "https://apply.example-university.test/apply/child" },
+      { frameId: 3, url: "https://apps.bangor.ac.uk/apply/personal/" },
+      { frameId: 4, url: "https://cdn.example-university.test/widget" },
+      { frameId: 5, url: "about:blank" },
+      { frameId: 6, url: "about:srcdoc" },
+      { frameId: 8, url: "http://apply.example-university.test/apply/personal" },
+    ],
+  }));
+  await popup.elements.btnAutofill.click();
+  assert.deepEqual(popup.calls.injected, [["generic-0"], ["generic-2"]]);
+  assert.deepEqual(autofillMessages(popup.calls).map((call) => [call.frameId, call.message.fieldMap]),
+    [[0, studentA.fields], [2, studentA.fields]]);
+  assert.equal(popup.calls.injectTargets.every((target) => Array.isArray(target.documentIds) && !target.frameIds), true);
+  assert.deepEqual(popup.status()[0], {
+    className: "status success",
+    text: "2 fields filled using shared matching for this website. Draft only: review every field, complete the rest, and submit it yourself.",
+  });
+});
+
+test("Autofill refuses the CRM and browser pages without touching them", async () => {
+  for (const url of ["https://app.samscrm.co.uk/agent/leads/full-profile/student-a/", "chrome://extensions/", "file:///Users/staff/form.html"]) {
+    const worker = loadWorker();
+    await worker.send({ action: "cacheStudent", profile: studentA });
+    const popup = await openPopup(worker, genericPage({ tab: { id: 7, url }, frames: [{ frameId: 0, url }] }));
+    await popup.elements.btnAutofill.click();
+    assert.deepEqual(popup.status(), [{
+      className: "status error",
+      text: "Open the university application form first. Autofill does not run on SAMS CRM, Campora, or browser pages.",
+    }], url);
+    assert.deepEqual(popup.calls.injected, [], url);
+    assert.deepEqual(popup.calls.sent, [], url);
+  }
+});
+
+test("a frame that navigates during Autofill is reported once and never reconnected", async () => {
+  const worker = loadWorker();
+  await worker.send({ action: "cacheStudent", profile: studentA });
+  const childUrl = "https://apply.example-university.test/apply/child";
+  const popup = await openPopup(worker, genericPage({
+    frames: [{ frameId: 0, url: GENERIC_URL }, { frameId: 2, url: childUrl }],
+    respond: async (frameId) => {
+      if (frameId === 2) throw new Error("Document unloaded");
+      return { mapping: null, filled: [{ name: "givenName", fieldLabel: "First name" }], skippedExisting: [], noCrmValue: [], manualReview: [], unmatched: [] };
+    },
+  }));
+  await popup.elements.btnAutofill.click();
+  assert.deepEqual(popup.calls.connected, ["generic-0", "generic-2"]);
+  const [summary, failures] = popup.status();
+  assert.deepEqual(summary, {
+    className: "status warning",
+    text: "1 fields filled in 1 of 2 page frames. Some frames were not filled: review the whole page before continuing.",
+  });
+  assert.equal(failures.text, "Frames not filled (1)\nFrame 2: The page frame did not respond.");
+});
+
+test("Autofill refuses when document identity is unavailable", async () => {
+  const worker = loadWorker();
+  await worker.send({ action: "cacheStudent", profile: studentA });
+  const popup = await openPopup(worker, genericPage({
+    frames: [{ frameId: 0, url: GENERIC_URL, documentId: "" }],
+  }));
+  await popup.elements.btnAutofill.click();
+  assert.deepEqual(popup.status(), [{
+    className: "status error",
+    text: "This browser cannot bind Autofill to the exact page document. Fill the form manually, or use Chrome or Edge.",
+  }]);
+  assert.deepEqual(popup.calls.injected, []);
+  assert.deepEqual(popup.calls.connected, []);
+  assert.deepEqual(autofillMessages(popup.calls), []);
+});
+
+test("pre-injection navigation away from the selected document never delivers values", async () => {
+  const worker = loadWorker();
+  await worker.send({ action: "cacheStudent", profile: studentA });
+  const popup = await openPopup(worker, genericPage({
+    frames: [{ frameId: 0, url: GENERIC_URL }],
+    injectFails: [0],
+  }));
+  await popup.elements.btnAutofill.click();
+  assert.deepEqual(popup.calls.injected, [["generic-0"]]);
+  assert.deepEqual(popup.calls.injectTargets[0].documentIds, ["generic-0"]);
+  assert.equal("frameIds" in popup.calls.injectTargets[0], false);
+  assert.deepEqual(autofillMessages(popup.calls), []);
+  assert.deepEqual(popup.status(), [{
+    className: "status error",
+    text: "Could not access this page. Allow SAMS Portal Autofill to access this website, reload the page, and try again.",
+  }]);
+});
+
+test("a frame that is no longer the selected page receives no student values", async () => {
+  const worker = loadWorker();
+  await worker.send({ action: "cacheStudent", profile: studentA });
+  const popup = await openPopup(worker, genericPage({
+    frames: [{ frameId: 0, url: GENERIC_URL }, { frameId: 2, url: "https://apply.example-university.test/apply/child" }],
+    prepare: async (frameId) => frameId === 2 ? { error: "This page changed. Open the extension again on the form." } : { ready: true },
+  }));
+  await popup.elements.btnAutofill.click();
+  assert.deepEqual(autofillMessages(popup.calls).map((call) => call.frameId), [0]);
+  assert.equal(popup.status()[1].text, "Frames not filled (1)\nFrame 2: This page changed. Open the extension again on the form.");
+});
+
+test("Clear after the page checks but before delivery sends no student values", async () => {
+  const worker = loadWorker();
+  await worker.send({ action: "cacheStudent", profile: studentA });
+  const popup = await openPopup(worker, genericPage({
+    prepare: async () => {
+      await worker.send({ action: "clearStudentCache" });
+      return { ready: true };
+    },
+  }));
+  await popup.elements.btnAutofill.click();
+  assert.deepEqual(popup.calls.sent.map((call) => call.message.action), ["prepare"]);
+  assert.deepEqual(popup.status(), [{ className: "status error", text: "No copied student is available. Copy from CRM again before Autofill." }]);
+});
+
+test("a tab whose top frame has already left the selected page is not filled", async () => {
+  const worker = loadWorker();
+  await worker.send({ action: "cacheStudent", profile: studentA });
+  const popup = await openPopup(worker, genericPage({ frames: [{ frameId: 0, url: "https://other.example-university.test/next" }] }));
+  await popup.elements.btnAutofill.click();
+  assert.deepEqual(popup.status(), [{ className: "status error", text: "The page changed before Autofill started. Try again on the form." }]);
+  assert.deepEqual(popup.calls.injected, []);
+  assert.deepEqual(popup.calls.sent, []);
+  assert.deepEqual(popup.calls.connected, []);
 });

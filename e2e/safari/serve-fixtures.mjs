@@ -62,8 +62,8 @@ const framesPage = `<!doctype html>
   <main>
     <h1>Frame targeting fixture</h1>
     <form><label for="top_first_name">First name</label><input id="top_first_name"></form>
-    <iframe title="Approved child frame" src="${portalOrigins[1]}${paths.bangor}" width="900" height="520"></iframe>
-    <iframe title="Unapproved child frame" src="${unapprovedOrigin}${paths.unapprovedFrame}" width="900" height="320"></iframe>
+    <iframe title="Cross-origin development portal frame" src="${portalOrigins[1]}${paths.bangor}" width="900" height="520"></iframe>
+    <iframe title="Cross-origin unapproved frame" src="${unapprovedOrigin}${paths.unapprovedFrame}" width="900" height="320"></iframe>
   </main>
   ${activityScript}
 </body>

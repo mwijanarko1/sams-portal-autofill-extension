@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Synthetic heading-framed sections</title></head>
+<body>
+  <h2>Referee</h2>
+  <iframe id="ref_frame" src="/apply/heading-ref"></iframe>
+  <h2>Applicant</h2>
+  <iframe id="app_frame" src="/apply/heading-app"></iframe>
+  <script>
+    window.activity = { submissions: 0, clicks: 0, changes: [] };
+    document.addEventListener("submit", (event) => { event.preventDefault(); activity.submissions++; });
+    document.addEventListener("change", (event) => { activity.changes.push(event.target.id); });
+  </script>
+</body>
+</html>
