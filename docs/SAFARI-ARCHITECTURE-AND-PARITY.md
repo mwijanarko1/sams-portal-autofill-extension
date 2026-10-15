@@ -116,7 +116,7 @@ One version-controlled JavaScript source
                                       +-- popup: operator commands/results
                                       +-- worker: ephemeral student cache
                                       +-- CRM content script: profile DOM only
-                                      +-- portal content scripts: approved frames
+                                      +-- portal content scripts: selected page's own-origin frames
 ```
 
 ### 3.1 Runtime boundaries
@@ -126,7 +126,7 @@ One version-controlled JavaScript source
 3. **Popup:** validates the active tab, handles explicit staff actions, injects scripts, displays the currently copied student and outcome lists.
 4. **Background worker:** owns the single student cache and expiry policy. Listeners register synchronously at startup; state lives in `storage.session`, not worker globals.
 5. **CRM content script:** reads the approved profile and returns a serializable profile. It can open profile sections, but cannot save CRM forms.
-6. **Portal content script:** receives data only in an approved frame, validates its own origin, fills eligible empty fields, returns a serializable report.
+6. **Portal content script:** receives data only over a popup port in a frame of the selected page's exact origin, validates its own origin, sandboxing and top page, fills eligible empty fields, returns a serializable report.
 
 No server, native messaging, App Group, Keychain student cache, database, AI service, clipboard pipeline, or cross-browser synchronization is needed. Chrome and Safari caches are independent. Switching browsers requires Copy again in that browser.
 
@@ -226,15 +226,15 @@ Do not treat Copy as an OS clipboard action. If the popup closes before the resp
 
 ### 4.4 Target Autofill flow
 
-This retains the existing flow but includes the proposed freshness and failure-reporting hardening called out in section 8.2. Those changes are not implemented in the Chrome baseline.
+This retains the existing flow. Freshness hardening (re-read worker cache after `prepare`, before values) is implemented on the Autofill path. Real Safari `documentId` targeting and Port.sender.url behavior remain unverified on a Safari runtime.
 
 1. Staff manually open the desired application step and choose Autofill.
 2. Revalidate current cache availability and expiry immediately before transmitting fields. The current popup-held cache alone is not an authoritative freshness check.
-3. Query the active tab and validate its exact portal origin.
-4. Enumerate frames using `webNavigation.getAllFrames`; keep only frames whose **own URL origin** is approved.
-5. Inject build mode, allowlist, synonyms, all three portal config files, engine, then portal handler into those frame IDs.
-6. Send each approved frame the canonical field map using `tabs.sendMessage(..., { frameId })`.
-7. Handler rechecks its current origin, scans eligible controls and uses the shared engine.
+3. Query the active tab and accept any HTTP(S) origin except CRM origins (2026-10-15: unmapped universities are reached through the toolbar `activeTab` grant).
+4. Enumerate frames using `webNavigation.getAllFrames`; keep only frames whose **own URL origin** equals the top page's origin. Each retained frame must expose a `documentId`; missing `documentId` fails closed (no frameId-only silent Autofill fallback). Actual Safari support for `documentId` injection/connect is unverified.
+5. Inject build mode, allowlist, synonyms, all three portal config files, engine, then portal handler into those frames via `scripting.executeScript({ documentIds })`.
+6. Open one `tabs.connect(..., { documentId })` port per frame, ask each to `prepare`, re-read the worker cache, then send the canonical field map over the same port. A closed port is reported and never reopened.
+7. Handler accepts only the popup sender, rechecks its current origin, `self.origin` and top origin, scans eligible controls and uses the shared engine.
 8. Engine preserves existing values, applies section-specific rules and split dates, and returns results.
 9. Popup merges reports and displays Filled, Skipped existing, No CRM value, Unmatched CRM fields, and Manual review.
 10. Extend cache expiry only for a valid, completed Autofill operation. A missing/expired cache returned by the worker must not resurrect stale popup data.
@@ -283,9 +283,9 @@ The packager reports unsupported manifest keys. Capture and classify every warni
 
 | API used today | Safari evidence | Required verification |
 |---|---|---|
-| `tabs.query({ active: true, currentWindow: true })` | Safari tabs require host permission [A3] | Real toolbar popup, multiple windows, missing URL/id, permission revoked |
+| `tabs.query({ active: true, currentWindow: true })` | Safari tabs require host permission [A3] | Real toolbar popup, multiple windows, missing URL/id, permission revoked, toolbar `activeTab` grant on an unmapped university origin |
 | `scripting.executeScript({ target: { tabId, frameIds }, files })` | Safari supports script injection; current call does not use unsupported `injectImmediately` [A3, M2] | File ordering, isolated-world globals, reinjection and targeted child frames |
-| `tabs.sendMessage(..., { frameId })` | WebExtension messaging supported [A3] | Correct frame receives data; absent/navigated frame returns a useful error |
+| `tabs.connect(..., { frameId })`, `runtime.onConnect` | WebExtension messaging supported [A3]; frame-targeted ports and `Port.sender.url` unverified in Safari | Correct frame receives data; popup sender accepted; navigation closes the port with a useful error |
 | `runtime.sendMessage`, `runtime.onMessage` | Safari support recorded from 14 [M6] | Async response lifetime, thrown/rejected calls and serializable objects |
 | `storage.session.get/set/remove` | Safari support from 16.4 [A3, M1] | Survives worker suspension, not browser restart; no content-script access expansion |
 | `alarms.create/clear/onAlarm` | Safari support from 14 [M3] | Cleanup after sleep/wake and rescheduling; timestamp check remains authoritative |
@@ -309,7 +309,7 @@ Legend: **Required** means the Safari release must reproduce the current Chrome 
 | Single student replacement | Copy overwrites cache | Required | Copy A then B, only B fills |
 | Ephemeral cache | `storage.session`, 30-minute activity expiry | Required | Suspension, timestamp expiry, Clear, browser restart, update |
 | Exact hosts and dev/prod separation | Allowlist at popup and page boundary | Required | No localhost in prod, no wildcard, denied hosts stay untouched |
-| Approved frames only | Frame URL filtering and targeted injection/messaging | Required | Same-origin child, approved cross-origin child, denied child, navigation race |
+| Selected-origin frames only | Frame URL filtering, targeted injection, per-frame ports | Required | Same-origin child, cross-origin child (including a mapped portal), sandboxed child, navigation race |
 | Text/email/tel/textarea | Eligible empty controls, section-aware matching | Required | Same resulting values and unchanged prefilled controls |
 | Native select/radio | Matched options and eligible radio groups | Required | Same choice; no unrelated option, keyboard/page events work |
 | Custom combobox/listbox | Scoped option matching with click guard | Conditional on actual page DOM | Controlled WebKit fixture; no navigation or irreversible control clicks |

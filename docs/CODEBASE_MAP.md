@@ -58,12 +58,12 @@ Production packaging rejects empty Campora origins or fewer than three portal or
 | `config/portals/manchester.js` | Greater Manchester placeholder (no origins yet). |
 | `src/background.js` | Serialized session cache, expiry alarm, identity-checked messages. |
 | `src/crm-reader.js` | Visible CRM DOM reader; expands sections; refuses non-profile pages. |
-| `src/portal-fill.js` | Allowlisted portal frame handler; runs engine; returns fill report. |
+| `src/portal-fill.js` | Page handler on a popup-only port; checks selected origin, sandboxing and top page; runs engine; returns fill report. |
 | `src/engine/engine.js` | Core scan/match/format/fill, split dates, click guard, skip-if-filled. |
 | `scripts/build.mjs` | Chrome/Safari resource package; per-target `dist` cleanup only. |
 | `scripts/package-safari.mjs` | Xcode unsigned app build + embedded-resource hash check. |
 | `safari/` | macOS containing app + Safari extension target. No copied JS tree. |
-| `test/` | Node unit/config tests and Chromium DOM fixtures (61 tests). |
+| `test/` | Node unit/config tests and Chromium DOM fixtures (84 tests on 2026-10-15). |
 | `test/fixtures/` | Synthetic CRM HTML for reader tests. |
 | `e2e/` | Loaded-extension Chromium E2E + opt-in live smoke. |
 | `e2e/fixtures/` | Synthetic CRM/Bangor/Greenwich HTML for E2E and Safari checklist. |
@@ -85,10 +85,10 @@ Production packaging rejects empty Campora origins or fewer than three portal or
 2. Popup validates tab origin, injects `crm-reader.js` (+ config).
 3. Reader re-checks origin/path/marker, maps visible labels, sends one profile to the worker.
 4. Worker stores profile in `storage.session` and starts/resets the 30 minute alarm.
-5. Staff opens an approved portal form step. Popup discovers frames via `webNavigation.getAllFrames`.
-6. Student values go only to frame IDs whose own origin is allowlisted.
+5. Staff opens a university form step and opens the popup from the toolbar there (temporary `activeTab` grant unless the portal is mapped). Popup discovers frames via `webNavigation.getAllFrames`.
+6. Student values go only to the top frame and frames with exactly its origin, over a per-frame port; the handler re-checks origin, sandboxing and top page, and the popup re-reads the worker cache before sending.
 7. Portal handler re-validates origin, runs the engine (empty fields only), returns filled/skipped/manual buckets.
-8. Successful fill on at least one approved frame extends expiry. Clear, expiry, browser restart, or extension reload wipe the cache.
+8. Successful fill on at least one frame extends expiry. Clear, expiry, browser restart, or extension reload wipe the cache.
 
 ### Add an origin or portal field
 
@@ -142,6 +142,7 @@ Safari runtime acceptance is manual. Playwright WebKit and `npm run test:e2e` do
 - **Incomplete production allowlist:** Campora and Greater Manchester origins missing; prod builds intentionally fail.
 - **Safari runtime unverified:** containing app builds and embeds resources; installed Safari behavior still needs operator checklist (ports 3000/3001 may be owned by other projects).
 - **Localhost fixtures use generic matching:** Bangor/Greenwich portal-specific maps apply on production origins only. Safari fixture parity is not portal-origin parity.
+- **Generic matching is conservative:** unmapped universities get shared personal/contact fields only; everything ambiguous or third-party stays manual. Sandboxed same-origin frames are not filled and are reported as not filled.
 - **Live no-save smoke is opt-in only:** needs approved PinchTab profile and credentials in ignored `.env.local`. Not part of `npm test`.
 - **Empty `fixtures/` root:** committed sanitized per-step portal HTML for warranty still largely local/`tmp` or `e2e/fixtures` synthetics.
 - **Non-UK Home Telephone length:** Greenwich 11-character limit can require manual clear/correct.
