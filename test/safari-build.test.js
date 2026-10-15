@@ -48,6 +48,7 @@ test("Safari dev build generates exact hosts and byte-identical shared resources
     "https://app.samscrm.co.uk/*",
     "https://nelson.gre.ac.uk/*",
     "https://apps.bangor.ac.uk/*",
+    "https://evision.bolton.ac.uk/*",
     "http://localhost:3000/*",
     "http://localhost:3001/*",
     "http://127.0.0.1:3001/*",
@@ -97,10 +98,14 @@ test("production builds for both targets keep the incomplete-allowlist guard and
 test("a production Safari build excludes development hosts once the allowlist is complete", () => {
   const dir = stage();
   const allowlist = path.join(dir, "config/allowlist.js");
-  // Synthetic .example origins exist only in this staged copy to exercise prod host generation.
-  fs.writeFileSync(allowlist, fs.readFileSync(allowlist, "utf8")
-    .replace("camporaOrigins: [],", 'camporaOrigins: ["https://campora.example"],')
-    .replace('"https://apps.bangor.ac.uk"]', '"https://apps.bangor.ac.uk", "https://third-portal.example"]'));
+  // Synthetic Campora origin exists only in this staged copy; three portal origins are already real.
+  fs.writeFileSync(
+    allowlist,
+    fs.readFileSync(allowlist, "utf8").replace(
+      "camporaOrigins: [],",
+      'camporaOrigins: ["https://campora.example"],'
+    )
+  );
   const result = build(dir, "prod", "safari");
   assert.equal(result.status, 0, result.stderr);
   const out = path.join(dir, "dist/safari-webextension");
@@ -109,7 +114,7 @@ test("a production Safari build excludes development hosts once the allowlist is
     "https://campora.example/*",
     "https://nelson.gre.ac.uk/*",
     "https://apps.bangor.ac.uk/*",
-    "https://third-portal.example/*",
+    "https://evision.bolton.ac.uk/*",
   ]);
   assert.equal(fs.readFileSync(path.join(out, "config/build-mode.js"), "utf8"), 'globalThis.SAMS_BUILD_MODE = "prod";\n');
 });

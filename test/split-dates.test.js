@@ -76,3 +76,20 @@ test("split dates keep a value the applicant already chose", async () => {
   await ctx.SAMS_ENGINE.autofillPage(crm, []);
   assert.equal(chosen(day), "03");
 });
+
+test("manchester date of birth and graduation year fill IPP split selects", async () => {
+  const selects = [
+    fakeSelect("IPR_DOB_DAY", days),
+    fakeSelect("IPR_DOB_MONTH", numericMonths),
+    fakeSelect("IPR_DOB_YEAR", years),
+    fakeSelect("IPQ_OA_QENDD1_YEAR", years),
+  ];
+  const ctx = load(
+    "manchester",
+    "https://evision.bolton.ac.uk",
+    "/urd/sits.urd/run/SIW_IPP_USR.start_url",
+    selects
+  );
+  await ctx.SAMS_ENGINE.autofillPage(crm, []);
+  assert.deepEqual(selects.map(chosen), ["15", "04", "2001", "2023"]);
+});

@@ -1,11 +1,11 @@
 # Portal verification matrix
 
-~~Exact application origins and authenticated test journeys are awaiting SAMS access.~~ Greenwich's exact origin and supervised field inventory are confirmed after merged PR #1. Bangor origin and first-pass field inventory are confirmed 2026-10-08. Campora and Greater Manchester origins/access, plus live CRM-to-portal test journeys, remain pending. Do not guess or broaden production host permissions.
+~~Exact application origins and authenticated test journeys are awaiting SAMS access.~~ Greenwich's exact origin and supervised field inventory are confirmed after merged PR #1. Bangor origin and first-pass field inventory are confirmed 2026-10-08. Greater Manchester origin and first-pass field inventory are confirmed 2026-10-15 on `evision.bolton.ac.uk`. Campora origin/access, plus live CRM-to-portal test journeys, remain pending. Do not guess or broaden production host permissions.
 
 | Portal | Origin confirmed | Personal | Contact | Education | Employment | Fixtures | Status |
 |---|---:|---:|---:|---:|---:|---:|---|
 | University of Greenwich | Yes (`nelson.gre.ac.uk`) | Partial | Partial | Partial | Partial | Synthetic in `e2e/fixtures/greenwich.html`; sanitized live steps still local/`tmp` | PR #1 merged; reviewed map, safety blocks, qualification and phone regressions verified; live CRM-to-portal journey pending |
-| University of Greater Manchester | No | Not tested | Not tested | Not tested | Not tested | Missing | Blocked by access |
+| University of Greater Manchester | Yes (`evision.bolton.ac.uk`) | Mapped | Mapped | Mapped | Mapped | Live inventory under `tmp/gm-inventory/`; sanitized fixtures pending | Origin + selector map in `config/portals/manchester.js`; SITS IPP tabs; Referees/Funding/Research hidden on MBA sample; live CRM Autofill pending. See `docs/history/MANCHESTER.md` |
 | Bangor University | Yes (`apps.bangor.ac.uk`) | Mapped | Mapped | Mapped | Mapped | Synthetic in `e2e/fixtures/bangor.html`; live inventory under `tmp/` | Origin + selector map in `config/portals/bangor.js`; Programme locked until Personal saved; live CRM Autofill pending. See `docs/history/BANGOR.md` |
 
 For each supervised journey, record the exact origin, page matcher, fields filled, existing values skipped, fields with no CRM value, fields left for manual review, and a sanitized HTML fixture under `fixtures/<portal>/` (committed warranty) in addition to the synthetic pages in `e2e/fixtures/`.
