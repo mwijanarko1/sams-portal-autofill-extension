@@ -3,6 +3,10 @@ if (!globalThis.SAMS_SYNONYMS) throw new Error("SAMS synonym config was not load
 var STOPWORDS = globalThis.SAMS_SYNONYMS.STOPWORDS;
 var SYNONYM_MAP = globalThis.SAMS_SYNONYMS.SYNONYM_MAP;
 var AUTOCOMPLETE_KEY_MAP = globalThis.SAMS_SYNONYMS.AUTOCOMPLETE_KEY_MAP;
+var AUTOCOMPLETE_PURPOSES = globalThis.SAMS_SYNONYMS.AUTOCOMPLETE_PURPOSES;
+var GENERIC_FIELDS = globalThis.SAMS_SYNONYMS.GENERIC_FIELDS;
+var GENERIC_BLOCKED = globalThis.SAMS_SYNONYMS.GENERIC_BLOCKED;
+var GENERIC_SELECT_EQUIV = globalThis.SAMS_SYNONYMS.GENERIC_SELECT_EQUIV || {};
 
 if (globalThis.__SAMS_PORTAL_AUTOFILL_LOADED__) {
   // The engine is already registered in this frame.
@@ -201,7 +205,12 @@ function getSelectorPath(el) {
  * @returns {boolean}
  */
 function isFillable(el) {
-  if (el.disabled) return false;
+  if (el.disabled || el.readOnly || el.isConnected === false) return false;
+  if (el.getAttribute && (el.getAttribute("aria-disabled") === "true" || el.getAttribute("aria-readonly") === "true")) return false;
+  try {
+    if (el.closest && el.closest("[inert]")) return false;
+    if (el.matches && el.matches(":disabled")) return false;
+  } catch (error) { /* non-DOM element */ }
   if (portalBlocks(el)) return false;
 
   var rect = el.getBoundingClientRect();
@@ -218,11 +227,13 @@ function isFillable(el) {
 /**
  * Get the best human-readable label for a form element.
  * Uses multiple strategies in priority order, never mutating the DOM.
+ * Strict mode returns only text the page associates with this control.
  *
  * @param {Element} el
+ * @param {boolean} [strict]
  * @returns {string}
  */
-function getLabelForElement(el) {
+function getLabelForElement(el, strict) {
   // 1. aria-label
   var ariaLabel = el.getAttribute("aria-label");
   if (ariaLabel && ariaLabel.trim()) return ariaLabel.trim();
@@ -263,7 +274,7 @@ function getLabelForElement(el) {
   }
 
   // 5. Nearest preceding label element (sibling or nearby)
-  var prevLabel = findNearestPrecedingLabel(el);
+  var prevLabel = strict ? "" : findNearestPrecedingLabel(el);
   if (prevLabel) return prevLabel;
 
   // 6. placeholder
@@ -275,7 +286,7 @@ function getLabelForElement(el) {
   if (title && title.trim()) return title.trim();
 
   // 8. name or id as fallback
-  return el.name || el.id || "";
+  return strict ? "" : el.name || el.id || "";
 }
 
 /**
@@ -1882,7 +1893,7 @@ async function setElementValue(el, value, meta) {
   value = formatValueForField(el, value, meta || {});
 
   // National phone digits only when filling Ulster Phone/Mobile (country code separate)
-  if (ACTIVE_PORTAL && ACTIVE_PORTAL.phoneKeepsDialPrefix &&
+  if ((!ACTIVE_PORTAL || ACTIVE_PORTAL.phoneKeepsDialPrefix) &&
     (crmKey === "phone" || crmKey === "emergencyPhone") && (type === "tel" || type === "text")) {
     // No country-code field: UK numbers go national (07...), others keep +CC.
     var intlPhone = String(value).trim().replace(/^00/, "+").replace(/[^\d+]/g, "");
@@ -1905,11 +1916,6 @@ async function setElementValue(el, value, meta) {
   }
 
   if (tagName === "select") {
-    var options = Array.from(el.options);
-    var candidates = expandComboboxCandidates(crmKey, value);
-    if (candidates.indexOf(value.trim()) === -1) candidates.unshift(value.trim());
-
-      // Helper: skip placeholder/default options (e.g. "\u2014 Select \u2014", "Choose one\u2026")
     function isPlaceholderOption(o) {
       var t = o.text.trim().toLowerCase();
       return !o.value || o.value === "" ||
@@ -1917,6 +1923,17 @@ async function setElementValue(el, value, meta) {
         /^[\u2014\u2013\u2012-]/.test(t) ||
         /^(select|choose|pick|please|--none--)/.test(t);
     }
+
+    // Unmapped portals: exact normalized value/label or a small explicit equivalence only.
+    // Never fall through to the legacy fuzzy scorer.
+    if (!ACTIVE_PORTAL) {
+      var exactOpt = matchGenericSelectOption(el, value, crmKey, isPlaceholderOption);
+      return exactOpt ? applyGenericSelectOption(el, exactOpt) : false;
+    }
+
+    var options = Array.from(el.options);
+    var candidates = expandComboboxCandidates(crmKey, value);
+    if (candidates.indexOf(value.trim()) === -1) candidates.unshift(value.trim());
 
     var bestOpt = null;
     var bestSc = 0;
@@ -2758,6 +2775,8 @@ async function pickLightningComboboxOption(inputEl, value, crmKey) {
  * @returns {Promise<{filled:Array, skippedEmpty:Array, skippedExisting:Array, skippedSelect:Array, unmatched:string[]}>}
  */
 async function autofillPage(fieldMap, fields) {
+  if (!ACTIVE_PORTAL) return autofillGeneric(fieldMap, fields);
+
   /** @type {Array<{name:string,value:string,fieldName:string,fieldLabel:string,score:number,matchReason:string}>} */
   var filled = [];
 
@@ -2866,6 +2885,8 @@ async function autofillPage(fieldMap, fields) {
         continue;
       }
 
+      // The page may have disabled, hidden, or locked the control since the scan.
+      if (!isFillable(bestField.element)) continue;
       var success = await setElementValue(bestField.element, value, {
         label: bestField.label,
         name: bestField.name,
@@ -2978,6 +2999,7 @@ async function autofillPage(fieldMap, fields) {
   fillSplitDates(fieldMap, filled);
 
   return {
+    mapping: ACTIVE_PORTAL.name,
     filled: filled,
     skipped: skippedAll,
     skippedEmpty: skippedEmpty,
@@ -2987,6 +3009,424 @@ async function autofillPage(fieldMap, fields) {
     noCrmValue: noCrmValue,
     manualReview: manualReview,
   };
+}
+
+// ─── Generic matching (no saved portal mapping) ─────────────────────────
+
+var GENERIC_ALIAS_KEYS = Object.create(null);
+Object.keys(GENERIC_FIELDS).forEach(function (key) {
+  GENERIC_FIELDS[key].aliases.forEach(function (alias) { GENERIC_ALIAS_KEYS[alias] = key; });
+});
+
+/** Lowercase words, splitting camelCase and dropping punctuation: "dateOfBirth" is "date of birth". */
+function genericWords(text) {
+  return String(text || "")
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/([A-Za-z])(\d)/g, "$1 $2")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+/** "Your middle name(s) *" is "middle name". */
+function genericLabelWords(label) {
+  return genericWords(String(label || "").replace(/\([^)]*\)/g, " ").replace(/^\s*your\s+/i, ""));
+}
+
+/** Last path segment of a name or id: "applicant[contact][email]" is "email". */
+function genericNameWords(name) {
+  var parts = String(name || "").split(/[.[\]]+/).filter(function (part) { return part && !/^\d+$/.test(part); });
+  return genericWords(parts[parts.length - 1]);
+}
+
+/**
+ * CRM key an autocomplete attribute names: a key, "" when it gives no purpose, or null when it
+ * declares a purpose that is not one whole applicant value (or a billing/shipping/work contact).
+ */
+function genericAutocompleteKey(value) {
+  var tokens = String(value || "").trim().toLowerCase().split(/\s+/).filter(Boolean);
+  if (tokens[0] && tokens[0].indexOf("section-") === 0) tokens.shift();
+  if (tokens[0] === "shipping" || tokens[0] === "billing") return null;
+  if (tokens[0] === "work" || tokens[0] === "fax" || tokens[0] === "pager") return null;
+  if (tokens[0] === "home" || tokens[0] === "mobile") tokens.shift();
+  if (!AUTOCOMPLETE_PURPOSES.has(tokens[0])) return "";
+  return AUTOCOMPLETE_KEY_MAP[tokens[0]] || null;
+}
+
+/** "select", "date", "text", or "" for radios, custom comboboxes, and other manual controls. */
+function genericControlKind(el) {
+  var tag = el.tagName.toLowerCase();
+  if (tag === "select") return el.multiple ? "" : "select";
+  if (tag === "textarea") return "text";
+  if (tag !== "input") return "";
+  if ((el.getAttribute("role") || "").toLowerCase() === "combobox" ||
+    /^(list|both|inline)$/i.test(el.getAttribute("aria-autocomplete") || "") ||
+    /^(true|listbox|menu|dialog|grid|tree)$/i.test(el.getAttribute("aria-haspopup") || "")) return "";
+  var type = (el.getAttribute("type") || "text").toLowerCase();
+  if (type === "date") return "date";
+  return ["text", "email", "tel"].indexOf(type) >= 0 ? "text" : "";
+}
+
+function genericHeadingRank(node) {
+  if (!node || !node.tagName) return 0;
+  if (/^H[1-6]$/.test(node.tagName)) return Number(node.tagName.charAt(1));
+  if (node.getAttribute && node.getAttribute("role") === "heading") {
+    var level = Number(node.getAttribute("aria-level") || 2);
+    return level >= 1 && level <= 6 ? level : 2;
+  }
+  return 0;
+}
+
+/** All enclosing fieldset legends for this control (outer and nested). */
+function genericLegendContext(el) {
+  var parts = [];
+  for (var node = el.parentElement; node; node = node.parentElement) {
+    if (node.tagName !== "FIELDSET") continue;
+    var legend = null;
+    for (var child = node.firstElementChild; child; child = child.nextElementSibling) {
+      if (child.tagName === "LEGEND") { legend = child; break; }
+    }
+    if (legend && legend.textContent) parts.push(legend.textContent);
+  }
+  return parts.join(" ");
+}
+
+/**
+ * Nearest form or fieldset ancestor of a heading. Prefer the closer container so an Applicant
+ * heading inside fieldset A does not re-scope sibling fieldset B via the shared enclosing form.
+ * Headings with no such host still enclose later forms/iframes in document order.
+ */
+function genericHeadingHost(heading) {
+  for (var node = heading && heading.parentElement; node; node = node.parentElement) {
+    if (node.tagName === "FIELDSET" || node.tagName === "FORM") return node;
+  }
+  return null;
+}
+
+/** Headings scoped to a form/fieldset apply only to descendants of that nearest host. */
+function genericHeadingAppliesTo(heading, el) {
+  if (!heading || !el) return false;
+  var host = genericHeadingHost(heading);
+  if (host && !host.contains(el)) return false;
+  return true;
+}
+
+/**
+ * Outline headings that enclose this control in its owner document: walk body in tree order, keep
+ * a heading stack by rank, and stop at the control. Headings outside a form still apply. Earlier
+ * sibling sections do not leak in once a same-or-higher heading closes them.
+ */
+function genericHeadingContext(el) {
+  var doc = (el && el.ownerDocument) || document;
+  var root = doc && doc.body;
+  if (!root || !el || (el.ownerDocument && el.ownerDocument !== doc)) return "";
+  var stack = [];
+  var nodes = root.querySelectorAll("h1, h2, h3, h4, h5, h6, [role='heading']");
+  for (var i = 0; i < nodes.length; i++) {
+    var node = nodes[i];
+    if (node === el || (el.contains && el.contains(node))) continue;
+    if (!genericHeadingAppliesTo(node, el)) continue;
+    var position = node.compareDocumentPosition(el);
+    // PRECEDING means el comes before node, so this heading is after the control.
+    if (position & Node.DOCUMENT_POSITION_PRECEDING) break;
+    var rank = genericHeadingRank(node);
+    if (!rank) continue;
+    while (stack.length && stack[stack.length - 1].rank >= rank) stack.pop();
+    stack.push({ rank: rank, text: node.textContent || "" });
+  }
+  return stack.map(function (item) { return item.text; }).join(" ");
+}
+
+/** Form's own accessible name/metadata only (not inner section copy). */
+function genericFormOwnMetadata(form) {
+  if (!form) return "";
+  var doc = form.ownerDocument || document;
+  var bits = [
+    form.getAttribute("aria-label"),
+    form.getAttribute("title"),
+    form.getAttribute("name"),
+    form.id,
+  ];
+  var labelledby = form.getAttribute("aria-labelledby");
+  if (labelledby) {
+    var ids = labelledby.split(/\s+/);
+    for (var i = 0; i < ids.length; i++) {
+      var ref = doc.getElementById(ids[i]);
+      if (ref && ref.textContent) bits.push(ref.textContent);
+    }
+  }
+  if (form.id) {
+    try {
+      var labelEl = doc.querySelector("label[for=\"" + CSS.escape(form.id) + "\"]");
+      if (labelEl && labelEl.textContent) bits.push(labelEl.textContent);
+    } catch (error) { /* invalid id */ }
+  }
+  return genericWords(bits.join(" "));
+}
+
+/** Same-origin embedding chain: iframe title/name/aria-label plus parent enclosing sections. */
+function genericEmbeddingContext() {
+  var parts = [];
+  try {
+    var frame = window.frameElement;
+    while (frame) {
+      parts.push(frame.getAttribute("title") || "");
+      parts.push(frame.getAttribute("name") || "");
+      parts.push(frame.getAttribute("aria-label") || "");
+      parts.push(genericLegendContext(frame));
+      parts.push(genericHeadingContext(frame));
+      var hostForm = frame.closest && frame.closest("form");
+      if (hostForm) parts.push(genericFormOwnMetadata(hostForm));
+      var parentView = frame.ownerDocument && frame.ownerDocument.defaultView;
+      frame = parentView && parentView.frameElement;
+    }
+  } catch (error) { /* cross-origin parent */ }
+  return parts.join(" ");
+}
+
+function genericSectionText(el) {
+  return [genericLegendContext(el), genericHeadingContext(el), genericEmbeddingContext()].join(" ");
+}
+
+/** Form-level auth/recovery wording from aria-label, action, instructions and submit labels. */
+function genericFormContext(form) {
+  if (!form) return "";
+  var bits = [
+    form.getAttribute("aria-label"),
+    form.getAttribute("name"),
+    form.id,
+    form.getAttribute("action"),
+  ];
+  var notes = form.querySelectorAll("p, [role='status'], .instructions, .help, .hint");
+  for (var i = 0; i < notes.length && i < 6; i++) bits.push(notes[i].textContent);
+  var actions = form.querySelectorAll("button, input[type='submit'], input[type='button']");
+  for (var j = 0; j < actions.length && j < 8; j++) {
+    bits.push(actions[j].textContent || actions[j].value || actions[j].getAttribute("aria-label"));
+  }
+  return genericWords(bits.join(" "));
+}
+
+function liveFieldMeta(el) {
+  return {
+    element: el,
+    name: el.name || "",
+    id: el.id || "",
+    label: getLabelForElement(el, true),
+    autocomplete: el.getAttribute("autocomplete") || "",
+    type: ((el.getAttribute("type") || el.tagName || "") + "").toLowerCase(),
+    tagName: (el.tagName || "").toLowerCase(),
+    required: !!el.required,
+  };
+}
+
+/**
+ * The applicant CRM key a control asks for, or "" to leave it manual. The control's label,
+ * name, id and autocomplete must agree on one supported key; a label naming anything else wins.
+ */
+function genericFieldKey(field) {
+  var el = field.element;
+  if (!el || el.isConnected === false) return "";
+  var kind = genericControlKind(el);
+  if (!kind) return "";
+  var form = el.form || (el.closest && el.closest("form"));
+  if (form && form.querySelector("input[type='password']")) return "";
+  if (form && GENERIC_BLOCKED.form && GENERIC_BLOCKED.form.test(genericFormContext(form))) return "";
+  if (form && GENERIC_BLOCKED.section.test(genericFormOwnMetadata(form))) return "";
+  var autocomplete = genericAutocompleteKey(field.autocomplete || el.getAttribute("autocomplete") || "");
+  if (autocomplete === null) return "";
+  var label = field.label != null ? field.label : getLabelForElement(el, true);
+  var own = genericWords([label, el.name, el.id, el.getAttribute("placeholder"), getAriaDescribedbyText(el), field.autocomplete || el.getAttribute("autocomplete")].join(" "));
+  if (GENERIC_BLOCKED.field.test(own) || GENERIC_BLOCKED.section.test(genericWords(genericSectionText(el)))) return "";
+  var labelKey = label ? GENERIC_ALIAS_KEYS[genericLabelWords(label)] : "";
+  if (labelKey === undefined) return "";
+  var keys = [labelKey, GENERIC_ALIAS_KEYS[genericNameWords(el.name)], GENERIC_ALIAS_KEYS[genericNameWords(el.id)], autocomplete]
+    .filter(Boolean);
+  if (!keys.length || keys.some(function (key) { return key !== keys[0]; })) return "";
+  return GENERIC_FIELDS[keys[0]].controls.indexOf(kind) >= 0 ? keys[0] : "";
+}
+
+/** How many live fillable controls currently classify as this CRM key. */
+function countLiveGenericKey(key) {
+  if (!key) return 0;
+  var live = scanFormFields({ mode: "fill" });
+  var count = 0;
+  for (var i = 0; i < live.length; i++) {
+    if (genericFieldKey(liveFieldMeta(live[i].element)) === key) count++;
+  }
+  return count;
+}
+
+function genericSelectNorm(text) {
+  return String(text || "")
+    .toLowerCase()
+    .replace(/[.]/g, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function genericSelectAliasSet(crmKey, wanted) {
+  var aliases = Object.create(null);
+  aliases[wanted] = true;
+  var groups = GENERIC_SELECT_EQUIV[crmKey] || [];
+  for (var g = 0; g < groups.length; g++) {
+    var normalized = groups[g].map(genericSelectNorm);
+    if (normalized.indexOf(wanted) === -1) continue;
+    for (var i = 0; i < normalized.length; i++) aliases[normalized[i]] = true;
+  }
+  return aliases;
+}
+
+/** True when the token belongs to any equivalence group for this CRM key. */
+function genericSelectTokenInAnyGroup(crmKey, token) {
+  if (!token) return false;
+  var groups = GENERIC_SELECT_EQUIV[crmKey] || [];
+  for (var g = 0; g < groups.length; g++) {
+    var normalized = groups[g].map(genericSelectNorm);
+    if (normalized.indexOf(token) !== -1) return true;
+  }
+  return false;
+}
+
+function genericOptionDisabled(option) {
+  if (!option || option.disabled) return true;
+  var group = option.parentElement;
+  return !!(group && group.tagName === "OPTGROUP" && group.disabled);
+}
+
+/** Numeric or UUID submitted values are opaque encodings, not competing human labels. */
+function genericSelectValueOpaque(token) {
+  if (!token) return false;
+  if (/^[0-9]+$/.test(token)) return true;
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(token);
+}
+
+/**
+ * Exact or explicit-equivalence select match; disabled or non-unique values stay manual.
+ * Match HTMLOptionElement.label (label attribute or browser text fallback), never option.text
+ * alone. Require a nonempty recognized displayed label. A different submitted value must share
+ * that meaning or be an opaque numeric/UUID code. Blank, whitespace-only, and unsupported
+ * (e.g. non-Latin) displayed labels stay manual even when the value token matches.
+ */
+function matchGenericSelectOption(el, value, crmKey, isPlaceholderOption) {
+  var wanted = genericSelectNorm(value);
+  if (!wanted) return null;
+  var aliases = genericSelectAliasSet(crmKey, wanted);
+  var submittedCounts = Object.create(null);
+  var i;
+  for (i = 0; i < el.options.length; i++) {
+    var counted = el.options[i];
+    if (isPlaceholderOption(counted)) continue;
+    var raw = String(counted.value);
+    submittedCounts[raw] = (submittedCounts[raw] || 0) + 1;
+  }
+  var matches = [];
+  for (i = 0; i < el.options.length; i++) {
+    var option = el.options[i];
+    if (isPlaceholderOption(option) || genericOptionDisabled(option)) continue;
+    if (submittedCounts[String(option.value)] !== 1) continue;
+    var displayLabel = genericSelectNorm(option.label);
+    var optionValue = genericSelectNorm(option.value);
+    var textHit = !!aliases[displayLabel];
+    var valueHit = !!aliases[optionValue];
+    if (!displayLabel || !textHit) continue;
+    if (optionValue && displayLabel !== optionValue) {
+      if (!valueHit && !genericSelectValueOpaque(optionValue)) continue;
+      if (!valueHit && genericSelectTokenInAnyGroup(crmKey, optionValue)) continue;
+    }
+    matches.push(option);
+  }
+  return matches.length === 1 ? matches[0] : null;
+}
+
+/**
+ * Select one concrete enabled option by identity. Verifies the selected option after write;
+ * does not use the value-only legacy path that can land on a duplicate-value sibling.
+ */
+function applyGenericSelectOption(el, opt) {
+  if (!el || !opt || el.tagName !== "SELECT" || genericOptionDisabled(opt)) return false;
+  if (opt.parentNode !== el && !(opt.parentElement && opt.parentElement.parentNode === el)) return false;
+  var unique = 0;
+  for (var i = 0; i < el.options.length; i++) {
+    if (String(el.options[i].value) === String(opt.value)) unique++;
+  }
+  if (unique !== 1) return false;
+  try {
+    for (var j = 0; j < el.options.length; j++) el.options[j].selected = false;
+    opt.selected = true;
+    el.selectedIndex = opt.index;
+    var desc = Object.getOwnPropertyDescriptor(window.HTMLSelectElement.prototype, "value");
+    if (desc && desc.set) desc.set.call(el, opt.value);
+    else el.value = opt.value;
+    if (el.options[el.selectedIndex] !== opt || genericOptionDisabled(el.options[el.selectedIndex])) {
+      return false;
+    }
+    el.dispatchEvent(new Event("input", { bubbles: true, composed: true }));
+    el.dispatchEvent(new Event("change", { bubbles: true, composed: true }));
+    if (el.options[el.selectedIndex] !== opt) return false;
+    return true;
+  } catch (error) {
+    return false;
+  }
+}
+
+/**
+ * Fill a page without a saved mapping. Each supported key goes into the one control that asks for
+ * it; when several controls ask for the same key, all of them stay manual. Classification,
+ * fillability and uniqueness are recomputed from live metadata immediately before each write.
+ */
+async function autofillGeneric(fieldMap, fields) {
+  var report = { mapping: null, filled: [], skippedExisting: [], noCrmValue: [], manualReview: [], unmatched: [] };
+  var matched = new Set();
+  var reviewedGroups = new Set();
+  var writtenKeys = new Set();
+  for (var i = 0; i < fields.length; i++) {
+    var el = fields[i].element;
+    if (!el || el.isConnected === false) continue;
+    var field = liveFieldMeta(el);
+    var item = {
+      fieldName: field.name || field.id || "",
+      fieldLabel: field.label || "Unlabelled field",
+      type: (field.type || field.tagName || "").toLowerCase(),
+      required: !!field.required,
+    };
+    if (item.type === "radio") {
+      var group = field.name ? "radio:" + field.name : el;
+      if (reviewedGroups.has(group)) continue;
+      reviewedGroups.add(group);
+      var checked = field.name
+        ? fields.some(function (other) { return other.type === "radio" && other.name === field.name && other.element.checked; })
+        : el.checked;
+      if (!checked) report.manualReview.push(item);
+      continue;
+    }
+    var existing = String(el.value || "").trim();
+    var key = genericFieldKey(field);
+    if (key && (writtenKeys.has(key) || countLiveGenericKey(key) !== 1)) key = "";
+    var value = key ? String(fieldMap[key] || "").trim() : "";
+    if (key) matched.add(key);
+    if (existing) {
+      if (value) report.skippedExisting.push(Object.assign({ name: key, existingValue: truncate(existing, 30), reason: "Field already has a value" }, item));
+      continue;
+    }
+    field = liveFieldMeta(el);
+    key = genericFieldKey(field);
+    if (key && (writtenKeys.has(key) || countLiveGenericKey(key) !== 1)) key = "";
+    value = key ? String(fieldMap[key] || "").trim() : "";
+    item.fieldLabel = field.label || item.fieldLabel;
+    item.type = (field.type || field.tagName || item.type).toLowerCase();
+    if (value && isFillable(el) && await setElementValue(el, value, { label: field.label, name: field.name, id: field.id, crmKey: key })) {
+      writtenKeys.add(key);
+      matched.add(key);
+      report.filled.push(Object.assign({ name: key, value: truncate(value, 30), matchReason: "Shared field match" }, item));
+      continue;
+    }
+    if (key && !value) report.noCrmValue.push(Object.assign({ name: key }, item));
+    report.manualReview.push(item);
+  }
+  report.unmatched = Object.keys(fieldMap).filter(function (crmKey) {
+    return String(fieldMap[crmKey] || "").trim() && !matched.has(crmKey);
+  });
+  return report;
 }
 
 /**

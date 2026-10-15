@@ -559,50 +559,118 @@ const SYNONYM_MAP = {
 };
 
 // ─── Autocomplete attribute → CRM key mapping ─────────────────────────
-// HTML autocomplete spec values mapped to CRM keys for strong-signal matching.
+// HTML autocomplete purposes that mean exactly one applicant CRM value. Purposes that are
+// only part of a value (address-line2, bday-day, tel-extension), describe another person
+// (cc-name), or mean a different value (name, nickname, organization) are left out.
 
 const AUTOCOMPLETE_KEY_MAP = {
+  "honorific-prefix": "title",
   "given-name": "givenName",
   "additional-name": "middleName",
   "family-name": "familyName",
-  "name": "givenName",
-  "honorific-prefix": "givenName",
-  "nickname": "givenName",
+  "bday": "dateOfBirth",
+  "sex": "gender",
   "email": "email",
   "tel": "phone",
-  "tel-country-code": "phone",
-  "tel-national": "phone",
-  "tel-area-code": "phone",
-  "tel-local": "phone",
-  "tel-extension": "phone",
-  "organization": "institutionName",
-  "organization-title": "cvCurrentJobTitle",
   "street-address": "location",
   "address-line1": "location",
-  "address-line2": "location",
-  "address-level1": "state",
   "address-level2": "city",
-  "address-level3": "city",
-  "address-level4": "location",
+  "address-level1": "state",
   "postal-code": "postcode",
   "country": "countryName",
   "country-name": "countryName",
-  "bday": "dateOfBirth",
-  "bday-day": "dateOfBirth",
-  "bday-month": "dateOfBirth",
-  "bday-year": "dateOfBirth",
-  "sex": "gender",
-  "job-title": "jobTitle",
-  "url": "portfolioUrl",
-  "photo": "resumeCv",
-  // Do not map autocomplete "language" → nationality (steals English language fields).
-  // Nationality is matched via label synonyms only.
-  // "language": "nationality",
-  "cc-name": "givenName",
-  "cc-given-name": "givenName",
-  "cc-family-name": "familyName",
 };
 
+// Every autocomplete field purpose in the HTML standard. A recognised purpose missing from the
+// map above keeps the control manual: its label cannot override what the page declared.
+const AUTOCOMPLETE_PURPOSES = new Set([
+  "name", "honorific-prefix", "given-name", "additional-name", "family-name", "honorific-suffix",
+  "nickname", "username", "new-password", "current-password", "one-time-code", "organization-title",
+  "organization", "street-address", "address-line1", "address-line2", "address-line3",
+  "address-level4", "address-level3", "address-level2", "address-level1", "country", "country-name",
+  "postal-code", "cc-name", "cc-given-name", "cc-additional-name", "cc-family-name", "cc-number",
+  "cc-exp", "cc-exp-month", "cc-exp-year", "cc-csc", "cc-type", "transaction-currency",
+  "transaction-amount", "language", "bday", "bday-day", "bday-month", "bday-year", "sex", "url",
+  "photo", "tel", "tel-country-code", "tel-national", "tel-area-code", "tel-local",
+  "tel-local-prefix", "tel-local-suffix", "tel-extension", "email", "impp",
+]);
 
-globalThis.SAMS_SYNONYMS = { STOPWORDS, SYNONYM_MAP, AUTOCOMPLETE_KEY_MAP };
+// ─── Generic matching for portals without a saved mapping ─────────────
+// Labels, names and ids are compared as whole lowercase words after punctuation and
+// bracketed hints are removed ("Middle name(s) *" is "middle name"). Only these exact
+// phrases count. Controls lists the control kinds each value may be written into.
+
+const GENERIC_FIELDS = {
+  title: { aliases: ["title", "salutation", "honorific", "title salutation"], controls: ["select"] },
+  givenName: {
+    aliases: ["first name", "firstname", "fname", "given name", "given names", "givenname", "forename", "forenames", "legal first name"],
+    controls: ["text"],
+  },
+  middleName: { aliases: ["middle name", "middle names", "middlename"], controls: ["text"] },
+  familyName: {
+    aliases: ["last name", "lastname", "lname", "surname", "family name", "familyname", "family name surname", "surname family name", "legal last name"],
+    controls: ["text"],
+  },
+  dateOfBirth: { aliases: ["date of birth", "dob", "birth date", "birthdate", "dateofbirth"], controls: ["text", "date"] },
+  gender: { aliases: ["gender", "sex", "legal sex"], controls: ["select", "text"] },
+  nationality: { aliases: ["nationality", "citizenship", "country of citizenship", "country of nationality"], controls: ["select", "text"] },
+  email: { aliases: ["email", "email address", "e mail", "e mail address", "emailaddress"], controls: ["text"] },
+  phone: {
+    aliases: ["phone", "phone number", "phonenumber", "telephone", "telephone number", "mobile", "mobile number",
+      "mobile phone", "mobile phone number", "mobile telephone", "mobile telephone number", "contact number"],
+    controls: ["text"],
+  },
+  location: { aliases: ["address", "address line 1", "address 1", "street address", "home address"], controls: ["text"] },
+  city: { aliases: ["city", "town", "town city", "city town", "town or city", "postal town"], controls: ["text"] },
+  state: { aliases: ["county", "state", "province", "region", "county state", "state province"], controls: ["select", "text"] },
+  postcode: {
+    aliases: ["postcode", "post code", "postal code", "zip", "zip code", "zipcode", "postcode zip", "zip postcode", "zip postal code"],
+    controls: ["text"],
+  },
+  countryName: { aliases: ["country", "country of residence", "home country"], controls: ["select", "text"] },
+  passportNumber: { aliases: ["passport number", "passport no", "passport"], controls: ["text"] },
+};
+
+// Words that put a control outside the applicant's own details. FIELD is checked against the
+// control's own label, name, id, placeholder, description and autocomplete; SECTION against its
+// enclosing legends, outline headings and embedding frame titles; FORM against form-level
+// auth/recovery semantics (aria-label, action, instructions, submit labels). Form OWN metadata
+// (aria-label, aria-labelledby, title, name, id) is also checked with SECTION for third-party
+// purpose without scanning unrelated inner section text.
+const GENERIC_BLOCKED = {
+  field: /\b(password|passcode|passphrase|pin|otp|one time|verification|security|username|user name|user id|login|log in|logon|sign in|signin|sign up|signup|register|registration|account|recovery|captcha|memorable|secret|card|credit|debit|cvv|cvc|iban|swift|bic|sort code|bank|billing|shipping|payment|cardholder|expiry|expiration|declare|declaration|consent|agree|agreement|signature|sign|terms|privacy|confirm|accept|authori[sz]e|acknowledge|referee|reference|recommender|employer|employment|emergency|next of kin|kin|guardian|parent|sponsor|agent|agency|counsell?or|advis[eo]r|nominated|spouse|partner|mother|father)\b/,
+  section: /\b(sign in|log in|login|sign up|create an account|create account|register|registration|password|payment|billing|bank|card details|declaration|consent|signature|terms|privacy|referee|referees|reference|references|recommender|employer|employment|work experience|work history|emergency|next of kin|guardian|parent|sponsor|agent details|agent contact|agent information|agency|representative|education|qualification|qualifications|academic history|academic background|nominated|spouse|partner|dependants?|children)\b/,
+  form: /\b(reset password|password reset|forgot password|recover(?:y|ing)?|send reset|sign in|log in|login|create an account|create account|register|registration|one time|otp|verification code)\b/,
+};
+
+// Exact normalized select aliases only (never fuzzy/substring). Each inner list is one meaning.
+const GENERIC_SELECT_EQUIV = {
+  gender: [
+    ["female", "f", "woman", "girl"],
+    ["male", "m", "man", "boy"],
+    // Exact Other only. Non-binary hyphen/spacing is lexical, not categorical. X stays distinct.
+    ["other"],
+    ["non binary", "nonbinary"],
+    ["x"],
+    ["prefer not to say", "information refused", "undisclosed"],
+  ],
+  title: [
+    ["ms", "ms."],
+    ["mr", "mr."],
+    ["mrs", "mrs."],
+    ["miss"],
+    ["dr", "dr."],
+    ["mx"],
+  ],
+  countryName: [
+    ["united kingdom", "uk", "great britain", "britain"],
+    ["united states", "usa", "us", "united states of america"],
+    ["united arab emirates", "uae"],
+  ],
+};
+
+globalThis.SAMS_SYNONYMS = {
+  STOPWORDS, SYNONYM_MAP, AUTOCOMPLETE_KEY_MAP, AUTOCOMPLETE_PURPOSES,
+  GENERIC_FIELDS, GENERIC_BLOCKED, GENERIC_SELECT_EQUIV,
+};
 }

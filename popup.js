@@ -13,7 +13,9 @@ const copiedEmpty = document.getElementById("copiedEmpty");
 let cache = null;
 let expiryTimer = null;
 const SITE_ACCESS_HINT = "If it is already open, allow SAMS Portal Autofill to access this website, then try again.";
-const PAGE_ACCESS_ERROR = "Could not access this page. If it is an approved website, allow SAMS Portal Autofill to access it, reload the page, and try again.";
+const PAGE_ACCESS_ERROR = "Could not access this page. Allow SAMS Portal Autofill to access this website, reload the page, and try again.";
+const FRAME_NO_RESPONSE = "The page frame did not respond.";
+const DOCUMENT_IDENTITY_ERROR = "This browser cannot bind Autofill to the exact page document. Fill the form manually, or use Chrome or Edge.";
 const PORTAL_FILES = [
   "config/build-mode.js",
   "config/allowlist.js",
@@ -155,6 +157,14 @@ async function inject(tabId, frameIds, files) {
   }
 }
 
+async function injectDocument(tabId, documentId, files) {
+  try {
+    await chrome.scripting.executeScript({ target: { tabId, documentIds: [documentId] }, files });
+  } catch {
+    throw new Error(PAGE_ACCESS_ERROR);
+  }
+}
+
 async function copyFromCrm() {
   btnCopy.disabled = true;
   setStatus("info", "Opening CRM sections and reading student fields...");
@@ -180,22 +190,69 @@ async function copyFromCrm() {
   }
 }
 
-async function allowedPortalFrames(tab) {
-  const frames = await chrome.webNavigation.getAllFrames({ tabId: tab.id });
-  return (frames || [])
-    .filter((frame) => SAMS_ALLOWLIST.isPortalOrigin(originOf(frame.url)))
-    .map((frame) => frame.frameId);
+// Student values go only to documents of the page staff selected: the top frame and frames with
+// exactly its origin. Other origins, including mapped portals embedded here, are never sent data.
+// Each target keeps Chrome documentId from enumeration through injection and connect so a
+// same-frameId replacement document cannot receive values.
+async function selectedPageFrames(tab, origin) {
+  const frames = (await chrome.webNavigation.getAllFrames({ tabId: tab.id })) || [];
+  if (!frames.some((frame) => frame.frameId === 0 && originOf(frame.url) === origin)) {
+    throw new Error("The page changed before Autofill started. Try again on the form.");
+  }
+  const selected = frames.filter((frame) => originOf(frame.url) === origin);
+  if (selected.some((frame) => !frame.documentId)) {
+    throw new Error(DOCUMENT_IDENTITY_ERROR);
+  }
+  return selected.map((frame) => ({
+    frameId: frame.frameId,
+    documentId: frame.documentId,
+    url: frame.url,
+  }));
 }
 
-async function fillFrame(tabId, frameId, fieldMap) {
+// One port per frame document. If that document navigates or closes, its port closes and any
+// pending request fails; the popup never reconnects, so values cannot reach a replacement page.
+function connectFrame(tabId, frame) {
+  let port;
   try {
-    const response = await chrome.tabs.sendMessage(tabId, { action: "autofill", fieldMap }, { frameId });
-    if (!response) return { frameId, error: "The page frame did not respond." };
-    if (response.error) return { frameId, error: response.error };
-    return { frameId, report: response };
+    port = chrome.tabs.connect(tabId, { documentId: frame.documentId, name: "sams-autofill" });
   } catch {
-    return { frameId, error: "The page frame did not respond." };
+    return { frameId: frame.frameId, documentId: frame.documentId, error: FRAME_NO_RESPONSE };
   }
+  let pending = null;
+  let open = true;
+  port.onMessage.addListener((response) => {
+    const request = pending;
+    pending = null;
+    if (request) request.resolve(response);
+  });
+  port.onDisconnect.addListener(() => {
+    open = false;
+    void chrome.runtime.lastError;
+    const request = pending;
+    pending = null;
+    if (request) request.resolve({ error: FRAME_NO_RESPONSE });
+  });
+  return {
+    frameId: frame.frameId,
+    documentId: frame.documentId,
+    request(message) {
+      return new Promise((resolve) => {
+        if (!open) return resolve({ error: FRAME_NO_RESPONSE });
+        pending = { resolve };
+        try {
+          port.postMessage(message);
+        } catch {
+          pending = null;
+          resolve({ error: FRAME_NO_RESPONSE });
+        }
+      });
+    },
+    close() {
+      if (open) port.disconnect();
+      open = false;
+    },
+  };
 }
 
 function mergeResults(results) {
@@ -213,30 +270,49 @@ function mergeResults(results) {
 
 async function autofill() {
   btnAutofill.disabled = true;
-  setStatus("info", "Filling empty fields on this portal page...");
+  setStatus("info", "Filling empty fields on this page...");
+  let frames = [];
   try {
-    const tab = await approvedTab(SAMS_ALLOWLIST.isPortalOrigin, "Open an approved university portal form first.");
-    const frameIds = await allowedPortalFrames(tab);
-    if (!frameIds.length) throw new Error("No approved portal frames were found on this page.");
-    const injected = await Promise.all(frameIds.map((frameId) =>
-      inject(tab.id, [frameId], PORTAL_FILES).then(() => ({ frameId }), (error) => ({ frameId, error: error.message }))
+    const tab = await approvedTab(SAMS_ALLOWLIST.isFillTarget,
+      "Open the university application form first. Autofill does not run on SAMS CRM, Campora, or browser pages.");
+    const origin = originOf(tab.url);
+    const selected = await selectedPageFrames(tab, origin);
+    const injected = await Promise.all(selected.map((frame) =>
+      injectDocument(tab.id, frame.documentId, PORTAL_FILES).then(
+        () => frame,
+        (error) => ({ frameId: frame.frameId, documentId: frame.documentId, error: error.message }),
+      )
     ));
+    frames = injected.map((frame) => frame.error ? frame : connectFrame(tab.id, frame));
+    const checked = await Promise.all(frames.map(async (frame) => {
+      if (frame.error) return frame;
+      const response = await frame.request({ action: "prepare", origin });
+      return response && response.ready ? frame : { frameId: frame.frameId, documentId: frame.documentId, error: (response && response.error) || FRAME_NO_RESPONSE };
+    }));
     // The worker cache is authoritative: Clear, expiry, or a new Copy elsewhere must win over this popup's memory.
     await refreshCache();
     if (!cache) throw new Error("No copied student is available. Copy from CRM again before Autofill.");
     const fieldMap = cache.fields;
-    const outcomes = await Promise.all(injected.map((frame) => frame.error ? frame : fillFrame(tab.id, frame.frameId, fieldMap)));
+    const outcomes = await Promise.all(checked.map(async (frame) => {
+      if (frame.error) return frame;
+      const response = await frame.request({ action: "autofill", fieldMap });
+      return response && !response.error
+        ? { frameId: frame.frameId, documentId: frame.documentId, report: response }
+        : { frameId: frame.frameId, documentId: frame.documentId, error: (response && response.error) || FRAME_NO_RESPONSE };
+    }));
     const reports = outcomes.filter((outcome) => outcome.report).map((outcome) => outcome.report);
     const failures = outcomes.filter((outcome) => outcome.error);
     if (!reports.length) throw new Error(failures[0].error);
     const result = mergeResults(reports);
-    // Kept from Chrome: one successful approved frame counts as activity. All-frame failure threw above.
+    // Kept from Chrome: one successful frame counts as activity. All-frame failure threw above.
     const touched = await runtimeMessage({ action: "touchStudentCache" });
     cache = touched.cache || null;
     renderCache();
     if (failures.length) {
       setStatus("warning", `${result.filled.length} fields filled in ${reports.length} of ${outcomes.length} page frames. Some frames were not filled: review the whole page before continuing.`);
       addList("Frames not filled", failures.map((failure) => `Frame ${failure.frameId}: ${failure.error}`));
+    } else if (reports.some((report) => !report.mapping)) {
+      setStatus("success", `${result.filled.length} fields filled using shared matching for this website. Draft only: review every field, complete the rest, and submit it yourself.`);
     } else {
       setStatus("success", `${result.filled.length} fields filled. Draft only: review the form and submit it yourself.`);
     }
@@ -248,6 +324,7 @@ async function autofill() {
   } catch (error) {
     setStatus("error", error.message || String(error));
   } finally {
+    frames.forEach((frame) => frame.close && frame.close());
     btnAutofill.disabled = !cache;
   }
 }

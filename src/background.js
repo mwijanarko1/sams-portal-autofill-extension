@@ -43,13 +43,6 @@ async function touchCache() {
   return cache ? storeCache(cache) : null;
 }
 
-// Only this extension's own popup page may read or change the student cache.
-function fromPopup(sender) {
-  return Boolean(sender) && sender.id === chrome.runtime.id
-    && typeof sender.url === "string"
-    && sender.url.split(/[?#]/)[0] === chrome.runtime.getURL("popup.html");
-}
-
 function validProfile(profile) {
   if (!profile || typeof profile !== "object") return null;
   const { studentId, studentName, sourceOrigin, copiedAt, fields } = profile;
@@ -66,7 +59,7 @@ function validProfile(profile) {
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (!message || !CACHE_ACTIONS.includes(message.action)) return false;
-  if (!fromPopup(sender)) {
+  if (!SAMS_ALLOWLIST.isPopupSender(sender)) {
     sendResponse({ error: "Student data actions are only available from the extension popup." });
     return false;
   }

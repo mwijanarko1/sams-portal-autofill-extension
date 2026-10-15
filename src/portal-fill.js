@@ -1,45 +1,52 @@
 if (!globalThis.__SAMS_PORTAL_FILL_LOADED__) {
   globalThis.__SAMS_PORTAL_FILL_LOADED__ = true;
 
-  chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-    if (!message || !["ping", "scan", "autofill"].includes(message.action)) return;
-    if (!globalThis.SAMS_ALLOWLIST || !SAMS_ALLOWLIST.isPortalOrigin(location.origin)) {
-      sendResponse({ error: "Autofill is only available on an approved portal origin." });
-      return false;
-    }
-    if (!globalThis.SAMS_ENGINE) {
-      sendResponse({ error: "Autofill engine is unavailable." });
-      return false;
-    }
-    if (message.action === "ping") {
-      sendResponse({ pong: true, version: "0.1.0" });
-      return false;
-    }
+  const PAGE_CHANGED = "This page changed. Open the extension again on the form.";
 
-    (async () => {
-      try {
-        const fields = SAMS_ENGINE.scanFormFields(
-          message.action === "scan" && (message.lean || message.mode === "lean")
-            ? { lean: true }
-            : { mode: message.action === "scan" ? "full" : "fill" }
-        );
-        if (message.action === "autofill") {
-          sendResponse(await SAMS_ENGINE.autofillPage(message.fieldMap || {}, fields));
-          return;
-        }
-        let descriptors = fields.map((field) => {
-          const descriptor = { ...field };
-          delete descriptor.element;
-          return descriptor;
-        });
-        if (!message.lean && message.fieldMap) {
-          descriptors = SAMS_ENGINE.enrichFieldsWithMapping(fields, message.fieldMap);
-        }
-        sendResponse({ fields: descriptors, fieldCount: fields.length });
-      } catch (error) {
-        sendResponse({ error: error.message || String(error) });
+  // Why this document is not the page staff selected, or "" when it is: the same web origin, not
+  // sandboxed (self.origin is "null" there even when the URL matches), inside a top page of that origin.
+  function pageProblem(origin) {
+    if (!globalThis.SAMS_ALLOWLIST || !SAMS_ALLOWLIST.isFillTarget(origin) || location.origin !== origin) return PAGE_CHANGED;
+    if (self.origin !== origin) return "This part of the page is sandboxed, so it was not filled. Complete it manually.";
+    try {
+      if (window.top.location.origin === origin) return "";
+    } catch { /* top page has another origin */ }
+    return PAGE_CHANGED;
+  }
+
+  // One port per popup request, bound to this document. Navigation closes it, and the popup never reconnects.
+  chrome.runtime.onConnect.addListener((port) => {
+    if (port.name !== "sams-autofill") return;
+    if (!globalThis.SAMS_ALLOWLIST || !SAMS_ALLOWLIST.isPopupSender(port.sender)) {
+      port.disconnect();
+      return;
+    }
+    let origin = "";
+    // The popup may close mid-fill; a reply to a closed port has nobody to inform.
+    const reply = (response) => {
+      try { port.postMessage(response); } catch { /* port closed */ }
+    };
+    port.onMessage.addListener(async (message) => {
+      if (!message || !["prepare", "autofill"].includes(message.action)) return;
+      if (message.action === "prepare") origin = message.origin;
+      const problem = pageProblem(origin);
+      if (problem) {
+        reply({ error: problem });
+        return;
       }
-    })();
-    return true;
+      if (!globalThis.SAMS_ENGINE) {
+        reply({ error: "Autofill engine is unavailable." });
+        return;
+      }
+      if (message.action === "prepare") {
+        reply({ ready: true });
+        return;
+      }
+      try {
+        reply(await SAMS_ENGINE.autofillPage(message.fieldMap || {}, SAMS_ENGINE.scanFormFields({ mode: "fill" })));
+      } catch (error) {
+        reply({ error: error.message || String(error) });
+      }
+    });
   });
 }
