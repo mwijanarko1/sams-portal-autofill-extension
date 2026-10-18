@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Synthetic Bangor uploads</title></head>
+<body>
+  <h1>Application documents</h1>
+  <form action="/e2e-forbidden-document-submit" method="post">
+    <label for="id_forename">Given name</label><input id="id_forename">
+    <label for="passport-upload">Passport</label><input id="passport-upload" type="file" accept=".pdf,.jpg">
+    <label for="transcript-upload">Education transcript</label><input id="transcript-upload" type="file" accept="application/pdf">
+    <label for="cv-upload">Curriculum Vitae (CV)</label><input id="cv-upload" type="file" accept=".docx">
+    <label for="other-upload">Other evidence</label><input id="other-upload" type="file">
+    <button type="submit">Save and continue</button>
+    <button type="button">Submit application</button>
+  </form>
+  <iframe title="Same-origin document uploads" src="/apply/documents-frame/"></iframe>
+  <script>
+    window.activity = { clicks: 0, submissions: 0, inputs: [], changes: [] };
+    document.addEventListener("click", () => { activity.clicks++; });
+    document.addEventListener("submit", (event) => { event.preventDefault(); activity.submissions++; });
+    document.addEventListener("input", (event) => { activity.inputs.push(event.target.id); });
+    document.addEventListener("change", (event) => { activity.changes.push(event.target.id); });
+  </script>
+</body>
+</html>

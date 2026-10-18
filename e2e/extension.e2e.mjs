@@ -1,16 +1,98 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { access, cp, mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { setTimeout as sleep } from "node:timers/promises";
 import { constants } from "node:fs";
 import { resolve, join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { after, afterEach, before, test } from "node:test";
+import { after, afterEach, before, beforeEach, test } from "node:test";
 import { chromium } from "playwright-core";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const fixtureRoot = join(root, "e2e/fixtures");
 const executablePath = process.env.SAMS_E2E_BROWSER || "/Applications/Helium.app/Contents/MacOS/Helium";
 const crmUrl = "https://app.samscrm.co.uk/agent/leads/full-profile/e2e-synthetic/";
+const documentCrmUrl = "https://app.samscrm.co.uk/agent/leads/full-profile/424242/";
+const documentsPortalUrl = "https://apps.bangor.ac.uk/apply/documents/";
+const documentsFrameUrl = "https://apps.bangor.ac.uk/apply/documents-frame/";
+const noDocumentsUrl = "https://apps.bangor.ac.uk/apply/no-documents/";
+const syntheticToken = "0123456789abcdef".repeat(4);
+const syntheticCookie = "sams_e2e_session=synthetic-crm-session-only";
+const mediaOrigin = "https://app.samscrm.co.uk";
+const documentFixtures = [
+  { endpoint: "fp_cv_docs", dataKey: "cv_docs", group: "cv", groupLabel: "Curriculum Vitae (CV)",
+    id: 101, documentType: null, name: "cv-profile", extension: "pdf" },
+  { endpoint: "fp_edu_docs", dataKey: "edu_docs", group: "edu", groupLabel: "Education History",
+    id: 102, documentType: "Transcript", name: "academic-record", extension: "pdf" },
+  { endpoint: "fp_work_history_docs", dataKey: "work_history_docs", group: "work_history", groupLabel: "Work Experience",
+    id: 103, documentType: "Certificate", name: "employment-letter", extension: "pdf" },
+  { endpoint: "fp_get_eng_test_docs", dataKey: "eng_test_docs", group: "eng_test", groupLabel: "Test Score",
+    id: 104, documentType: "Certificate", name: "english-score", extension: "jpg" },
+  { endpoint: "fp_get_reference_docs", dataKey: "reference_docs", group: "reference", groupLabel: "References",
+    id: 105, documentType: null, name: "referee-letter", extension: "pdf" },
+  { endpoint: "fp_get_visa_history_docs", dataKey: "visa_history_docs", group: "visa_history", groupLabel: "Visa History",
+    id: 106, documentType: null, name: "previous-visa", extension: "jpg" },
+  { endpoint: "fp_get_visa_refusal_docs", dataKey: "visa_refusal_docs", group: "visa_refusal", groupLabel: "Visa Refusal",
+    id: 107, documentType: null, name: "refusal-letter", extension: "pdf" },
+  { endpoint: "fp_get_passport_docs", dataKey: "passport_docs", group: "passport", groupLabel: "Passport",
+    id: 108, documentType: null, name: "identity-page", extension: "pdf" },
+  { endpoint: "fp_get_additional_docs", dataKey: "additional_docs", group: "additional", groupLabel: "Additional Documentations",
+    id: 109, documentType: null, name: "portrait", extension: "jpg" },
+];
+const mediaFixtures = [...documentFixtures, {
+  ...documentFixtures.find((document) => document.group === "passport"),
+  id: 110, name: "passport-portrait", extension: "jpg",
+}];
+const documentEndpoints = new Map(documentFixtures.map((document) => [`/api/v2/agent/ajax/${document.endpoint}`, document]));
+const documentRequests = [];
+const fileRequests = [];
+let listingMode = "ok";
+let fileMode = "ok";
+let jpegBytes;
+
+// An actual, tiny PDF with correct object offsets. No applicant files are read.
+function syntheticPdf() {
+  const objects = [
+    "<< /Type /Catalog /Pages 2 0 R >>",
+    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 10 10] >>",
+  ];
+  let body = "%PDF-1.4\n";
+  const offsets = [0];
+  for (const [index, object] of objects.entries()) {
+    offsets.push(Buffer.byteLength(body));
+    body += `${index + 1} 0 obj\n${object}\nendobj\n`;
+  }
+  const xref = Buffer.byteLength(body);
+  body += `xref\n0 4\n0000000000 65535 f \n${offsets.slice(1).map((offset) => `${String(offset).padStart(10, "0")} 00000 n \n`).join("")}`;
+  return Buffer.from(`${body}trailer\n<< /Size 4 /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`);
+}
+const pdfBytes = syntheticPdf();
+
+function listingRows(document) {
+  const row = {
+    id: document.id, lead_id: 424242, document_type: document.documentType,
+    name: document.name, file_extension: document.extension,
+    file_url: `${mediaOrigin}/tmp_aws_media/${document.name}.${document.extension}`,
+    file_download_url: `${mediaOrigin}/download-media/forbidden-token-download?token=${syntheticToken}`,
+    added_by_data: { email: "must-not-cache@example.test" }, comment: "DO_NOT_CACHE_ROW_COMMENT",
+    [`document_${document.group}`]: { internal_note: "DO_NOT_CACHE_NESTED_DOCUMENT" },
+  };
+  if (document.group === "passport") return [row, {
+    ...row, id: 110, name: "passport-portrait", file_extension: "jpg",
+    file_url: `${mediaOrigin}/tmp_aws_media/passport-portrait.jpg`,
+  }];
+  if (document.group !== "additional") return [row];
+  return [row,
+    { ...row, id: 201, name: "empty-file", file_url: "", file_extension: null },
+    { ...row, id: 202, name: "foreign-lead", lead_id: 999999, file_url: `${mediaOrigin}/tmp_aws_media/foreign-lead.pdf` },
+    { ...row, id: 203, name: "off-origin", file_url: "https://files.example.test/tmp_aws_media/off-origin.pdf" },
+    { ...row, id: 204, name: "download-route", file_url: `${mediaOrigin}/download-media/download-route.pdf` },
+    { ...row, id: 205, name: "query-url", file_url: `${mediaOrigin}/tmp_aws_media/query-url.pdf?token=forbidden` },
+    { ...row, id: 206, name: "hash-url", file_url: `${mediaOrigin}/tmp_aws_media/hash-url.pdf#fragment` },
+    { ...row, id: 207, name: "insecure-url", file_url: "http://app.samscrm.co.uk/tmp_aws_media/insecure-url.pdf" },
+  ];
+}
 // No allowlist entry, portal mapping, or host permission names this origin.
 const genericOrigin = "https://apply.example-university.test";
 const genericFixtures = new Map([
@@ -81,10 +163,54 @@ before(async () => {
     timeout: 15000,
   });
   context.setDefaultTimeout(5000);
-  const fixtures = new Map([[crmUrl, "crm.html"], ...portalCases.map((portal) => [portal.url, portal.fixture])]);
+  await context.addCookies([{
+    name: "sams_e2e_session", value: "synthetic-crm-session-only", domain: "app.samscrm.co.uk",
+    path: "/", sameSite: "Lax", secure: true, httpOnly: true,
+  }]);
+  const fixtures = new Map([
+    [crmUrl, "crm.html"], [documentCrmUrl, "crm-documents.html"],
+    [documentsPortalUrl, "portal-documents.html"], [documentsFrameUrl, "portal-documents-frame.html"],
+    [noDocumentsUrl, "portal-no-documents.html"],
+    ...portalCases.map((portal) => [portal.url, portal.fixture]),
+  ]);
   await context.route(/^https?:\/\//, async (route) => {
     const request = route.request();
     const url = new URL(request.url());
+    const document = url.origin === mediaOrigin && documentEndpoints.get(url.pathname);
+    if (document && request.method() === "GET") {
+      const headers = await request.allHeaders();
+      documentRequests.push({
+        path: url.pathname, query: url.search, method: request.method(),
+        authorization: headers.authorization || "", requestedWith: headers["x-requested-with"] || "",
+      });
+      if (listingMode === "network") return route.abort("connectionfailed");
+      if (listingMode === "unauthorized" || headers.authorization !== `Bearer ${syntheticToken}` ||
+          headers["x-requested-with"] !== "XMLHttpRequest") {
+        return route.fulfill({ status: 401, contentType: "application/json", body: '{"msg":"Unauthorized"}' });
+      }
+      if (url.search !== "?lead_id=424242") {
+        return route.fulfill({ status: 400, contentType: "application/json", body: '{"msg":"Wrong lead"}' });
+      }
+      return route.fulfill({ contentType: "application/json", body: JSON.stringify({
+        msg: "Synthetic documents only", data: { [document.dataKey]: listingRows(document) },
+      }) });
+    }
+    const media = mediaFixtures.find((item) => url.href === `${mediaOrigin}/tmp_aws_media/${item.name}.${item.extension}`);
+    if (media && request.method() === "GET") {
+      const headers = await request.allHeaders();
+      const cookiePresent = (headers.cookie || "").split("; ").includes(syntheticCookie);
+      fileRequests.push({
+        url: url.href, cookiePresent, authorizationPresent: !!headers.authorization,
+        requestedWithPresent: !!headers["x-requested-with"],
+      });
+      if (!cookiePresent) return route.fulfill({ status: 401, contentType: "text/plain", body: "Login required" });
+      if (fileMode === "html") return route.fulfill({ contentType: "text/html", body: "<!doctype html><title>Login</title>Sign in" });
+      if (fileMode === "redirect") return route.fulfill({ status: 302, headers: { location: `${mediaOrigin}/e2e-document-login` } });
+      if (fileMode === "non-ok") return route.fulfill({ status: 403, contentType: "application/pdf", body: "Forbidden" });
+      if (fileMode === "oversized") return route.fulfill({ contentType: "application/pdf", body: Buffer.alloc(10 * 1024 * 1024 + 1, 65) });
+      return route.fulfill({ contentType: media.extension === "jpg" ? "image/jpeg" : "application/pdf",
+        body: media.extension === "jpg" ? jpegBytes : pdfBytes });
+    }
     const fixture = fixtures.get(request.url()) || (url.origin === genericOrigin && genericFixtures.get(url.pathname));
     if (fixture && request.method() === "GET") {
       await route.fulfill({ contentType: "text/html", body: await readFile(join(fixtureRoot, fixture), "utf8") });
@@ -101,7 +227,23 @@ before(async () => {
   popup = await context.newPage();
   popup.on("pageerror", (error) => popupErrors.push(error.message));
   await popup.goto(`chrome-extension://${extensionId}/popup.html`);
+  const jpeg = await popup.evaluate(() => {
+    const canvas = document.createElement("canvas");
+    canvas.width = canvas.height = 1;
+    const drawing = canvas.getContext("2d");
+    drawing.fillStyle = "#aabbcc";
+    drawing.fillRect(0, 0, 1, 1);
+    return canvas.toDataURL("image/jpeg").split(",")[1];
+  });
+  jpegBytes = Buffer.from(jpeg, "base64");
 }, { timeout: 30000 });
+
+beforeEach(() => {
+  listingMode = "ok";
+  fileMode = "ok";
+  documentRequests.length = 0;
+  fileRequests.length = 0;
+});
 
 after(async () => {
   if (context) await context.close();
@@ -115,6 +257,8 @@ afterEach(async () => {
   await popup.reload();
   await popup.locator("#btnCopy:enabled").waitFor();
   await clear();
+  assert.deepEqual(unexpectedRequests, [], "No request may escape the synthetic fixtures");
+  assert.deepEqual(popupErrors, [], "The real popup must not throw");
 });
 
 async function activate(page) {
@@ -506,4 +650,325 @@ test("Unmapped university: outer Referee/Applicant headings gate neutral same-or
   assert.deepEqual(unexpectedRequests, []);
   await page.close();
   await crm.close();
+});
+
+async function copyDocumentStudent({ missingToken = false } = {}) {
+  await clear();
+  const crm = await openPage(documentCrmUrl);
+  if (missingToken) await crm.locator('meta[name="api-token"]').evaluate((meta) => meta.remove());
+  await activate(crm);
+  await popup.locator("#btnCopy").click();
+  await popup.locator("#statusArea .success").waitFor();
+  assert.equal(await popup.locator("#studentName").textContent(), "Aisha Rahman");
+  const student = await cache();
+  assert.equal(student.sourceOrigin, "https://app.samscrm.co.uk");
+  assert.equal(student.fields.email, "aisha.rahman@example.com", "Listing documents must not replace normal field Copy");
+  return crm;
+}
+
+async function storageSnapshot() {
+  return worker.evaluate(async () => ({
+    local: await chrome.storage.local.get(null),
+    sync: await chrome.storage.sync.get(null),
+    session: await chrome.storage.session.get(null),
+  }));
+}
+
+async function assertDocumentStorage(documents) {
+  const storage = await storageSnapshot();
+  assert.deepEqual(storage.local, {});
+  assert.deepEqual(storage.sync, {});
+  assert.deepEqual(Object.keys(storage.session), ["studentCache"]);
+  assert.deepEqual(storage.session.studentCache.documents, documents);
+  const serialized = JSON.stringify(storage.session);
+  for (const forbidden of [syntheticToken, "Bearer ", "file_download_url", "download-media", "added_by_data",
+    "DO_NOT_CACHE_ROW_COMMENT", "DO_NOT_CACHE_NESTED_DOCUMENT", "must-not-cache@example.test",
+    "%PDF-1.4", pdfBytes.toString("base64"), jpegBytes.toString("base64"), '"bytes"', '"base64"']) {
+    assert.equal(serialized.includes(forbidden), false, `Session storage must not contain ${forbidden.slice(0, 48)}`);
+  }
+}
+
+function uploadRow(label) {
+  return popup.locator("#documentsCard .upload-row").filter({
+    has: popup.locator(".upload-label", { hasText: new RegExp(`^\\s*${label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*$`) }),
+  });
+}
+
+// The attach control is a shadcn-style listbox (button + [role=option] panel), not a native select.
+async function chooseDocument(row, document) {
+  await row.locator("button.upload-choice").click();
+  await row.locator(`[role='option'][data-value="${document.key.replace(/["\\]/g, "\\$&")}"]`).click();
+}
+
+async function scanDocuments(page) {
+  await page.waitForLoadState("load");
+  await activate(page);
+  assert.equal(await popup.locator("#btnDocuments").count(), 1, "The popup must expose the Attach CRM documents action");
+  await popup.locator("#btnDocuments:visible").waitFor();
+  assert.equal((await popup.locator("#btnDocuments").innerText()).trim(), "Attach CRM documents");
+  await popup.locator("#btnDocuments").click();
+  await popup.locator("#documentsCard:visible").waitFor();
+  await uploadRow("Frame evidence").waitFor();
+}
+
+async function fileState(frame) {
+  return frame.evaluate(async () => Promise.all([...document.querySelectorAll('input[type="file"]')].map(async (input) => ({
+    id: input.id,
+    files: await Promise.all([...input.files].map(async (file) => ({
+      name: file.name, type: file.type, size: file.size,
+      sha256: [...new Uint8Array(await crypto.subtle.digest("SHA-256", await file.arrayBuffer()))]
+        .map((byte) => byte.toString(16).padStart(2, "0")).join(""),
+    }))),
+  }))));
+}
+
+function expectedFile(name, type, bytes) {
+  return { name, type, size: bytes.length, sha256: createHash("sha256").update(bytes).digest("hex") };
+}
+
+const emptyTopFiles = [
+  { id: "passport-upload", files: [] }, { id: "transcript-upload", files: [] },
+  { id: "cv-upload", files: [] }, { id: "other-upload", files: [] },
+];
+const emptyFrameFiles = [{ id: "frame-upload", files: [] }];
+const noDocumentActivity = { clicks: 0, submissions: 0, inputs: [], changes: [] };
+const documentFrame = (page) => page.frames().find((frame) => frame.url() === documentsFrameUrl);
+
+async function assertNoAttachment(page) {
+  assert.deepEqual(await fileState(page), emptyTopFiles);
+  assert.deepEqual(await fileState(documentFrame(page)), emptyFrameFiles);
+  assert.deepEqual(await page.evaluate(() => activity), noDocumentActivity);
+  assert.deepEqual(await documentFrame(page).evaluate(() => activity), noDocumentActivity);
+}
+
+test("CRM documents: Copy caches only valid metadata from all nine authenticated listings", { timeout: 20000 }, async () => {
+  await copyDocumentStudent();
+  const student = await cache();
+  assert.ok(Array.isArray(student.documents), "Copy must cache documents as an array of metadata");
+  assert.equal(student.documents.length, 10, "All valid rows must be kept; empty, foreign-lead, off-origin, download, query, hash, and insecure rows must be excluded");
+  const expected = mediaFixtures.map(({ group, groupLabel, documentType, name, extension }) => ({
+    group, groupLabel, documentType, name, extension, url: `${mediaOrigin}/tmp_aws_media/${name}.${extension}`,
+  }));
+  const byName = (a, b) => a.name.localeCompare(b.name);
+  assert.deepEqual(student.documents.map(({ key, ...metadata }) => metadata).sort(byName), expected.sort(byName));
+  for (const document of student.documents) {
+    assert.deepEqual(Object.keys(document).sort(), ["documentType", "extension", "group", "groupLabel", "key", "name", "url"]);
+    assert.equal(typeof document.key, "string");
+    assert.notEqual(document.key.trim(), "");
+  }
+  assert.equal(new Set(student.documents.map((document) => document.key)).size, 10, "Selection keys must identify distinct documents, including two from one group");
+  assert.equal(documentRequests.length, 9);
+  assert.deepEqual(documentRequests.map((request) => request.path).sort(), [...documentEndpoints.keys()].sort());
+  for (const request of documentRequests) {
+    assert.deepEqual(request, {
+      path: request.path, query: "?lead_id=424242", method: "GET",
+      authorization: `Bearer ${syntheticToken}`, requestedWith: "XMLHttpRequest",
+    });
+  }
+  assert.doesNotMatch(JSON.stringify(student.fields), /tmp_aws_media|file_url|document_type|DO_NOT_CACHE|download-media/);
+  for (const document of student.documents) assert.equal(JSON.stringify(student.fields).includes(document.name), false);
+  await assertDocumentStorage(student.documents);
+  assert.deepEqual(fileRequests, [], "Copy lists metadata only; it must not download file bytes");
+  await popup.locator("#btnDocuments:visible").waitFor();
+  assert.equal((await popup.locator("#copiedDocumentsSummary").innerText()).trim(), "Copied documents (10)");
+  assert.deepEqual((await popup.locator("#copiedDocumentsList .document-name").allTextContents()).sort(),
+    student.documents.map((document) => `${document.name}.${document.extension}`).sort(),
+    "Every copied document must be listed by file name so staff can check it before attaching");
+  assert.equal(await popup.locator("#copiedDocumentsList button.view").count(), 10,
+    "Each copied document must offer a View action");
+  await clear();
+  assert.equal(await popup.locator("#btnDocuments").isVisible(), false);
+  assert.deepEqual(await storageSnapshot(), { local: {}, sync: {}, session: {} });
+});
+
+for (const failure of ["missing-token", "unauthorized", "network"]) {
+  test(`CRM documents: ${failure} leaves field Copy working and attachment unavailable`, { timeout: 20000 }, async () => {
+    listingMode = failure;
+    await copyDocumentStudent({ missingToken: failure === "missing-token" });
+    const student = await cache();
+    assert.deepEqual(student.documents, [], "A failed listing must produce an explicit empty documents array");
+    assert.equal(student.fields.email, "aisha.rahman@example.com");
+    assert.equal(await popup.locator("#btnAutofill").isEnabled(), true);
+    assert.equal(await popup.locator("#btnDocuments").isVisible(), false);
+    assert.deepEqual(fileRequests, []);
+    await assertDocumentStorage([]);
+  });
+}
+
+test("CRM documents: accept-filtered choices attach exact PDF and JPEG bytes to only the chosen frame input", { timeout: 30000 }, async () => {
+  const page = await openPage(documentsPortalUrl);
+  await copyDocumentStudent();
+  const { documents } = await cache();
+  await scanDocuments(page);
+  assert.deepEqual((await popup.locator("#documentsCard .upload-label").allTextContents()).map((text) => text.trim()).sort(),
+    ["Passport", "Education transcript", "Curriculum Vitae (CV)", "Other evidence", "Frame evidence"].sort());
+  assert.equal(await popup.locator("#documentsCard .upload-row").count(), 5);
+  const accepts = [
+    ["Passport", ["cv-profile", "academic-record", "employment-letter", "english-score", "referee-letter", "previous-visa", "refusal-letter", "identity-page", "portrait", "passport-portrait"]],
+    ["Education transcript", ["cv-profile", "academic-record", "employment-letter", "referee-letter", "refusal-letter", "identity-page"]],
+    ["Curriculum Vitae (CV)", []],
+    ["Other evidence", ["cv-profile", "academic-record", "employment-letter", "english-score", "referee-letter", "previous-visa", "refusal-letter", "identity-page", "portrait", "passport-portrait"]],
+    ["Frame evidence", ["english-score", "previous-visa", "portrait", "passport-portrait"]],
+  ];
+  for (const [label, names] of accepts) {
+    const row = uploadRow(label);
+    const trigger = row.locator("button.upload-choice");
+    assert.equal(await trigger.getAttribute("data-value"), null, `${label}: nothing may be preselected`);
+    assert.match(await trigger.innerText(), /Choose a CRM document/, `${label}: placeholder must show until staff choose`);
+    const options = await row.locator("[role='option']").evaluateAll((nodes) => nodes.map((node) => ({ value: node.getAttribute("data-value"), text: node.textContent })));
+    assert.deepEqual(options.map((option) => option.value).sort(),
+      documents.filter((document) => names.includes(document.name)).map((document) => document.key).sort(), `${label}: accept filtering`);
+    for (const document of documents.filter((document) => names.includes(document.name))) {
+      const option = options.find((item) => item.value === document.key);
+      assert.ok(option.text.includes(document.groupLabel), `${label}: group label must be visible`);
+      assert.ok(option.text.includes(`${document.name}.${document.extension}`), `${label}: filename must be visible`);
+    }
+    assert.equal(await trigger.isDisabled(), names.length === 0);
+    if (!names.length) assert.equal(await row.locator("button.attach").isDisabled(), true);
+  }
+  assert.match(await uploadRow("Curriculum Vitae (CV)").locator(".upload-status").innerText(), /No CRM document matches/i);
+  const passport = documents.find((document) => document.name === "identity-page");
+  const transcript = documents.find((document) => document.name === "academic-record");
+  assert.match(await uploadRow("Passport").locator("[role='option']").filter({ hasText: "identity-page.pdf" }).innerText(), /\(suggested\)/);
+  assert.match(await uploadRow("Education transcript").locator("[role='option']").filter({ hasText: "academic-record.pdf" }).innerText(), /\(suggested\)/);
+  assert.notEqual(passport.key, transcript.key);
+  await assertNoAttachment(page);
+  assert.deepEqual(fileRequests, [], "Scanning and choosing must not eagerly download documents");
+
+  const passportRow = uploadRow("Passport");
+  await chooseDocument(passportRow, passport);
+  assert.deepEqual(fileRequests, [], "Selection alone must not fetch bytes");
+  await passportRow.getByRole("button", { name: "Attach", exact: true }).click();
+  await passportRow.locator(".upload-status").filter({ hasText: /Attached/ }).waitFor();
+  const passportFiles = [{ id: "passport-upload", files: [expectedFile("identity-page.pdf", "application/pdf", pdfBytes)] }, ...emptyTopFiles.slice(1)];
+  assert.deepEqual(await fileState(page), passportFiles, "The page must receive the exact served PDF as one real File");
+  assert.deepEqual(await fileState(documentFrame(page)), emptyFrameFiles);
+  assert.deepEqual(await page.evaluate(() => activity), { clicks: 0, submissions: 0, inputs: ["passport-upload"], changes: ["passport-upload"] });
+  assert.deepEqual(await documentFrame(page).evaluate(() => activity), noDocumentActivity);
+  assert.equal(fileRequests.length, 1);
+  assert.equal(fileRequests[0].url, `${mediaOrigin}/tmp_aws_media/identity-page.pdf`);
+  assert.equal(fileRequests[0].cookiePresent, true, "A credentials-bearing fetch must work behind CRM session login");
+
+  const frameRow = uploadRow("Frame evidence");
+  await chooseDocument(frameRow, documents.find((document) => document.name === "portrait"));
+  await frameRow.getByRole("button", { name: "Attach", exact: true }).click();
+  await frameRow.locator(".upload-status").filter({ hasText: /Attached/ }).waitFor();
+  assert.deepEqual(await fileState(documentFrame(page)), [{ id: "frame-upload", files: [expectedFile("portrait.jpg", "image/jpeg", jpegBytes)] }]);
+  assert.deepEqual(await fileState(page), passportFiles, "Attaching inside a frame must not change any top-level input");
+  assert.deepEqual(await documentFrame(page).evaluate(() => activity), { clicks: 0, submissions: 0, inputs: ["frame-upload"], changes: ["frame-upload"] });
+  assert.deepEqual(await page.evaluate(() => activity), { clicks: 0, submissions: 0, inputs: ["passport-upload"], changes: ["passport-upload"] });
+  assert.equal(fileRequests.length, 2);
+  assert.equal(fileRequests[1].url, `${mediaOrigin}/tmp_aws_media/portrait.jpg`);
+  assert.equal(fileRequests[1].cookiePresent, true);
+  await assertDocumentStorage(documents);
+});
+
+test("CRM documents: occupied file input is disabled without fetching or replacing its file", { timeout: 20000 }, async () => {
+  const page = await openPage(documentsPortalUrl);
+  await page.locator("#passport-upload").evaluate((input) => {
+    const transfer = new DataTransfer();
+    transfer.items.add(new File(["existing synthetic upload"], "existing.pdf", { type: "application/pdf" }));
+    input.files = transfer.files;
+  });
+  const beforeFiles = await fileState(page);
+  await copyDocumentStudent();
+  await scanDocuments(page);
+  const row = uploadRow("Passport");
+  assert.equal(await row.locator("button.upload-choice").isDisabled(), true);
+  assert.equal(await row.locator("button.attach").isDisabled(), true);
+  assert.match(await row.locator(".upload-status").innerText(), /already has a file/i);
+  assert.equal(await uploadRow("Education transcript").locator("button.upload-choice").isEnabled(), true);
+  assert.deepEqual(await fileState(page), beforeFiles);
+  assert.deepEqual(await fileState(documentFrame(page)), emptyFrameFiles);
+  assert.deepEqual(await page.evaluate(() => activity), noDocumentActivity);
+  assert.deepEqual(fileRequests, []);
+});
+
+for (const failure of ["html", "redirect", "non-ok", "oversized"]) {
+  test(`CRM documents: ${failure} file response fails without attaching or submitting`, { timeout: 20000 }, async () => {
+    const page = await openPage(documentsPortalUrl);
+    await copyDocumentStudent();
+    await scanDocuments(page);
+    const { documents } = await cache();
+    const row = uploadRow("Passport");
+    await chooseDocument(row, documents.find((document) => document.name === "identity-page"));
+    fileMode = failure;
+    await row.getByRole("button", { name: "Attach", exact: true }).click();
+    await row.locator(".upload-status").filter({ hasText: /error|failed|could not|cannot|unable|reject|too large|10\s*Mi?B|sign.?in|log.?in|html|redirect|403/i }).waitFor();
+    assert.doesNotMatch(await row.locator(".upload-status").innerText(), /Attached/);
+    assert.equal(fileRequests.length, 1, "Only the selected cached media URL may be requested");
+    assert.equal(fileRequests[0].cookiePresent, true, "The tested failure must not be an accidental missing-session 401");
+    assert.equal(fileRequests[0].url, `${mediaOrigin}/tmp_aws_media/identity-page.pdf`);
+    assert.deepEqual(unexpectedRequests, [], "A redirect must not be followed, even to the CRM origin");
+    await assertNoAttachment(page);
+    await assertDocumentStorage(documents);
+  });
+}
+
+test("CRM documents: Clear in another popup wins over a scanned selection", { timeout: 20000 }, async () => {
+  const page = await openPage(documentsPortalUrl);
+  await copyDocumentStudent();
+  await scanDocuments(page);
+  const { documents } = await cache();
+  const row = uploadRow("Passport");
+  await chooseDocument(row, documents.find((document) => document.name === "identity-page"));
+  const other = await context.newPage();
+  await other.goto(`chrome-extension://${extensionId}/popup.html`);
+  await other.locator("#studentCard").waitFor();
+  await other.locator("#btnClear").click();
+  await other.locator("#studentCard").waitFor({ state: "hidden" });
+  await other.close();
+  assert.equal(await cache(), null);
+  await activate(page);
+  await row.getByRole("button", { name: "Attach", exact: true }).click();
+  // A stale-cache error may be shown at action level if refreshing also removes the rows.
+  await popup.locator("#statusArea .error, #documentsCard .upload-status").filter({
+    hasText: /no copied student|no.*document|clear|expired|copy.*again|unavailable/i,
+  }).first().waitFor();
+  assert.deepEqual(fileRequests, [], "The worker cache must be re-read before any file request");
+  await assertNoAttachment(page);
+  assert.equal(await popup.locator("#btnDocuments").isVisible(), false);
+  assert.deepEqual(await storageSnapshot(), { local: {}, sync: {}, session: {} });
+});
+
+test("CRM documents: ordinary Autofill fills a normal field but never file inputs", { timeout: 20000 }, async () => {
+  const page = await openPage(documentsPortalUrl);
+  await copyDocumentStudent();
+  await page.waitForLoadState("load");
+  await activate(page);
+  await popup.locator("#btnAutofill").click();
+  await popup.locator("#statusArea .success").waitFor();
+  assert.equal(await page.locator("#id_forename").inputValue(), "Aisha");
+  assert.deepEqual(await fileState(page), emptyTopFiles);
+  assert.deepEqual(await fileState(documentFrame(page)), emptyFrameFiles);
+  assert.deepEqual(await page.evaluate(() => activity), { clicks: 0, submissions: 0, inputs: ["id_forename"], changes: ["id_forename"] });
+  assert.deepEqual(await documentFrame(page).evaluate(() => activity), noDocumentActivity);
+  assert.deepEqual(fileRequests, []);
+});
+
+test("CRM documents: scanning a page without uploads reports no file upload fields", { timeout: 20000 }, async () => {
+  const page = await openPage(noDocumentsUrl);
+  await copyDocumentStudent();
+  await activate(page);
+  assert.equal(await popup.locator("#btnDocuments").count(), 1, "The popup must expose the Attach CRM documents action");
+  await popup.locator("#btnDocuments:visible").waitFor();
+  await popup.locator("#btnDocuments").click();
+  await popup.locator("#statusArea").filter({ hasText: /No file upload fields/ }).waitFor();
+  assert.equal(await page.locator("#id_forename").inputValue(), "", "Scanning must not Autofill normal fields");
+  assert.deepEqual(fileRequests, []);
+});
+
+test("CRM documents: session expiry removes document metadata and hides the attach action", { timeout: 15000 }, async () => {
+  await copyDocumentStudent();
+  assert.equal(await popup.locator("#btnDocuments").count(), 1, "The popup must expose the Attach CRM documents action");
+  await popup.locator("#btnDocuments:visible").waitFor();
+  await worker.evaluate(async () => {
+    const { studentCache } = await chrome.storage.session.get("studentCache");
+    await chrome.storage.session.set({ studentCache: { ...studentCache, expiresAt: Date.now() - 1 } });
+  });
+  await popup.reload();
+  await popup.locator("#studentCard").waitFor({ state: "hidden" });
+  assert.equal(await cache(), null);
+  assert.equal(await popup.locator("#btnDocuments").isVisible(), false);
+  assert.deepEqual(await storageSnapshot(), { local: {}, sync: {}, session: {} });
 });

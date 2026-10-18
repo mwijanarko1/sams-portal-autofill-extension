@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Synthetic upload frame</title></head>
+<body>
+  <form action="/e2e-forbidden-frame-submit" method="post">
+    <label for="frame-upload">Frame evidence</label><input id="frame-upload" type="file" accept="image/jpeg">
+    <button type="submit">Save frame</button>
+  </form>
+  <script>
+    window.activity = { clicks: 0, submissions: 0, inputs: [], changes: [] };
+    document.addEventListener("click", () => { activity.clicks++; });
+    document.addEventListener("submit", (event) => { event.preventDefault(); activity.submissions++; });
+    document.addEventListener("input", (event) => { activity.inputs.push(event.target.id); });
+    document.addEventListener("change", (event) => { activity.changes.push(event.target.id); });
+  </script>
+</body>
+</html>
