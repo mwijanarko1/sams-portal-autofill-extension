@@ -4,7 +4,7 @@ last_mapped: 2026-10-12T12:10:26Z
 
 # Codebase Map
 
-Private Chrome MV3 / Safari Web Extension for authorised SAMS staff. Copies visible fields from an approved CRM profile into `chrome.storage.session`, then draft-fills empty fields on approved university portal pages. Never submits forms, never calls a CRM backend API.
+Private Chrome MV3 / Safari Web Extension for authorised SAMS staff. Copies visible fields from an approved CRM profile into `chrome.storage.session`, then draft-fills empty fields on approved university portal pages. Never submits forms. Only read-only CRM API calls: list the student's documents at Copy, fetch one file when staff attach it.
 
 Scanner inventory (excluding `node_modules`, `dist`, `tmp`, `.git`, binaries): **69 source/docs files**, ~132k tokens. Generated/build output and probe dumps live under `dist/` and `tmp/` and are not source of truth.
 
@@ -19,6 +19,7 @@ src/background.js          session cache + 30 min alarm
   |  cacheStudent / getStudentCache / touch / clear
   |
 src/crm-reader.js          CRM page only (profile guards)
+src/crm-documents.js       CRM page only (document list, file fetch on attach)
 config/crm-source.js       labels -> canonical keys
   |
   v
@@ -58,6 +59,7 @@ Production packaging rejects empty Campora origins or fewer than three portal or
 | `config/portals/manchester.js` | Greater Manchester placeholder (no origins yet). |
 | `src/background.js` | Serialized session cache, expiry alarm, identity-checked messages. |
 | `src/crm-reader.js` | Visible CRM DOM reader; expands sections; refuses non-profile pages. |
+| `src/crm-documents.js` | Lists the profile's documents from the nine `fp_*_docs` GET endpoints with the page `api-token`; keeps metadata for `/tmp_aws_media/` files only. Fetches one file on attach inside the CRM tab, because the session cookie is not sent from extension pages. |
 | `src/portal-fill.js` | Page handler on a popup-only port; checks selected origin, sandboxing and top page; runs engine; returns fill report. |
 | `src/engine/engine.js` | Core scan/match/format/fill, split dates, click guard, skip-if-filled. |
 | `scripts/build.mjs` | Chrome/Safari resource package; per-target `dist` cleanup only. |
@@ -88,7 +90,8 @@ Production packaging rejects empty Campora origins or fewer than three portal or
 5. Staff opens a university form step and opens the popup from the toolbar there (temporary `activeTab` grant unless the portal is mapped). Popup discovers frames via `webNavigation.getAllFrames`.
 6. Student values go only to the top frame and frames with exactly its origin, over a per-frame port; the handler re-checks origin, sandboxing and top page, and the popup re-reads the worker cache before sending.
 7. Portal handler re-validates origin, runs the engine (empty fields only), returns filled/skipped/manual buckets.
-8. Successful fill on at least one frame extends expiry. Clear, expiry, browser restart, or extension reload wipe the cache.
+8. Attach CRM documents: popup lists the page's `input[type=file]` controls over the same per-frame ports, staff pick a document per field, a CRM tab fetches the bytes, and `portal-fill.js` assigns one `File` and fires `input`/`change`. Ordinary Autofill still never touches file inputs.
+9. Successful fill on at least one frame extends expiry. Clear, expiry, browser restart, or extension reload wipe the cache.
 
 ### Add an origin or portal field
 

@@ -1,6 +1,6 @@
 # SAMS Portal Autofill
 
-Private Chrome Manifest V3 extension for authorised SAMS staff. It copies visible fields from an approved SAMS CRM or Campora student profile into `chrome.storage.session`, then fills empty fields on the university application page where staff open the extension. It never submits a form or calls a CRM backend API.
+Private Chrome Manifest V3 extension for authorised SAMS staff. It copies visible fields from an approved SAMS CRM or Campora student profile into `chrome.storage.session`, then fills empty fields on the university application page where staff open the extension. It never submits a form. Its only CRM API calls are read-only requests that list the open student's documents and fetch one file when staff attach it.
 
 ## Current status
 
@@ -39,6 +39,7 @@ See [safari/README.md](safari/README.md) and the
 2. Select **Copy from CRM**.
 3. Open the university application form, then open the extension from the browser toolbar on that page.
 4. Select **Autofill this portal page** on each form step.
+   To attach CRM documents, keep SAMS CRM open in a tab, select **Attach CRM documents**, choose a document for each upload field, and select **Attach**. Some portals upload the file as soon as it is attached.
 5. Review all filled and manual-review fields, then submit manually.
 6. Use **Clear** when finished. Data otherwise expires after 30 minutes of inactivity.
 
@@ -49,6 +50,7 @@ See [safari/README.md](safari/README.md) and the
 - `config/synonyms.js`: shared deterministic field synonyms and the generic field registry for unmapped universities
 - `config/portals/`: portal-specific mappings
 - `src/crm-reader.js`: visible CRM page reader
+- `src/crm-documents.js`: lists the open student's CRM documents (metadata only) and fetches one file through the CRM session when staff attach it
 - `src/engine/engine.js`: scan, match, format, and fill engine
 - `src/portal-fill.js`: page handler that accepts student values only from the popup, over a port bound to the selected page
 - `src/background.js`: session cache and expiry alarm
@@ -58,7 +60,7 @@ See [safari/README.md](safari/README.md) and the
 - `test/`, `e2e/`: unit/DOM tests, Chromium loaded-extension E2E, Safari fixture checklist
 - `docs/`: staff, deployment, mapping guides, Safari architecture, and [CODEBASE_MAP.md](docs/CODEBASE_MAP.md)
 
-No extension login, licence server, AI inference, backend integration, document upload, or automatic irreversible actions are included.
+No extension login, licence server, AI inference, backend writes, automatic document upload, or automatic irreversible actions are included.
 
 ## End-to-end testing
 
