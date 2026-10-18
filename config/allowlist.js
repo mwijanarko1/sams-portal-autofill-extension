@@ -34,9 +34,20 @@ function isCrmOrigin(value) {
   return crmOrigins().includes(normalizeOrigin(value));
 }
 
+// CRM document files are fetched with the staff session, so only the plain media path on the
+// copied CRM origin is accepted. Token-bearing download links, queries, and fragments are not.
+function isCrmFileUrl(value, sourceOrigin) {
+  if (typeof value !== "string" || value.length > 2000 || /[?#\\]/.test(value)) return false;
+  let url;
+  try { url = new URL(value); } catch { return false; }
+  return url.origin === sourceOrigin && isCrmOrigin(url.origin) && !url.username && !url.password
+    && /^\/tmp_aws_media\/[A-Za-z0-9._-]+$/.test(url.pathname);
+}
+
 globalThis.SAMS_ALLOWLIST = {
   config: SAMS_ALLOWLIST_CONFIG,
   isCrmOrigin,
+  isCrmFileUrl,
   // Autofill may run on any web page staff select, never on the CRM source itself.
   isFillTarget(value) {
     const origin = normalizeOrigin(value);

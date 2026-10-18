@@ -10,8 +10,39 @@ const copiedDetailsSummary = document.getElementById("copiedDetailsSummary");
 const copiedFields = document.getElementById("copiedFields");
 const copiedSearch = document.getElementById("copiedSearch");
 const copiedEmpty = document.getElementById("copiedEmpty");
+const copiedDocuments = document.getElementById("copiedDocuments");
+const copiedDocumentsSummary = document.getElementById("copiedDocumentsSummary");
+const copiedDocumentsList = document.getElementById("copiedDocumentsList");
+const btnDocuments = document.getElementById("btnDocuments");
+const documentsCard = document.getElementById("documentsCard");
+const uploadFields = document.getElementById("uploadFields");
 let cache = null;
 let expiryTimer = null;
+// Ports to the scanned portal page stay open while staff choose documents, so each upload
+// key keeps pointing at the exact input that was scanned.
+let uploadFrames = [];
+let uploadPickers = [];
+let scannedCopiedAt = 0;
+const MIME_TYPES = {
+  pdf: "application/pdf",
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  png: "image/png",
+  doc: "application/msword",
+  docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+};
+// Suggestions only label an option; staff always choose the document themselves.
+const GROUP_HINTS = {
+  cv: /\b(cv|resume|curriculum)\b/,
+  edu: /\b(education|academic|degree|qualifications?|transcripts?|diploma)\b/,
+  work_history: /\b(work|employment|employer|experience)\b/,
+  eng_test: /\b(english|ielts|toefl|pte|language)\b/,
+  reference: /\b(references?|referees?|recommendation)\b/,
+  visa_history: /\bvisas?\b/,
+  visa_refusal: /\b(visas?|refusals?)\b/,
+  passport: /\b(passports?|identity)\b/,
+};
+const TYPE_HINTS = { Transcript: /\btranscripts?\b/, Certificate: /\bcertificates?\b/ };
 const SITE_ACCESS_HINT = "If it is already open, allow SAMS Portal Autofill to access this website, then try again.";
 const PAGE_ACCESS_ERROR = "Could not access this page. Allow SAMS Portal Autofill to access this website, reload the page, and try again.";
 const FRAME_NO_RESPONSE = "The page frame did not respond.";
@@ -123,12 +154,58 @@ function renderFields(fields) {
   }));
 }
 
+// Staff open this to confirm exactly which CRM files were copied before they attach one.
+function renderDocuments(documents) {
+  const items = documents || [];
+  copiedDocuments.hidden = !items.length;
+  if (!items.length) copiedDocuments.open = false;
+  copiedDocumentsSummary.textContent = `Copied documents (${items.length})`;
+  copiedDocumentsList.replaceChildren(...items.map((crmDocument) => {
+    const row = document.createElement("div");
+    row.className = "document-row";
+    const text = document.createElement("div");
+    text.className = "document-text";
+    const name = document.createElement("div");
+    name.className = "document-name";
+    name.textContent = documentFileName(crmDocument);
+    const group = document.createElement("div");
+    group.className = "document-group";
+    group.textContent = crmDocument.groupLabel;
+    text.append(name, group);
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "view";
+    button.textContent = "View";
+    button.setAttribute("aria-label", `View ${documentFileName(crmDocument)}`);
+    button.addEventListener("click", () => viewDocument(crmDocument));
+    row.append(text, button);
+    return row;
+  }));
+}
+
+// Opens the copied CRM file in a new tab so staff can confirm it is the right one. Only the plain
+// media URL on the copied CRM origin is opened; token-bearing download links are still never used.
+async function viewDocument(crmDocument) {
+  if (!cache || !SAMS_ALLOWLIST.isCrmFileUrl(crmDocument.url, cache.sourceOrigin)) {
+    setStatus("error", "This document link is not an approved CRM file. Open it in SAMS CRM instead.");
+    return;
+  }
+  try {
+    await chrome.tabs.create({ url: crmDocument.url });
+  } catch {
+    setStatus("error", "Could not open this document. Open it in SAMS CRM instead.");
+  }
+}
+
 function renderCache() {
   clearInterval(expiryTimer);
   studentCard.hidden = !cache;
   btnAutofill.disabled = !cache;
+  btnDocuments.hidden = !(cache && cache.documents && cache.documents.length);
   renderFields(cache && cache.fields);
+  renderDocuments(cache && cache.documents);
   if (!cache) {
+    closeUploads();
     studentName.textContent = "";
     studentMeta.textContent = "";
     return;
@@ -136,7 +213,8 @@ function renderCache() {
   studentName.textContent = cache.studentName;
   const update = () => {
     const remaining = Math.max(0, Math.ceil((cache.expiresAt - Date.now()) / 60000));
-    studentMeta.textContent = `Copied ${new Date(cache.copiedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} · expires in ${remaining} min`;
+    const copied = new Date(cache.copiedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    studentMeta.textContent = `Copied ${copied} · expires in ${remaining} min`;
     if (!remaining) refreshCache();
   };
   update();
@@ -165,6 +243,15 @@ async function injectDocument(tabId, documentId, files) {
   }
 }
 
+// A failed document listing never blocks the field Copy staff asked for.
+async function copyDocuments(tabId) {
+  try {
+    const response = await chrome.tabs.sendMessage(tabId, { action: "copyCrmDocuments" }, { frameId: 0 });
+    if (response && Array.isArray(response.documents)) return { documents: response.documents, failed: false };
+  } catch { /* reported below */ }
+  return { documents: [], failed: true };
+}
+
 async function copyFromCrm() {
   btnCopy.disabled = true;
   setStatus("info", "Opening CRM sections and reading student fields...");
@@ -175,14 +262,18 @@ async function copyFromCrm() {
       "config/allowlist.js",
       "config/crm-source.js",
       "src/crm-reader.js",
+      "src/crm-documents.js",
     ]);
     const response = await chrome.tabs.sendMessage(tab.id, { action: "copyCrmProfile" }, { frameId: 0 });
     if (response.error) throw new Error(response.error);
-    const stored = await runtimeMessage({ action: "cacheStudent", profile: response.profile });
+    const listing = await copyDocuments(tab.id);
+    const stored = await runtimeMessage({ action: "cacheStudent", profile: { ...response.profile, documents: listing.documents } });
     if (stored.error) throw new Error(stored.error);
     cache = stored.cache;
     renderCache();
-    setStatus("success", `${Object.keys(cache.fields).length} CRM fields copied. Student data expires after 30 minutes of inactivity.`);
+    const documentsNote = listing.failed ? " CRM documents could not be read, so attach them manually."
+      : cache.documents.length ? ` ${cache.documents.length} CRM documents available to attach.` : "";
+    setStatus("success", `${Object.keys(cache.fields).length} CRM fields copied.${documentsNote} Student data expires after 30 minutes of inactivity.`);
   } catch (error) {
     setStatus("error", error.message || String(error));
   } finally {
@@ -268,6 +359,26 @@ function mergeResults(results) {
   return merged;
 }
 
+// Injects the page handler into each selected frame document and opens its port. `frames` holds
+// every opened port for cleanup; `checked` holds the frames that answered prepare, or their errors.
+async function preparePageFrames(tab) {
+  const origin = originOf(tab.url);
+  const selected = await selectedPageFrames(tab, origin);
+  const injected = await Promise.all(selected.map((frame) =>
+    injectDocument(tab.id, frame.documentId, PORTAL_FILES).then(
+      () => frame,
+      (error) => ({ frameId: frame.frameId, documentId: frame.documentId, error: error.message }),
+    )
+  ));
+  const frames = injected.map((frame) => frame.error ? frame : connectFrame(tab.id, frame));
+  const checked = await Promise.all(frames.map(async (frame) => {
+    if (frame.error) return frame;
+    const response = await frame.request({ action: "prepare", origin });
+    return response && response.ready ? frame : { frameId: frame.frameId, documentId: frame.documentId, error: (response && response.error) || FRAME_NO_RESPONSE };
+  }));
+  return { frames, checked };
+}
+
 async function autofill() {
   btnAutofill.disabled = true;
   setStatus("info", "Filling empty fields on this page...");
@@ -275,20 +386,9 @@ async function autofill() {
   try {
     const tab = await approvedTab(SAMS_ALLOWLIST.isFillTarget,
       "Open the university application form first. Autofill does not run on SAMS CRM, Campora, or browser pages.");
-    const origin = originOf(tab.url);
-    const selected = await selectedPageFrames(tab, origin);
-    const injected = await Promise.all(selected.map((frame) =>
-      injectDocument(tab.id, frame.documentId, PORTAL_FILES).then(
-        () => frame,
-        (error) => ({ frameId: frame.frameId, documentId: frame.documentId, error: error.message }),
-      )
-    ));
-    frames = injected.map((frame) => frame.error ? frame : connectFrame(tab.id, frame));
-    const checked = await Promise.all(frames.map(async (frame) => {
-      if (frame.error) return frame;
-      const response = await frame.request({ action: "prepare", origin });
-      return response && response.ready ? frame : { frameId: frame.frameId, documentId: frame.documentId, error: (response && response.error) || FRAME_NO_RESPONSE };
-    }));
+    const prepared = await preparePageFrames(tab);
+    frames = prepared.frames;
+    const checked = prepared.checked;
     // The worker cache is authoritative: Clear, expiry, or a new Copy elsewhere must win over this popup's memory.
     await refreshCache();
     if (!cache) throw new Error("No copied student is available. Copy from CRM again before Autofill.");
@@ -329,6 +429,283 @@ async function autofill() {
   }
 }
 
+function closeUploads() {
+  uploadFrames.forEach((frame) => frame.close && frame.close());
+  uploadPickers.forEach((picker) => picker.destroy && picker.destroy());
+  uploadFrames = [];
+  uploadPickers = [];
+  uploadFields.replaceChildren();
+  documentsCard.hidden = true;
+}
+
+function documentFileName(crmDocument) {
+  const suffix = `.${crmDocument.extension}`;
+  return crmDocument.name.toLowerCase().endsWith(suffix) ? crmDocument.name : `${crmDocument.name}${suffix}`;
+}
+
+// Mirrors the browser's own `accept` rules: extensions, exact MIME types, and type/* wildcards.
+function acceptsDocument(accept, crmDocument) {
+  const tokens = accept.toLowerCase().split(",").map((token) => token.trim()).filter(Boolean);
+  if (!tokens.length) return true;
+  const mime = MIME_TYPES[crmDocument.extension];
+  const extensions = ["jpg", "jpeg"].includes(crmDocument.extension) ? ["jpg", "jpeg"] : [crmDocument.extension];
+  return tokens.some((token) => {
+    if (token.startsWith(".")) return extensions.includes(token.slice(1));
+    if (token.endsWith("/*")) return mime.startsWith(token.slice(0, -1));
+    return token === mime;
+  });
+}
+
+function suggestedFor(label, crmDocument) {
+  const text = label.toLowerCase();
+  return Boolean(GROUP_HINTS[crmDocument.group]?.test(text) || TYPE_HINTS[crmDocument.documentType]?.test(text));
+}
+
+// Bytes are fetched only when staff attach, inside an open CRM tab: the CRM session cookie is
+// not sent on requests from the extension's own pages.
+async function fetchDocument(crmDocument) {
+  if (!SAMS_ALLOWLIST.isCrmFileUrl(crmDocument.url, cache.sourceOrigin)) {
+    throw new Error("This document link is not an approved CRM file. Attach it manually.");
+  }
+  const [crmTab] = await chrome.tabs.query({ url: `${cache.sourceOrigin}/*` });
+  if (!crmTab) throw new Error("Keep SAMS CRM open in a tab while attaching documents, then try again.");
+  await inject(crmTab.id, [0], ["config/build-mode.js", "config/allowlist.js", "src/crm-documents.js"]);
+  let response;
+  try {
+    response = await chrome.tabs.sendMessage(crmTab.id, { action: "readCrmDocument", url: crmDocument.url }, { frameId: 0 });
+  } catch {
+    throw new Error("The CRM tab did not respond. Reload SAMS CRM, then try again.");
+  }
+  if (!response || response.error || typeof response.base64 !== "string") {
+    throw new Error((response && response.error) || "The CRM tab did not respond. Reload SAMS CRM, then try again.");
+  }
+  return { name: documentFileName(crmDocument), type: MIME_TYPES[crmDocument.extension], base64: response.base64 };
+}
+
+function setUploadStatus(status, type, text) {
+  status.className = `upload-status ${type}`;
+  status.textContent = text;
+}
+
+async function attachToUpload(frame, upload, picker, button, status) {
+  picker.setDisabled(true);
+  button.disabled = true;
+  setUploadStatus(status, "", "Attaching...");
+  try {
+    // The worker cache is authoritative: Clear, expiry, or a new Copy must win over this popup's rows.
+    await refreshCache();
+    if (!cache) throw new Error("No copied student is available. Copy from CRM again before attaching documents.");
+    if (cache.copiedAt !== scannedCopiedAt) throw new Error("A different student was copied. Scan the page again.");
+    const crmDocument = cache.documents.find((item) => item.key === picker.value);
+    if (!crmDocument) throw new Error("This document is no longer available. Copy from CRM again.");
+    const file = await fetchDocument(crmDocument);
+    const response = await frame.request({ action: "attachDocument", key: upload.key, file });
+    if (!response || response.error) throw new Error((response && response.error) || FRAME_NO_RESPONSE);
+    const touched = await runtimeMessage({ action: "touchStudentCache" });
+    cache = touched.cache || null;
+    renderCache();
+    setUploadStatus(status, "done", `Attached ${response.name}. Review the portal: it may upload the file straight away.`);
+  } catch (error) {
+    const message = error.message || String(error);
+    if (!cache) {
+      setStatus("error", message);
+      return;
+    }
+    setUploadStatus(status, "failed", message);
+    picker.setDisabled(false);
+    button.disabled = !picker.value;
+  }
+}
+
+// shadcn-style listbox: a button that opens a panel of options, with keyboard support. It replaces
+// the native select so the popup matches the design system while keeping the same data flow.
+function createPicker({ label, options, placeholder }) {
+  const root = document.createElement("div");
+  root.className = "upload-choice-wrap";
+  const trigger = document.createElement("button");
+  trigger.type = "button";
+  trigger.className = "upload-choice";
+  trigger.setAttribute("role", "combobox");
+  trigger.setAttribute("aria-haspopup", "listbox");
+  trigger.setAttribute("aria-expanded", "false");
+  trigger.setAttribute("aria-label", `CRM document for ${label}`);
+  const valueText = document.createElement("span");
+  valueText.className = "upload-choice-value placeholder";
+  valueText.textContent = placeholder;
+  const chevron = document.createElement("span");
+  chevron.className = "upload-choice-chevron";
+  chevron.setAttribute("aria-hidden", "true");
+  trigger.append(valueText, chevron);
+  const menu = document.createElement("div");
+  menu.className = "upload-choice-menu";
+  menu.setAttribute("role", "listbox");
+  menu.setAttribute("aria-label", `CRM document for ${label}`);
+  menu.hidden = true;
+  const optionNodes = options.map((option, index) => {
+    const node = document.createElement("div");
+    node.className = "upload-choice-option";
+    node.setAttribute("role", "option");
+    node.setAttribute("data-value", option.value);
+    node.setAttribute("aria-selected", "false");
+    node.textContent = option.text;
+    node.addEventListener("click", () => selectOption(index, true));
+    return node;
+  });
+  menu.append(...optionNodes);
+  root.append(trigger, menu);
+  let selected = "";
+  let highlighted = -1;
+  let notify = () => {};
+
+  function setHighlight(index) {
+    highlighted = index;
+    optionNodes.forEach((node, position) => node.setAttribute("data-highlighted", String(position === index)));
+  }
+  function open() {
+    if (trigger.disabled || !menu.hidden) return;
+    menu.hidden = false;
+    trigger.setAttribute("aria-expanded", "true");
+    setHighlight(options.findIndex((option) => option.value === selected));
+  }
+  function close() {
+    menu.hidden = true;
+    trigger.setAttribute("aria-expanded", "false");
+    setHighlight(-1);
+  }
+  function selectOption(index, fromPointer) {
+    const option = options[index];
+    if (!option) return;
+    selected = option.value;
+    optionNodes.forEach((node, position) => node.setAttribute("aria-selected", String(position === index)));
+    valueText.className = "upload-choice-value";
+    valueText.textContent = option.text;
+    trigger.setAttribute("data-value", option.value);
+    close();
+    if (fromPointer && trigger.focus) trigger.focus();
+    notify();
+  }
+  function move(step) {
+    if (menu.hidden) return open();
+    const next = Math.min(optionNodes.length - 1, Math.max(0, highlighted + step));
+    setHighlight(next);
+    if (optionNodes[next].scrollIntoView) optionNodes[next].scrollIntoView({ block: "nearest" });
+  }
+  function onKey(event) {
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      event.preventDefault();
+      move(event.key === "ArrowDown" ? 1 : -1);
+    } else if (event.key === "Enter" || event.key === " ") {
+      if (menu.hidden) { event.preventDefault(); open(); } else if (highlighted >= 0) { event.preventDefault(); selectOption(highlighted, true); }
+    } else if (event.key === "Home" || event.key === "End") {
+      if (!menu.hidden) { event.preventDefault(); setHighlight(event.key === "Home" ? 0 : optionNodes.length - 1); }
+    } else if (event.key === "Escape" && !menu.hidden) {
+      event.preventDefault();
+      close();
+      if (trigger.focus) trigger.focus();
+    }
+  }
+  // Any click outside this picker closes it, so only one menu is open at a time.
+  const onDocumentClick = (event) => { if (!root.contains || !root.contains(event.target)) close(); };
+  trigger.addEventListener("click", () => { if (menu.hidden) open(); else close(); });
+  trigger.addEventListener("keydown", onKey);
+  document.addEventListener("click", onDocumentClick);
+
+  return {
+    root,
+    get value() { return selected; },
+    setDisabled(disabled) {
+      trigger.disabled = disabled;
+      if (disabled) close();
+    },
+    onChange(handler) { notify = handler; },
+    destroy() { document.removeEventListener("click", onDocumentClick); },
+  };
+}
+
+function renderUploadRow({ frame, upload }) {
+  const row = document.createElement("div");
+  row.className = "upload-row";
+  const label = document.createElement("div");
+  label.className = "upload-label";
+  label.textContent = upload.label;
+  const controls = document.createElement("div");
+  controls.className = "upload-controls";
+  const compatible = cache.documents.filter((item) => acceptsDocument(upload.accept, item));
+  const picker = createPicker({
+    label: upload.label,
+    placeholder: "Choose a CRM document",
+    options: compatible.map((item) => ({
+      value: item.key,
+      text: `${item.groupLabel} · ${documentFileName(item)}${suggestedFor(upload.label, item) ? " (suggested)" : ""}`,
+    })),
+  });
+  uploadPickers.push(picker);
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "attach";
+  button.textContent = "Attach";
+  button.disabled = true;
+  const status = document.createElement("div");
+  status.className = "upload-status";
+  if (upload.hasFile) {
+    picker.setDisabled(true);
+    status.textContent = "This field already has a file. Remove it in the portal first, then scan again.";
+  } else if (!compatible.length) {
+    picker.setDisabled(true);
+    status.textContent = "No CRM document matches this field's accepted file types.";
+  }
+  picker.onChange(() => { button.disabled = !picker.value; });
+  button.addEventListener("click", () => attachToUpload(frame, upload, picker, button, status));
+  controls.append(picker.root, button);
+  row.append(label, controls, status);
+  return row;
+}
+
+async function scanUploads() {
+  btnDocuments.disabled = true;
+  closeUploads();
+  setStatus("info", "Looking for file upload fields on this page...");
+  try {
+    const tab = await approvedTab(SAMS_ALLOWLIST.isFillTarget,
+      "Open the university application form first. Documents are attached on the portal page, not on SAMS CRM or browser pages.");
+    const prepared = await preparePageFrames(tab);
+    uploadFrames = prepared.frames;
+    const listed = await Promise.all(prepared.checked.map(async (frame) => {
+      if (frame.error) return { failure: `Frame ${frame.frameId}: ${frame.error}` };
+      const response = await frame.request({ action: "listUploads" });
+      if (!response || !Array.isArray(response.uploads)) {
+        return { failure: `Frame ${frame.frameId}: ${(response && response.error) || FRAME_NO_RESPONSE}` };
+      }
+      return { entries: response.uploads.map((upload) => ({ frame, upload })) };
+    }));
+    await refreshCache();
+    if (!cache || !cache.documents.length) throw new Error("No copied CRM documents are available. Copy from CRM again.");
+    const entries = listed.flatMap((item) => item.entries || []);
+    const failures = listed.filter((item) => item.failure).map((item) => item.failure);
+    if (!entries.length) {
+      closeUploads();
+      if (failures.length) {
+        setStatus("error", "No file upload fields could be read on this page.");
+        addList("Frames not scanned", failures);
+      } else {
+        setStatus("info", "No file upload fields found on this page.");
+      }
+      return;
+    }
+    scannedCopiedAt = cache.copiedAt;
+    uploadFields.replaceChildren(...entries.map(renderUploadRow));
+    documentsCard.hidden = false;
+    setStatus(failures.length ? "warning" : "info",
+      `${entries.length} upload fields found. Choose a document for each field you want to attach, then review the portal.`);
+    addList("Frames not scanned", failures);
+  } catch (error) {
+    closeUploads();
+    setStatus("error", error.message || String(error));
+  } finally {
+    btnDocuments.disabled = false;
+  }
+}
+
 async function clearStudent() {
   await runtimeMessage({ action: "clearStudentCache" });
   cache = null;
@@ -339,5 +716,6 @@ async function clearStudent() {
 btnCopy.addEventListener("click", copyFromCrm);
 btnAutofill.addEventListener("click", autofill);
 btnClear.addEventListener("click", clearStudent);
+btnDocuments.addEventListener("click", scanUploads);
 copiedSearch.addEventListener("input", () => renderFields(cache && cache.fields));
 refreshCache().catch((error) => setStatus("error", error.message || String(error)));

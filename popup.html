@@ -19,8 +19,36 @@
     button { width: 100%; margin-top: 8px; padding: 10px 12px; border: 0; border-radius: 9px; background: #312e81; color: white; font: inherit; font-weight: 700; cursor: pointer; }
     button.clear { width: auto; margin: 0; padding: 6px 8px; background: transparent; color: #64748b; }
     button:disabled { cursor: not-allowed; opacity: .45; }
-    #copiedDetails { margin-top: 10px; border: 1px solid #e0e7ff; }
-    #copiedDetails[hidden] { display: none; }
+    button[hidden], #documentsCard[hidden] { display: none; }
+    button.secondary { background: #eef2ff; color: #312e81; }
+    #documentsCard .meta { margin: 0 0 6px; }
+    .upload-row { padding: 8px 0; border-top: 1px solid #eef2ff; }
+    .upload-label { color: #312e81; font-weight: 700; overflow-wrap: anywhere; }
+    .upload-controls { display: flex; gap: 6px; margin-top: 6px; }
+    .upload-choice-wrap { position: relative; flex: 1; min-width: 0; }
+    button.upload-choice { display: flex; align-items: center; justify-content: space-between; gap: 6px; width: 100%; margin: 0; padding: 6px 8px; border: 1px solid #d4d4d8; border-radius: 7px; background: white; color: #312e81; font: inherit; font-weight: 400; text-align: left; cursor: pointer; }
+    button.upload-choice:focus-visible { outline: none; border-color: #818cf8; box-shadow: 0 0 0 3px rgba(129, 140, 248, .35); }
+    button.upload-choice[aria-expanded="true"] { border-color: #818cf8; }
+    button.upload-choice:disabled { cursor: not-allowed; }
+    .upload-choice-value { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+    .upload-choice-value.placeholder { color: #a1a1aa; }
+    .upload-choice-chevron { flex: none; width: 7px; height: 7px; margin-top: -3px; border-right: 2px solid #64748b; border-bottom: 2px solid #64748b; transform: rotate(45deg); }
+    .upload-choice-menu { position: absolute; z-index: 10; top: calc(100% + 4px); left: 0; right: 0; max-height: 176px; overflow-y: auto; padding: 4px; border: 1px solid #e0e7ff; border-radius: 8px; background: white; box-shadow: 0 12px 28px rgba(38, 34, 97, .18); }
+    .upload-choice-menu[hidden] { display: none; }
+    .upload-choice-option { padding: 6px 8px; border-radius: 6px; color: #312e81; font-size: 12px; cursor: pointer; overflow-wrap: anywhere; }
+    .upload-choice-option[data-highlighted="true"] { background: #eef2ff; }
+    .upload-choice-option[aria-selected="true"] { background: #eef2ff; font-weight: 700; }
+    button.attach { width: auto; margin: 0; padding: 5px 10px; }
+    .upload-status { margin-top: 4px; color: #64748b; font-size: 11px; }
+    .upload-status.failed { color: #991b1b; }
+    .upload-status.done { color: #166534; }
+    #copiedDetails, #copiedDocuments { margin-top: 10px; border: 1px solid #e0e7ff; }
+    #copiedDetails[hidden], #copiedDocuments[hidden] { display: none; }
+    .document-row { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-top: 1px solid #eef2ff; }
+    .document-row:first-child { margin-top: 6px; }
+    .document-text { flex: 1; min-width: 0; }
+    .document-name { color: #312e81; font-size: 12px; overflow-wrap: anywhere; }
+    .document-group { color: #64748b; }
     #copiedFields { max-height: 260px; overflow-y: auto; }
     #copiedSearch { width: 100%; margin-top: 8px; padding: 6px 8px; border: 1px solid #e0e7ff; border-radius: 7px; font: inherit; }
     .field-row[hidden] { display: none; }
@@ -29,7 +57,7 @@
     .field-text { flex: 1; min-width: 0; }
     .field-label { color: #64748b; }
     .field-value { color: #312e81; font-size: 12px; overflow-wrap: anywhere; }
-    button.copy { width: auto; margin: 0; padding: 4px 8px; background: #eef2ff; color: #312e81; font-size: 11px; }
+    button.copy, button.view { width: auto; margin: 0; padding: 4px 8px; background: #eef2ff; color: #312e81; font-size: 11px; }
     .status { margin-bottom: 8px; padding: 9px 10px; border-left: 3px solid; border-radius: 7px; line-height: 1.4; }
     .info { border-color: #818cf8; background: #eef2ff; }
     .success { border-color: #22c55e; background: #f0fdf4; }
@@ -59,7 +87,16 @@
         <div id="copiedFields"></div>
         <p id="copiedEmpty" class="meta" hidden>No matching fields.</p>
       </details>
+      <details id="copiedDocuments" hidden>
+        <summary id="copiedDocumentsSummary">Copied documents</summary>
+        <div id="copiedDocumentsList"></div>
+      </details>
       <button id="btnAutofill" disabled>Autofill this portal page</button>
+      <button id="btnDocuments" class="secondary" hidden>Attach CRM documents</button>
+    </section>
+    <section id="documentsCard" class="card" hidden>
+      <p class="meta">Choose a CRM document for each upload field. Some portals upload the file as soon as it is attached.</p>
+      <div id="uploadFields"></div>
     </section>
     <section id="statusArea" aria-live="polite"></section>
     <footer>Never submits, pays, sends, confirms, or declares. Review every draft.</footer>

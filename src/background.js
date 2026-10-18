@@ -5,6 +5,8 @@ const ALARM_NAME = "expire-student-cache";
 const CACHE_ACTIONS = ["cacheStudent", "getStudentCache", "touchStudentCache", "clearStudentCache"];
 const MAX_FIELDS = 200;
 const MAX_TEXT_LENGTH = 4000;
+const MAX_DOCUMENTS = 100;
+const DOCUMENT_KEYS = ["documentType", "extension", "group", "groupLabel", "key", "name", "url"].join();
 let queue = Promise.resolve();
 
 // Cache operations run one at a time, so a slow touch or expiry cannot resurrect or remove
@@ -54,7 +56,24 @@ function validProfile(profile) {
   const entries = Object.entries(fields);
   if (entries.length < 2 || entries.length > MAX_FIELDS) return null;
   if (!entries.every(([key, value]) => /^[A-Za-z][A-Za-z0-9]{0,63}$/.test(key) && text(value))) return null;
-  return { studentId, studentName, sourceOrigin, copiedAt, fields: Object.fromEntries(entries) };
+  const documents = validDocuments(profile.documents, sourceOrigin);
+  if (!documents) return null;
+  return { studentId, studentName, sourceOrigin, copiedAt, fields: Object.fromEntries(entries), documents };
+}
+
+// Document metadata only: file bytes are fetched when staff attach a file, never cached.
+function validDocuments(documents, sourceOrigin) {
+  if (documents === undefined) return [];
+  if (!Array.isArray(documents) || documents.length > MAX_DOCUMENTS) return null;
+  const short = (value) => typeof value === "string" && value.trim() && value.length <= 200;
+  const valid = documents.every((document) => document && typeof document === "object"
+    && Object.keys(document).sort().join() === DOCUMENT_KEYS
+    && /^[a-z_]{1,32}:\d{1,12}$/.test(document.key) && short(document.group) && short(document.groupLabel) && short(document.name)
+    && (document.documentType === null || short(document.documentType))
+    && /^(pdf|jpe?g|png|docx?)$/.test(document.extension)
+    && SAMS_ALLOWLIST.isCrmFileUrl(document.url, sourceOrigin));
+  const unique = new Set(documents.map((document) => document.key)).size === documents.length;
+  return valid && unique ? documents.map((document) => ({ ...document })) : null;
 }
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {

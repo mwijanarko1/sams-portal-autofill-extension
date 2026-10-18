@@ -99,7 +99,9 @@ function textOf(node) {
 // Loads the real popup against the real worker with fake tab, frame and page APIs.
 async function openPopup(worker, page) {
   const ids = ["btnCopy", "btnAutofill", "btnClear", "studentCard", "studentName", "studentMeta", "statusArea",
-    "copiedDetails", "copiedDetailsSummary", "copiedFields", "copiedSearch", "copiedEmpty"];
+    "copiedDetails", "copiedDetailsSummary", "copiedFields", "copiedSearch", "copiedEmpty",
+    "copiedDocuments", "copiedDocumentsSummary", "copiedDocumentsList",
+    "btnDocuments", "documentsCard", "uploadFields"];
   const elements = Object.fromEntries(ids.map((id) => [id, element()]));
   const calls = { injected: [], sent: [], connected: [], injectTargets: [] };
   const workerActions = [];
@@ -161,7 +163,10 @@ async function openPopup(worker, page) {
   };
   const context = vm.createContext({
     chrome, URL, console, setInterval: () => 0, clearInterval: () => {},
-    document: { getElementById: (id) => elements[id], createElement: (tag) => element(tag) },
+    document: {
+      getElementById: (id) => elements[id], createElement: (tag) => element(tag),
+      addEventListener: () => {}, removeEventListener: () => {},
+    },
   });
   context.globalThis = context;
   for (const file of ["config/build-mode.js", "config/allowlist.js", "popup.js"]) runFile(context, file);
