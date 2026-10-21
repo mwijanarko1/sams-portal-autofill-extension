@@ -20,7 +20,7 @@ After sign-in the application hub is `/apply/menu/`. Sections:
 | Language | `/apply/language/` → `/apply/language/form/` | Inventoried form |
 | Finance | `/apply/finance/` | Inventoried |
 
-Staff must sign in manually. The extension never fills email/password or submits.
+Staff must sign in manually. The extension never fills email/password or submits. The optional Fill all mode (explicit draft-save consent) is the one exception to draft-only: it clicks the exact **Save and continue** control on Personal Details, Contact Details, and Finance only, and stops at review, declaration, or submission pages. See `fillAll` in `config/portals/bangor.js`; the live button label and redirect targets are not yet verified.
 
 ## Mapped CRM → portal (selector overrides)
 

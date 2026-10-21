@@ -109,3 +109,7 @@ Policy: every CRM key with a portal control is mapped. Portal-only fields stay m
 2. Confirm IELTS score controls after selecting English test type Yes/IELTS.
 3. Inventory Referees / Funding on a course where those tabs are visible.
 4. Commit sanitized fixtures under `fixtures/manchester/` when a clean draft is available.
+
+### Fill all (draft saves), added 2026-10-19
+
+`fillAll` in `config/portals/manchester.js` lets the optional, consented Fill all mode fill and save the data-entry tabs (PD, CD, PI, QU, EX, PS, PA) of the single-document jQuery tab UI. `#but_save` and `#but_save_and_cont` are `input[type=button]`, not native submits; a save is counted only after a fresh "saved" acknowledgement observed after the click (plus the expected tab being active for Save and continue; a stale success message or tab switch alone is not enough), and the Submission tab (SU, `#but_submit`) is never entered. Synthetic E2E only; unverified live: the save request, its acknowledgement markup, the selected-tab and hidden-SU classes. The host `evision.bolton.ac.uk` (formerly Bolton) is confirmed as the University of Greater Manchester origin in repo config and history.

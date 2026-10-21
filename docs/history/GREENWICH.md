@@ -341,3 +341,7 @@ Home Telephone permits 11 characters; Mobile permits 16. Autofill can assign a l
 ### Fixtures
 
 Live HTML/screenshots stay local under `tmp/` (gitignored). No sanitized fixtures are in-repo yet.
+
+### Fill all (draft saves), added 2026-10-19
+
+`fillAll` in `config/portals/greenwich.js` lets the optional, consented Fill all mode walk the application checklist: `a.submenulinktext2` links to recognised data-entry sections, each saved by the `input[name=submit_btn][value=Continue]` of its own form (the id `submit_btn` is duplicated on the address form, so it is not used). The checklist `appno` binds the run. Signature, **Application is Complete**, **Finish Later**, Search Address and Delete Record are never used. Synthetic E2E only; unverified live: the response to Continue (checklist or next section), whether `wsct` must stay in sequence, and the `P_Proc*` names for sections other than Name, Permanent Address and Previous/Current Education.
