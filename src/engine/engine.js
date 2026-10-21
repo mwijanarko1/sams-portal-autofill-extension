@@ -1745,11 +1745,24 @@ function splitDateOption(select, part, kind) {
 }
 
 /**
+ * The select a split-date spec names. Without a scope this is the first match on the page. With a scope
+ * (Fill all filling one panel or form) only a visible match inside that element counts, so a hidden
+ * panel's or another form's date selects are never written.
+ */
+function splitDateSelect(selector, scope) {
+  if (!scope) return document.querySelector(selector);
+  var matches = Array.prototype.slice.call(Element.prototype.querySelectorAll.call(scope, selector));
+  return matches.find(function (element) {
+    return element.getClientRects().length > 0 && getComputedStyle(element).visibility !== "hidden";
+  }) || null;
+}
+
+/**
  * Fill day / month / year selects declared by the portal for this page.
  * Generic matching never touches these selects (portals block them), because ids such as
  * Greenwich #bday_* mean date of birth on one page and employment start on another.
  */
-function fillSplitDates(fieldMap, filled) {
+function fillSplitDates(fieldMap, filled, scope) {
   var specs = (ACTIVE_PORTAL && ACTIVE_PORTAL.splitDates) || [];
   var here = location.pathname + location.search;
   specs.forEach(function (spec) {
@@ -1759,7 +1772,7 @@ function fillSplitDates(fieldMap, filled) {
     [["day", parts.d], ["month", parts.m], ["year", parts.y]].forEach(function (entry) {
       var selector = spec[entry[0]];
       if (!selector || !entry[1]) return;
-      var select = document.querySelector(selector);
+      var select = splitDateSelect(selector, scope);
       if (!select || select.tagName !== "SELECT" || select.disabled) return;
       var current = select.options[select.selectedIndex];
       var placeholder = !select.value || (select.selectedIndex === 0 &&
@@ -2772,9 +2785,10 @@ async function pickLightningComboboxOption(inputEl, value, crmKey) {
  *
  * @param {Record<string,string>} fieldMap - CRM key → value
  * @param {Array} fields - detected form fields (from scanFormFields)
+ * @param {Element} [scope] - when given, split dates are filled only inside this element
  * @returns {Promise<{filled:Array, skippedEmpty:Array, skippedExisting:Array, skippedSelect:Array, unmatched:string[]}>}
  */
-async function autofillPage(fieldMap, fields) {
+async function autofillPage(fieldMap, fields, scope) {
   if (!ACTIVE_PORTAL) return autofillGeneric(fieldMap, fields);
 
   /** @type {Array<{name:string,value:string,fieldName:string,fieldLabel:string,score:number,matchReason:string}>} */
@@ -2996,7 +3010,7 @@ async function autofillPage(fieldMap, fields) {
     }
   }
 
-  fillSplitDates(fieldMap, filled);
+  fillSplitDates(fieldMap, filled, scope);
 
   return {
     mapping: ACTIVE_PORTAL.name,

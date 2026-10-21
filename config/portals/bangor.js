@@ -63,6 +63,21 @@ const config = {
     cvCurrentEmployer: ["employer"],
     funding: ["how will you finance your studies?"],
   },
+  // Optional fill-all (draft saves). Only singleton sections with mapped CRM fields are listed:
+  // Additional Information has no mapped field and needs manual sensitive answers, and the
+  // Education, Employment and Language lists add a record per save, so all of those stay manual.
+  // Programme is locked until Personal is saved and was never inventoried.
+  fillAll: {
+    steps: [
+      { id: "personal", label: "Personal Details", path: "/apply/personal/" },
+      { id: "contacts", label: "Contact Details", path: "/apply/contacts/" },
+      { id: "finance", label: "Finance", path: "/apply/finance/" },
+    ],
+    // Review, declaration and submission: reaching one ends the run without touching it.
+    boundaries: ["^/apply/(?:summary|declaration|submit|confirm)"],
+    // The only control Fill all clicks, matched by its exact text.
+    save: { controls: "button[type='submit'], input[type='submit']", text: "^save (?:and|&) continue$" },
+  },
   splitDates: [
     { key: "dateOfBirth", page: "^/apply/personal/", day: "#id_dob_day", month: "#id_dob_month", year: "#id_dob_year" },
     { key: "startDate", page: "^/apply/education/", month: "#id_course_start_date", year: "#id_course_start_date_year" },

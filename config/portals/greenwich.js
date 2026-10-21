@@ -74,6 +74,29 @@ const config = {
     personalStatement: ["personal statement (max 3950 characters)"],
     funding: ["who do you expect to pay your fees?"],
   },
+  // Optional fill-all (draft saves), from the 2026 supervised navigation inventory. The checklist
+  // (bwskalog.P_DispIndex) links to data-entry sections by GET, each carrying the application number
+  // (appno). A section posts to its own P_Proc* page through the exact Continue submit (matched by
+  // name and value: the id submit_btn is duplicated on the address form). Fill all never opens
+  // Signature, never presses Application is Complete or Finish Later on the checklist, and never
+  // takes the address Search or Delete controls. Referee Details is left out: every field in it is
+  // blocked above, so there is nothing to fill. The live response after Continue is unverified.
+  fillAll: {
+    kind: "checklist-link",
+    bind: { field: "appno" },
+    hub: { path: "/pls/prod/bwskalog.P_DispIndex", links: "a.submenulinktext2[href]" },
+    steps: [
+      { id: "name", label: "Name", path: "/pls/prod/bwskanam.P_DispAppName" },
+      { id: "employment", label: "Employment and supporting information", path: "/pls/prod/bwskaess.P_DispAppEssay" },
+      { id: "permanent-address", label: "Permanent Address", path: "/pls/prod/bwskaadr.P_DispAppAddr1" },
+      { id: "mailing-address", label: "Mailing Address", path: "/pls/prod/bwskaadr.P_DispAppAddr2" },
+      { id: "qualifications", label: "Qualifications", path: "/pls/prod/bwskapcl.P_DispQuals" },
+      { id: "statistical", label: "Statistical Information", path: "/pls/prod/bwskaper.P_DispAppPersonal" },
+      { id: "education", label: "Previous or Current Education", path: "/pls/prod/bwskapcl.P_DispAppPrvCollege" },
+      { id: "programme", label: "Programme Information", path: "/pls/prod/bwskapln.P_DispAppPlan" },
+    ],
+    save: { controls: "input[type='submit'][name='submit_btn']", text: "^continue$" },
+  },
   // #bday_* is date of birth on Statistical Information but employment start on Employment.
   splitDates: [
     { key: "dateOfBirth", page: "bwskaper\\.P_DispAppPersonal", day: "#bday_dd", month: "#bday_mm", year: "#bday_yyyy" },

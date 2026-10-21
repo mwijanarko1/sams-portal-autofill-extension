@@ -85,6 +85,29 @@ const config = {
       "english your first language",
     ],
   },
+  // Optional fill-all (draft saves). The application is one document of lazy jQuery tabs: a tab is
+  // opened by its stable href (the ui-id-N ids are not stable), its panel is #TAB-XX with the body in
+  // #TAB-MAIN-XX, and it saves through two input[type=button] controls that are not native submits.
+  // Fill all fills only the open data-entry tab, never enters Submission (SU, whose #but_submit is the
+  // final submit), and counts a save only on a fresh "saved" acknowledgement observed after its click (and the expected tab
+  // being active when continuing).
+  // Tabs hidden for the course (sv-hidden) are skipped. The save request and its acknowledgement
+  // markup are unverified on the live portal.
+  fillAll: {
+    kind: "same-document-tab",
+    path: "/urd/sits.urd/run/SIW_IPP_USR.start_url",
+    steps: [
+      { id: "PD", label: "Personal Details" },
+      { id: "CD", label: "Contact Details" },
+      { id: "PI", label: "Other Information" },
+      { id: "QU", label: "Qualifications" },
+      { id: "EX", label: "Experience" },
+      { id: "PS", label: "Personal Statement" },
+      { id: "PA", label: "Passport" },
+    ],
+    boundaryTabs: ["SU"],
+    save: { next: "#but_save_and_cont", only: "#but_save" },
+  },
   // Split-date fill bypasses blockedControls (same pattern as Bangor/Greenwich).
   splitDates: [
     {
