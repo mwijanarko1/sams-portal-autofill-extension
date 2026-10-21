@@ -10,6 +10,8 @@
     "build:safari:app": "node scripts/package-safari.mjs",
     "test": "node --test test/*.test.js",
     "test:e2e": "node --test --test-concurrency=1 e2e/extension.e2e.mjs",
+    "test:e2e:fill-all": "node --test --test-concurrency=1 e2e/fill-all.e2e.mjs",
+    "test:e2e:fill-all:portals": "node --test --test-concurrency=1 e2e/fill-all-portals.e2e.mjs",
     "test:e2e:live": "node e2e/live.mjs",
     "safari:fixtures": "node e2e/safari/serve-fixtures.mjs"
   },

@@ -351,7 +351,7 @@ test("Copied details list every CRM field and copy one value", { timeout: 15000 
   const emailRow = popup.locator("#copiedFields .field-row", { hasText: "aisha.rahman@example.com" });
   assert.equal(await emailRow.locator(".field-label").textContent(), "Email");
   await emailRow.getByRole("button", { name: "Copy Email" }).click();
-  await emailRow.getByRole("button", { name: "Copy Email" }).filter({ hasText: "Copied" }).waitFor();
+  await emailRow.locator("button.copy[data-copied]").waitFor();
   // Chrome refuses clipboard grants for extension origins, so an approved page reads the shared clipboard back.
   await context.grantPermissions(["clipboard-read"], { origin: new URL(crmUrl).origin });
   await crm.bringToFront();
@@ -414,12 +414,20 @@ test("Clear in another popup stops a stale popup from filling", { timeout: 15000
 
 test("Session expiry disables Autofill and removes the student cache", { timeout: 10000 }, async () => {
   const crm = await copyStudent();
+  for (const selector of ["#btnAutofill", "#btnFillAll"]) {
+    await popup.locator(selector).waitFor({ state: "visible" });
+    assert.equal(await popup.locator(selector).isEnabled(), true, `${selector} must be enabled after Copy`);
+  }
   await worker.evaluate(async () => {
     const { studentCache } = await chrome.storage.session.get("studentCache");
     await chrome.storage.session.set({ studentCache: { ...studentCache, expiresAt: Date.now() - 1 } });
   });
   await popup.reload();
-  await popup.locator("#btnAutofill:disabled").waitFor();
+  for (const selector of ["#btnAutofill", "#btnFillAll"]) {
+    await popup.locator(`${selector}:disabled`).waitFor({ state: "attached" });
+    assert.equal(await popup.locator(selector).isDisabled(), true, `${selector} must be disabled after expiry`);
+    assert.equal(await popup.locator(selector).isVisible(), false, `${selector} must be hidden after expiry`);
+  }
   await popup.locator("#studentCard").waitFor({ state: "hidden" });
   assert.equal(await cache(), null);
   assert.equal(await popup.locator("#studentCard").isVisible(), false);
@@ -492,7 +500,15 @@ async function openToolbarPopup(page) {
     async screenshot(name) {
       await mkdir(evidenceDir, { recursive: true });
       const { data } = await send("Page.captureScreenshot", { format: "png" });
-      await writeFile(join(evidenceDir, name), Buffer.from(data, "base64"));
+      const bytes = Buffer.from(data, "base64");
+      const path = join(evidenceDir, name);
+      await writeFile(path, bytes);
+      const css = await evaluate(`({width: innerWidth, height: innerHeight, dpr: devicePixelRatio})`);
+      await writeFile(`${path}.json`, JSON.stringify({
+        path, sha256: createHash("sha256").update(bytes).digest("hex"), captured_at: new Date().toISOString(),
+        width_px: bytes.readUInt32BE(16), height_px: bytes.readUInt32BE(20), css,
+        capture_id: path, source: "Helium real toolbar popup through CDP Page.captureScreenshot",
+      }, null, 2));
     },
     async close() {
       await browser.send("Target.closeTarget", { targetId: target.targetId }).catch(() => {});
@@ -505,6 +521,117 @@ const frameByPath = (page, path) => page.frames().find((frame) => frame.url() ==
 const controlValues = (frame) => frame.evaluate(() => Object.fromEntries(
   [...document.querySelectorAll("input, select, textarea")].map((control) => [control.id, control.value])
 ));
+
+for (const decision of ["denied", "granted", "error"]) {
+  test(`On-demand website access: ${decision} requests only the selected HTTPS site without filling`, { timeout: 20000 }, async () => {
+    const manifest = await popup.evaluate(() => chrome.runtime.getManifest());
+    assert.deepEqual(manifest.optional_host_permissions, ["https://*/*"], "New university hosts must be optional, never globally granted");
+    assert.ok(!manifest.host_permissions.some((host) => host === "<all_urls>" || host === "https://*/*"));
+    const page = await openPage(`${genericOrigin}/apply/personal`);
+    await page.waitForLoadState("load");
+    const before = await controlValues(page);
+    const toolbar = await openToolbarPopup(page);
+    try {
+      await toolbar.waitFor(`document.getElementById("btnSiteAccess") && !document.getElementById("btnSiteAccess").hidden`);
+      const hint = await toolbar.evaluate(`document.getElementById("siteAccessHint").textContent`);
+      assert.ok(hint.includes(new URL(genericOrigin).hostname));
+      await toolbar.waitFor(`innerWidth === 390 && innerHeight > 0 && innerHeight <= 600`);
+      assert.equal(await toolbar.evaluate(`(() => {
+        const button = document.getElementById("btnSiteAccess");
+        const rect = button.getBoundingClientRect();
+        return !button.hidden && !button.disabled && rect.height > 0 && rect.top >= 0 && rect.bottom <= innerHeight;
+      })()`), true, "Website access must be reachable without expanding details or scrolling");
+      await toolbar.screenshot(`site-access-${decision}-before.png`);
+      // Only the native browser's permission decision is controlled; all extension code is real.
+      await toolbar.evaluate(`(() => {
+        const contains = chrome.permissions.contains.bind(chrome.permissions);
+        let granted = false;
+        globalThis.sitePermissionRequests = [];
+        chrome.permissions.contains = (request) => granted && request.origins?.[0] === ${JSON.stringify(`${genericOrigin}/*`)}
+          ? Promise.resolve(true) : contains(request);
+        chrome.permissions.request = async (request) => {
+          sitePermissionRequests.push({ request, userActivation: navigator.userActivation.isActive });
+          if (${JSON.stringify(decision)} === "error") throw new Error("Synthetic browser permission failure");
+          granted = ${JSON.stringify(decision)} === "granted";
+          return granted;
+        };
+        document.getElementById("btnSiteAccess").click();
+      })()`);
+      await toolbar.waitFor(`document.querySelector("#statusArea .${decision === "granted" ? "success" : "error"}")`);
+      assert.deepEqual(await toolbar.evaluate(`sitePermissionRequests`), [{
+        request: { origins: [`${genericOrigin}/*`] }, userActivation: true,
+      }]);
+      if (decision === "granted") {
+        await toolbar.waitFor(`document.getElementById("btnSiteAccess").hidden`);
+      } else {
+        await toolbar.waitFor(`!document.getElementById("btnSiteAccess").disabled`);
+        assert.equal(await toolbar.evaluate(`document.getElementById("btnSiteAccess").hidden`), false);
+      }
+      assert.deepEqual(await controlValues(page), before, "A permission decision must not fill any field");
+      assert.deepEqual((await page.evaluate(() => activity)).changes, []);
+      assert.equal((await page.evaluate(() => activity)).submissions, 0);
+      assert.equal(await cache(), null, "Site permission must never copy a student");
+      assert.deepEqual(await toolbar.evaluate(`chrome.permissions.contains({origins:["https://unselected-university.test/*"]})`), false);
+      assert.deepEqual(toolbar.errors, []);
+      await toolbar.evaluate(`document.getElementById("statusArea").scrollIntoView({block:"end"})`);
+      await toolbar.screenshot(`site-access-${decision}-after.png`);
+    } finally {
+      await toolbar.close();
+    }
+  });
+}
+
+test("On-demand website access is hidden on CRM and browser pages", { timeout: 10000 }, async () => {
+  const crm = await openPage(crmUrl);
+  await activate(crm);
+  await popup.reload();
+  assert.equal(await popup.locator("#btnSiteAccess").count(), 1);
+  assert.equal(await popup.locator("#btnSiteAccess").isVisible(), false);
+  const browserPage = await context.newPage();
+  await browserPage.goto("about:blank");
+  await activate(browserPage);
+  await popup.reload();
+  assert.equal(await popup.locator("#btnSiteAccess").isVisible(), false);
+});
+
+test("On-demand website access discards stale checks after the selected portal changes", { timeout: 10000 }, async () => {
+  const bangor = await openPage(portalCases[0].url);
+  await activate(bangor);
+  await popup.evaluate(() => {
+    globalThis.originalPermissionsContains = chrome.permissions.contains;
+    globalThis.originalPermissionsRequest = chrome.permissions.request;
+    globalThis.permissionLookups = {};
+    globalThis.permissionRequests = [];
+    chrome.permissions.contains = ({ origins }) => new Promise((resolve) => {
+      (permissionLookups[origins[0]] ||= []).push(resolve);
+    });
+    chrome.permissions.request = async (request) => { permissionRequests.push(request); return false; };
+    window.dispatchEvent(new Event("focus"));
+  });
+  try {
+    await popup.waitForFunction(() => permissionLookups["https://apps.bangor.ac.uk/*"]?.length);
+    const greenwich = await openPage(portalCases[1].url);
+    await activate(greenwich);
+    await popup.evaluate(() => window.dispatchEvent(new Event("focus")));
+    await popup.waitForFunction(() => permissionLookups["https://nelson.gre.ac.uk/*"]?.length);
+    await popup.evaluate(() => permissionLookups["https://nelson.gre.ac.uk/*"].forEach((resolve) => resolve(false)));
+    await popup.locator("#btnSiteAccess:visible").waitFor();
+    await popup.evaluate(() => permissionLookups["https://apps.bangor.ac.uk/*"].forEach((resolve) => resolve(false)));
+    assert.match(await popup.locator("#siteAccessHint").innerText(), /nelson\.gre\.ac\.uk/);
+    assert.doesNotMatch(await popup.locator("#siteAccessHint").innerText(), /apps\.bangor\.ac\.uk/);
+    await popup.locator("#btnSiteAccess").click();
+    await popup.locator("#statusArea .error").waitFor();
+    assert.deepEqual(await popup.evaluate(() => permissionRequests), [{ origins: ["https://nelson.gre.ac.uk/*"] }]);
+    assert.deepEqual((await bangor.evaluate(() => activity)).changes, []);
+    assert.deepEqual((await greenwich.evaluate(() => activity)).changes, []);
+  } finally {
+    await popup.evaluate(() => {
+      chrome.permissions.contains = originalPermissionsContains;
+      chrome.permissions.request = originalPermissionsRequest;
+      Object.values(permissionLookups).flat().forEach((resolve) => resolve(false));
+    });
+  }
+});
 
 test("Unmapped university: real toolbar popup fills shared fields in the selected origin only", { timeout: 30000 }, async () => {
   await clear();

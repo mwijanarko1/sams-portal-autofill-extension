@@ -82,7 +82,7 @@ const settle = () => new Promise((resolve) => setImmediate(resolve));
 function element(tag = "div") {
   const listeners = {};
   return {
-    tag, hidden: false, disabled: false, textContent: "", value: "", className: "", children: [],
+    tag, hidden: false, disabled: false, textContent: "", value: "", className: "", title: "", dataset: {}, children: [],
     append(...nodes) { this.children.push(...nodes); },
     appendChild(node) { this.children.push(node); },
     replaceChildren(...nodes) { this.children = nodes; },
@@ -101,7 +101,7 @@ async function openPopup(worker, page) {
   const ids = ["btnCopy", "btnAutofill", "btnClear", "studentCard", "studentName", "studentMeta", "statusArea",
     "copiedDetails", "copiedDetailsSummary", "copiedFields", "copiedSearch", "copiedEmpty",
     "copiedDocuments", "copiedDocumentsSummary", "copiedDocumentsList",
-    "btnDocuments", "documentsCard", "uploadFields"];
+    "btnDocuments", "documentsCard", "uploadFields", "btnSiteAccess", "siteAccessHint"];
   const elements = Object.fromEntries(ids.map((id) => [id, element()]));
   const calls = { injected: [], sent: [], connected: [], injectTargets: [] };
   const workerActions = [];
@@ -110,6 +110,8 @@ async function openPopup(worker, page) {
     runtime: { sendMessage: (message) => { workerActions.push(message.action); return worker.send(message); } },
     tabs: {
       query: async () => [page.tab],
+      onActivated: { addListener: () => {} },
+      onUpdated: { addListener: () => {} },
       sendMessage: async (tabId, message, options) => {
         calls.sent.push({ frameId: options.frameId, message: structuredClone(message) });
         return page.respond(options.frameId, message);
@@ -163,8 +165,10 @@ async function openPopup(worker, page) {
   };
   const context = vm.createContext({
     chrome, URL, console, setInterval: () => 0, clearInterval: () => {},
+    window: { addEventListener: () => {} },
     document: {
       getElementById: (id) => elements[id], createElement: (tag) => element(tag),
+      createElementNS: (namespace, tag) => element(tag),
       addEventListener: () => {}, removeEventListener: () => {},
     },
   });
@@ -416,11 +420,12 @@ test("mixed frame outcomes keep successful counts and name each failed frame", a
     text: "2 fields filled in 1 of 3 page frames. Some frames were not filled: review the whole page before continuing.",
   });
   assert.equal(failures.text, [
-    "Frames not filled (2)",
+    "Frames not filled",
+    "2",
     "Frame 3: The page frame did not respond.",
     "Frame 9: Could not access this page. Allow SAMS Portal Autofill to access this website, reload the page, and try again.",
   ].join("\n"));
-  assert.equal(filled.text, "Filled (2)\nForename\nEmail");
+  assert.equal(filled.text, "Filled\n2\nForename\nEmail");
   assert.equal(popup.elements.studentCard.hidden, false);
   // Chrome compatibility: any successful approved frame counts as activity.
   assert.deepEqual(popup.workerActions, ["getStudentCache", "getStudentCache", "touchStudentCache"]);
@@ -548,7 +553,7 @@ test("a frame that navigates during Autofill is reported once and never reconnec
     className: "status warning",
     text: "1 fields filled in 1 of 2 page frames. Some frames were not filled: review the whole page before continuing.",
   });
-  assert.equal(failures.text, "Frames not filled (1)\nFrame 2: The page frame did not respond.");
+  assert.equal(failures.text, "Frames not filled\n1\nFrame 2: The page frame did not respond.");
 });
 
 test("Autofill refuses when document identity is unavailable", async () => {
@@ -594,7 +599,7 @@ test("a frame that is no longer the selected page receives no student values", a
   }));
   await popup.elements.btnAutofill.click();
   assert.deepEqual(autofillMessages(popup.calls).map((call) => call.frameId), [0]);
-  assert.equal(popup.status()[1].text, "Frames not filled (1)\nFrame 2: This page changed. Open the extension again on the form.");
+  assert.equal(popup.status()[1].text, "Frames not filled\n1\nFrame 2: This page changed. Open the extension again on the form.");
 });
 
 test("Clear after the page checks but before delivery sends no student values", async () => {
