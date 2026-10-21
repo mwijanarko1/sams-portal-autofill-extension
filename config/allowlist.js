@@ -4,8 +4,8 @@ const SAMS_ALLOWLIST_CONFIG = {
   sessionMinutes: 30,
   crmOrigins: ["https://app.samscrm.co.uk"],
   camporaOrigins: [],
-  // Mapped portals get persistent site access. Other university pages are reached only through the
-  // one-time access the browser grants when staff open the extension on that page.
+  // Mapped portals declare required site access. Other university pages use toolbar activeTab
+  // access, or an optional exact-site grant staff choose in the popup.
   portalOrigins: [
     "https://nelson.gre.ac.uk",
     "https://apps.bangor.ac.uk",
