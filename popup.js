@@ -1,6 +1,8 @@
 const btnCopy = document.getElementById("btnCopy");
 const btnAutofill = document.getElementById("btnAutofill");
 const btnClear = document.getElementById("btnClear");
+const btnSiteAccess = document.getElementById("btnSiteAccess");
+const siteAccessHint = document.getElementById("siteAccessHint");
 const studentCard = document.getElementById("studentCard");
 const studentName = document.getElementById("studentName");
 const studentMeta = document.getElementById("studentMeta");
@@ -18,6 +20,8 @@ const documentsCard = document.getElementById("documentsCard");
 const uploadFields = document.getElementById("uploadFields");
 let cache = null;
 let expiryTimer = null;
+let siteAccessTarget = null;
+let siteAccessRevision = 0;
 // Ports to the scanned portal page stay open while staff choose documents, so each upload
 // key keeps pointing at the exact input that was scanned.
 let uploadFrames = [];
@@ -72,6 +76,48 @@ function originOf(url) {
   try { return new URL(url).origin; } catch { return ""; }
 }
 
+async function refreshSiteAccess() {
+  const revision = ++siteAccessRevision;
+  siteAccessTarget = null;
+  btnSiteAccess.hidden = true;
+  siteAccessHint.hidden = true;
+  if (typeof chrome.permissions?.contains !== "function" || typeof chrome.permissions?.request !== "function") return;
+  try {
+    const tab = await activeTab();
+    const origin = originOf(tab.url);
+    if (!origin.startsWith("https://") || !SAMS_ALLOWLIST.isFillTarget(origin)) return;
+    const granted = await chrome.permissions.contains({ origins: [`${origin}/*`] });
+    if (revision !== siteAccessRevision || granted) return;
+    siteAccessTarget = { tabId: tab.id, origin };
+    siteAccessHint.textContent = `Allow access to ${new URL(origin).hostname} only. Other websites stay unchanged. You can revoke access in browser settings.`;
+    siteAccessHint.hidden = false;
+    btnSiteAccess.hidden = false;
+  } catch {
+    // Without a readable current origin, never guess which website to request.
+  }
+}
+
+async function requestSiteAccess() {
+  const target = siteAccessTarget;
+  if (!target || btnSiteAccess.disabled) return;
+  btnSiteAccess.disabled = true;
+  siteAccessTarget = null;
+  try {
+    // Request before any await so Safari and Chrome retain the button's user gesture.
+    const granted = await chrome.permissions.request({ origins: [`${target.origin}/*`] });
+    if (!granted) {
+      setStatus("error", "Website access was not granted. Nothing was filled. You can allow this website and try again.");
+      return;
+    }
+    setStatus("success", `Access allowed for ${new URL(target.origin).hostname}. Nothing was filled. Select Autofill on the application page when you are ready.`);
+  } catch {
+    setStatus("error", "Could not request website access. Allow this website in your browser's extension settings, then reopen the extension.");
+  } finally {
+    btnSiteAccess.disabled = false;
+    await refreshSiteAccess();
+  }
+}
+
 // A missing tab URL can mean the browser withholds site access, so it never counts as approved.
 async function approvedTab(isApproved, wrongSiteMessage) {
   const tab = await activeTab();
@@ -92,7 +138,13 @@ function addList(title, items) {
   if (!items || !items.length) return;
   const details = document.createElement("details");
   const summary = document.createElement("summary");
-  summary.textContent = `${title} (${items.length})`;
+  const name = document.createElement("span");
+  name.className = "summary-title";
+  name.textContent = title;
+  const count = document.createElement("span");
+  count.className = "summary-count";
+  count.textContent = items.length;
+  summary.append(name, count);
   const list = document.createElement("ul");
   for (const item of items) {
     const row = document.createElement("li");
@@ -110,11 +162,32 @@ function fieldLabel(key) {
   return words.charAt(0).toUpperCase() + words.slice(1);
 }
 
+function copyIcon(done) {
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("viewBox", "0 0 24 24");
+  svg.setAttribute("aria-hidden", "true");
+  const shapes = done
+    ? [["path", { d: "M5 12.5l4.5 4.5L19 7.5" }]]
+    : [["rect", { x: 9, y: 9, width: 11, height: 11, rx: 2.5 }], ["path", { d: "M15 9V6.5A2.5 2.5 0 0 0 12.5 4h-6A2.5 2.5 0 0 0 4 6.5v6A2.5 2.5 0 0 0 6.5 15H9" }]];
+  for (const [tag, attributes] of shapes) {
+    const shape = document.createElementNS("http://www.w3.org/2000/svg", tag);
+    for (const [name, value] of Object.entries(attributes)) shape.setAttribute(name, value);
+    svg.appendChild(shape);
+  }
+  return svg;
+}
+
 async function copyValue(button, value) {
   try {
     await navigator.clipboard.writeText(value);
-    button.textContent = "Copied";
-    setTimeout(() => { button.textContent = "Copy"; }, 1500);
+    button.dataset.copied = "true";
+    button.title = "Copied";
+    button.replaceChildren(copyIcon(true));
+    setTimeout(() => {
+      delete button.dataset.copied;
+      button.title = "Copy";
+      button.replaceChildren(copyIcon(false));
+    }, 1500);
   } catch {
     setStatus("error", "Could not copy to the clipboard. Select the value and copy it manually.");
   }
@@ -146,7 +219,8 @@ function renderFields(fields) {
     text.append(label, shown);
     const button = document.createElement("button");
     button.className = "copy";
-    button.textContent = "Copy";
+    button.title = "Copy";
+    button.append(copyIcon(false));
     button.setAttribute("aria-label", `Copy ${fieldLabel(key)}`);
     button.addEventListener("click", () => copyValue(button, value));
     row.append(text, button);
@@ -200,6 +274,7 @@ async function viewDocument(crmDocument) {
 function renderCache() {
   clearInterval(expiryTimer);
   studentCard.hidden = !cache;
+  btnCopy.textContent = cache ? "Copy again" : "Copy from CRM";
   btnAutofill.disabled = !cache;
   btnDocuments.hidden = !(cache && cache.documents && cache.documents.length);
   renderFields(cache && cache.fields);
@@ -419,7 +494,7 @@ async function autofill() {
     addList("Filled", result.filled);
     addList("Skipped, already had a value", result.skippedExisting);
     addList("No CRM value", result.noCrmValue);
-    addList("CRM fields not matched on this page", result.unmatched);
+    addList("CRM fields not matched on this page", result.unmatched.map((item) => (typeof item === "string" ? fieldLabel(item) : item)));
     addList("Portal fields left empty, manual review", result.manualReview);
   } catch (error) {
     setStatus("error", error.message || String(error));
@@ -716,6 +791,15 @@ async function clearStudent() {
 btnCopy.addEventListener("click", copyFromCrm);
 btnAutofill.addEventListener("click", autofill);
 btnClear.addEventListener("click", clearStudent);
+btnSiteAccess.addEventListener("click", requestSiteAccess);
 btnDocuments.addEventListener("click", scanUploads);
 copiedSearch.addEventListener("input", () => renderFields(cache && cache.fields));
 refreshCache().catch((error) => setStatus("error", error.message || String(error)));
+window.addEventListener("focus", refreshSiteAccess);
+chrome.tabs.onActivated.addListener(refreshSiteAccess);
+chrome.tabs.onUpdated.addListener((tabId, change) => {
+  if ((!siteAccessTarget || siteAccessTarget.tabId === tabId) && (change.url || change.status === "complete")) refreshSiteAccess();
+});
+chrome.permissions?.onAdded?.addListener(refreshSiteAccess);
+chrome.permissions?.onRemoved?.addListener(refreshSiteAccess);
+refreshSiteAccess();

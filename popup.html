@@ -13,14 +13,40 @@
     h1 { margin: 0; color: #262261; font-size: 16px; }
     header p, .meta { margin: 2px 0 0; color: #64748b; font-size: 11px; }
     .card { margin-bottom: 12px; padding: 12px; border: 1px solid #e0e7ff; border-radius: 12px; background: white; }
-    .student { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 10px; }
+    .student { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 9px 10px 9px 12px; border-radius: 9px; background: #f5f3ff; }
     .student[hidden] { display: none; }
     .student strong { color: #312e81; }
     button { width: 100%; margin-top: 8px; padding: 10px 12px; border: 0; border-radius: 9px; background: #312e81; color: white; font: inherit; font-weight: 700; cursor: pointer; }
     button.clear { width: auto; margin: 0; padding: 6px 8px; background: transparent; color: #64748b; }
     button:disabled { cursor: not-allowed; opacity: .45; }
     button[hidden], #documentsCard[hidden] { display: none; }
-    button.secondary { background: #eef2ff; color: #312e81; }
+    button.secondary { background: #eef2ff; color: #312e81; box-shadow: inset 0 0 0 1px #c7d2fe; }
+    #btnCopy:not(:disabled):hover, #btnAutofill:not(:disabled):hover { background: #262261; }
+    button.secondary:not(:disabled):hover { background: #e0e7ff; }
+    button.clear:not(:disabled):hover { background: #f1f5f9; }
+    button { transition: background-color .15s ease, box-shadow .15s ease, opacity .2s ease; }
+    button:not(:disabled):active { transform: translateY(1px); }
+    @keyframes enter { from { opacity: 0; transform: translateY(-4px); } }
+    .student:not([hidden]), #copiedDetails:not([hidden]), #copiedDocuments:not([hidden]), #btnDocuments:not([hidden]), .card.main:has(#studentCard:not([hidden])) .action-row, #statusArea > .status, #statusArea > details { animation: enter .28s cubic-bezier(.22, 1, .36, 1) both; }
+    #copiedDocuments:not([hidden]) { animation-delay: .05s; }
+    @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+    button:focus-visible { outline: 2px solid #818cf8; outline-offset: 2px; }
+    .card.main { display: flex; flex-direction: column; gap: 8px; }
+    .card.main > * { margin: 0; }
+    .card.main:has(#studentCard:not([hidden])) #studentCard { order: 1; }
+    .card.main:has(#studentCard:not([hidden])) #siteAccessHint { order: 2; }
+    .card.main:has(#studentCard:not([hidden])) #btnSiteAccess { order: 3; }
+    .card.main:has(#studentCard:not([hidden])) :is(.action-row, #btnDocuments, #btnStopFillAll, #fillAllStatus) { order: 4; }
+    .card.main:has(#studentCard:not([hidden])) #copiedDetails { order: 5; margin-top: 4px; }
+    .card.main:has(#studentCard:not([hidden])) #copiedDocuments { order: 6; }
+    .card.main:has(#studentCard:not([hidden])) #btnCopy { order: 7; margin-top: 4px; background: #eef2ff; color: #312e81; box-shadow: inset 0 0 0 1px #c7d2fe; }
+    .card.main:has(#studentCard:not([hidden])) #btnCopy:not(:disabled):hover { background: #e0e7ff; }
+    .actions { display: contents; }
+    .card.main:not(:has(#studentCard:not([hidden]))) .action-row { display: none; }
+    .actions > button { margin: 0; }
+    .action-row { display: flex; gap: 8px; }
+    .action-row > button { flex: 1 1 0; min-width: 0; margin: 0; padding-inline: 8px; }
+    #siteAccessHint { overflow-wrap: anywhere; }
     #documentsCard .meta { margin: 0 0 6px; }
     .upload-row { padding: 8px 0; border-top: 1px solid #eef2ff; }
     .upload-label { color: #312e81; font-weight: 700; overflow-wrap: anywhere; }
@@ -42,7 +68,11 @@
     .upload-status { margin-top: 4px; color: #64748b; font-size: 11px; }
     .upload-status.failed { color: #991b1b; }
     .upload-status.done { color: #166534; }
-    #copiedDetails, #copiedDocuments { margin-top: 10px; border: 1px solid #e0e7ff; }
+    #fillAllStatus:empty { display: none; }
+    #fillAllStatus .status { margin-bottom: 0; }
+    button.stop { background: #fef2f2; color: #991b1b; box-shadow: inset 0 0 0 1px #fecaca; }
+    button.stop:not(:disabled):hover { background: #fee2e2; }
+    #copiedDetails, #copiedDocuments { padding: 9px 2px; border-top: 1px solid #eef2ff; border-radius: 0; }
     #copiedDetails[hidden], #copiedDocuments[hidden] { display: none; }
     .document-row { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-top: 1px solid #eef2ff; }
     .document-row:first-child { margin-top: 6px; }
@@ -58,15 +88,29 @@
     .field-label { color: #64748b; }
     .field-value { color: #312e81; font-size: 12px; overflow-wrap: anywhere; }
     button.copy, button.view { width: auto; margin: 0; padding: 4px 8px; background: #eef2ff; color: #312e81; font-size: 11px; }
-    .status { margin-bottom: 8px; padding: 9px 10px; border-left: 3px solid; border-radius: 7px; line-height: 1.4; }
-    .info { border-color: #818cf8; background: #eef2ff; }
-    .success { border-color: #22c55e; background: #f0fdf4; }
-    .error { border-color: #ef4444; background: #fef2f2; color: #991b1b; }
-    .warning { border-color: #f59e0b; background: #fffbeb; color: #92400e; }
+    button.copy { display: grid; flex: none; place-items: center; width: 28px; height: 28px; padding: 0; border-radius: 7px; }
+    button.copy svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    button.copy[data-copied] { background: #f0fdf4; color: #166534; box-shadow: inset 0 0 0 1px #bbf7d0; }
+    .status { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 8px; padding: 11px 12px; border-radius: 10px; line-height: 1.45; }
+    .status::before { content: ""; flex: none; width: 16px; height: 16px; margin-top: 1px; background: var(--accent); -webkit-mask: var(--icon) center / contain no-repeat; mask: var(--icon) center / contain no-repeat; }
+    .info { --accent: #4f46e5; --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M12 11v5M12 8h.01'/%3E%3C/svg%3E"); background: #eef2ff; }
+    .success { --accent: #16a34a; --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M8 12.5l2.7 2.7L16 9.5'/%3E%3C/svg%3E"); background: #f0fdf4; }
+    .error { --accent: #dc2626; --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M12 8v5M12 16h.01'/%3E%3C/svg%3E"); background: #fef2f2; color: #991b1b; }
+    .warning { --accent: #d97706; --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 4l9 16H3z'/%3E%3Cpath d='M12 10v4M12 17h.01'/%3E%3C/svg%3E"); background: #fffbeb; color: #92400e; }
     details { margin-top: 7px; padding: 8px; border-radius: 7px; background: white; font-size: 11px; }
     summary { cursor: pointer; font-weight: 700; }
     ul { margin: 6px 0 0; padding-left: 18px; }
-    footer { color: #64748b; font-size: 10px; text-align: center; }
+    #statusArea:has(> details) { overflow: hidden; border: 1px solid #e0e7ff; border-radius: 12px; background: white; }
+    #statusArea:has(> details) > .status { margin: 0; border-radius: 0; }
+    #statusArea > details { margin: 0; padding: 0; border-top: 1px solid #eef2ff; border-radius: 0; background: transparent; font-size: 12px; }
+    #statusArea > details > summary { display: flex; align-items: center; gap: 8px; padding: 10px 12px; list-style: none; }
+    #statusArea > details > summary::-webkit-details-marker { display: none; }
+    #statusArea > details > summary::before { content: ""; flex: none; width: 6px; height: 6px; margin: 0 3px 0 2px; border-right: 2px solid #64748b; border-bottom: 2px solid #64748b; transform: rotate(-45deg); transition: transform .2s ease; }
+    #statusArea > details[open] > summary::before { transform: rotate(45deg); }
+    .summary-title { flex: 1; min-width: 0; color: #312e81; }
+    .summary-count { flex: none; min-width: 22px; padding: 1px 7px; border-radius: 999px; background: #eef2ff; color: #312e81; font-size: 11px; text-align: center; }
+    #statusArea > details > ul { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0 12px 12px; list-style: none; }
+    #statusArea > details li { padding: 3px 9px; border-radius: 7px; background: #f5f3ff; color: #312e81; font-size: 11px; overflow-wrap: anywhere; }
   </style>
 </head>
 <body>
@@ -75,7 +119,7 @@
       <img src="sams-logo.svg" alt="SAMS CRM">
       <div><h1>SAMS Portal Autofill</h1><p>Copy from CRM, then fill a draft</p></div>
     </header>
-    <section class="card">
+    <section class="card main">
       <button id="btnCopy">Copy from CRM</button>
       <div id="studentCard" class="student" hidden>
         <div><strong id="studentName"></strong><div id="studentMeta" class="meta"></div></div>
@@ -91,18 +135,28 @@
         <summary id="copiedDocumentsSummary">Copied documents</summary>
         <div id="copiedDocumentsList"></div>
       </details>
-      <button id="btnAutofill" disabled>Autofill this portal page</button>
-      <button id="btnDocuments" class="secondary" hidden>Attach CRM documents</button>
+      <p id="siteAccessHint" class="meta" hidden></p>
+      <button id="btnSiteAccess" class="secondary" hidden>Allow this website</button>
+      <div class="actions">
+        <div class="action-row">
+          <button id="btnAutofill" disabled>Autofill this page</button>
+          <button id="btnFillAll" class="secondary" disabled>Autofill all &amp; save</button>
+        </div>
+        <button id="btnDocuments" class="secondary" hidden>Attach CRM documents</button>
+        <button id="btnStopFillAll" class="stop" hidden>Stop</button>
+        <div id="fillAllStatus" aria-live="polite"></div>
+      </div>
     </section>
     <section id="documentsCard" class="card" hidden>
       <p class="meta">Choose a CRM document for each upload field. Some portals upload the file as soon as it is attached.</p>
       <div id="uploadFields"></div>
     </section>
     <section id="statusArea" aria-live="polite"></section>
-    <footer>Never submits, pays, sends, confirms, or declares. Review every draft.</footer>
   </main>
   <script src="config/build-mode.js"></script>
   <script src="config/allowlist.js"></script>
   <script src="popup.js"></script>
+  <script src="src/fill-all-popup.js"></script>
+  <script src="src/popup-motion.js"></script>
 </body>
 </html>
