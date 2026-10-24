@@ -399,6 +399,16 @@ test("CRM reader refuses to copy when the Profile tab does not open", () => {
   assert.match(profile.error || "", /Profile tab did not open/);
 });
 
+test("CRM reader derives dates from a headerless Visa Refusal duration", () => {
+  const { fields } = readFixture("crm-profile-tab.html", "?refusalTable=1");
+  assert.equal(fields.visaRefusalType, "Visitor Visa");
+  assert.equal(fields.visaRefusalCountry, "United States");
+  assert.equal(fields.visaRefusalPurpose, "Tourism");
+  assert.equal(fields.visaRefusalDates, "01 Jan 2020 - 01 Jun 2020");
+  assert.equal(fields.visaRefusalStartDate, "2020-01-01");
+  assert.equal(fields.visaRefusalEndDate, "2020-06-01");
+});
+
 test("CRM reader splits a spaced UK postcode without corrupting the country", () => {
   const { fields } = readFixture(
     "crm-profile-tab.html",

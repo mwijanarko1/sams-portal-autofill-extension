@@ -418,6 +418,15 @@
                 <tr><td>Email</td><td>smith@example.com</td></tr>
               </tbody></table>`;
           }
+          if (params.get("refusalTable") === "1") {
+            document.querySelector("#refusalSection").innerHTML = `
+              <table><tbody>
+                <tr><td>Visa Type</td><td>Visitor Visa</td></tr>
+                <tr><td>Country</td><td>United States</td></tr>
+                <tr><td>Purpose</td><td>Tourism</td></tr>
+                <tr><td>Duration</td><td>01 Jan 2020 - 01 Jun 2020</td></tr>
+              </tbody></table>`;
+          }
           overlay.remove();
         }, sectionDelay);
       });

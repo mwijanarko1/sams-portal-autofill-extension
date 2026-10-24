@@ -231,7 +231,7 @@ Live check on 2026-10-23, using the `sams-inventory` PinchTab profile and the cr
 | `401630` | Sub-agent lead | 21 | Sparse Profile plus the mounted Applications form (`preferredStartYear=2026`) |
 | `404892` | Seeded lead / converted Profile tab | 58 | Profile sections plus the visible Applications form; admission preference was empty in CRM |
 
-`npm test` passes **125/125**, including the `crm-profile-tab.html` browser fixture that reproduces the Profile tab's asynchronous section load. `npm run test:e2e` passes **33/33** on the synthetic pages (the Greenwich fixture now matches the live qualification year select).
+`npm test` passes **126/126**, including the `crm-profile-tab.html` browser fixture that reproduces the Profile tab's asynchronous section load. `npm run test:e2e` passes **33/33** on the synthetic pages (the Greenwich fixture now matches the live qualification year select).
 
 Manual re-check commands (the injected bundle is the same file set `popup.js` injects):
 

@@ -158,7 +158,7 @@ Safari runtime acceptance is manual. Playwright WebKit and `npm run test:e2e` do
 
 ## Verification snapshot (refreshed 2026-10-23)
 
-- `npm test`: 125/125 pass on 2026-10-23 (unit + Chromium DOM, including the CRM Profile-tab fixture with its asynchronous section load).
+- `npm test`: 126/126 pass on 2026-10-23 (unit + Chromium DOM, including the CRM Profile-tab fixture with its asynchronous section load).
 - 2026-10-23 (Helium, synthetic pages): `npm run test:e2e` 33/33. Details: [publication/PREPARATION-REPORT.md](publication/PREPARATION-REPORT.md).
 - Safari: unsigned app builds (23 embedded resources, ad hoc signature, no team); runtime acceptance still pending operator enablement and a free port 3000.
 - Version: `0.1.0` across `package.json`, `manifest.json`, and Safari `MARKETING_VERSION`.

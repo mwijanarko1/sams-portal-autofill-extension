@@ -600,7 +600,10 @@ if (!globalThis.__SAMS_CRM_READER_LOADED__) {
       rows.forEach((row) => {
         const cells = Array.from(row.querySelectorAll(":scope > td"));
         if (cells.length >= 2 && visible(cells[0]) && visible(cells[1])) {
-          addSectionField(fields, pairKeys, cells[0].innerText, cells[1].innerText, sectionName);
+          const label = cells[0].innerText;
+          const value = cells[1].innerText;
+          addSectionField(fields, pairKeys, label, value, sectionName);
+          if (normalizeLabel(label) === "duration") setDateRange(fields, sectionName, value);
         }
       });
       return;
