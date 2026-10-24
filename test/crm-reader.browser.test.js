@@ -394,6 +394,11 @@ test("CRM reader maps a headerless References table to reference fields", () => 
   assert.equal(fields.email, "jake.mufoy.student@yopmail.com", "Applicant email must not take the referee email");
 });
 
+test("CRM reader refuses to copy when the Profile tab does not open", () => {
+  const profile = readFixture("crm-profile-tab.html", "?brokenProfile=1");
+  assert.match(profile.error || "", /Profile tab did not open/);
+});
+
 test("CRM reader splits a spaced UK postcode without corrupting the country", () => {
   const { fields } = readFixture(
     "crm-profile-tab.html",

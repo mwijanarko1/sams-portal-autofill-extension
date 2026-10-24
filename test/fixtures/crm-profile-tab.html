@@ -63,6 +63,7 @@
 
   <div id="applicationsPane">
     <h2>Personal Information</h2>
+    <span class="main_title">Personal Information</span>
     <div class="pro_left_side_part">
       <div class="load_primary_information">
         <dd>Given Name</dd><dt>Jake</dt>
@@ -386,6 +387,7 @@
     // states with data from its section request. Reproduce that delay.
     document.querySelectorAll(".nav-link").forEach((link) => {
       link.addEventListener("click", () => {
+        if (params.get("brokenProfile") === "1" && link.dataset.tab === "profile") return;
         document.querySelectorAll(".nav-link").forEach((item) => item.classList.toggle("active", item === link));
         const isProfile = link.dataset.tab === "profile";
         document.getElementById("profilePane").hidden = !isProfile;

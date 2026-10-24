@@ -157,7 +157,11 @@ if (!globalThis.__SAMS_CRM_READER_LOADED__) {
     if (!tab) return false;
     if (tab.classList.contains("active")) return true;
     tab.click();
-    if (ready) return waitFor(ready, 6000);
+    if (ready) {
+      // The content marker can exist on another tab (Applications also shows
+      // "Personal Information"), so require the target tab itself to activate.
+      return waitFor(() => Boolean(tabElement(name)?.classList.contains("active")) && ready(), 6000);
+    }
     return waitFor(() => tabElement(name)?.classList.contains("active"), 5000);
   }
 
