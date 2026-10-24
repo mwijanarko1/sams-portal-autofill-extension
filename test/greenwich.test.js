@@ -102,19 +102,72 @@ test("greenwich config loads once for nelson origin", () => {
   sameJson(portals[0].origins, ["https://nelson.gre.ac.uk"]);
 });
 
-test("greenwich does not override split DOB or shared address ids", () => {
+test("greenwich keeps split DOB and scopes applicant address overrides", () => {
   const cfg = loadGreenwich("/pls/prod/bwskaper.P_DispAppPersonal").SAMS_PORTALS.find(
     (p) => p.id === "greenwich"
   );
   assert.equal(cfg.selectorOverrides.dateOfBirth, undefined);
-  assert.equal(cfg.selectorOverrides.location, undefined);
-  assert.equal(cfg.selectorOverrides.city, undefined);
-  assert.equal(cfg.selectorOverrides.postcode, undefined);
+  sameJson(cfg.selectorOverrides.location, ["#addr1"]);
+  sameJson(cfg.selectorOverrides.city, ["#city"]);
+  sameJson(cfg.selectorOverrides.postcode, ["#zip"]);
+  sameJson(cfg.selectorOverrides.countryName, ["#natn"]);
+  sameJson(cfg.selectorOverrides.state, ["#ud70"]);
   const flat = Object.values(cfg.selectorOverrides).flat();
   assert.equal(flat.includes("#bday_dd"), false);
-  assert.equal(flat.includes("#addr1"), false);
-  assert.equal(flat.includes("#city"), false);
-  assert.equal(flat.includes("#zip"), false);
+});
+
+test("greenwich split dates cover qualification and education attendance", () => {
+  const cfg = loadGreenwich("/pls/prod/bwskapcl.P_DispQuals").SAMS_PORTALS.find(
+    (p) => p.id === "greenwich"
+  );
+  const spec = (key, page) => cfg.splitDates.find((entry) => entry.key === key && entry.page.includes(page));
+  sameJson(spec("endDate", "P_DispQuals"), {
+    key: "endDate",
+    page: "bwskapcl\\.P_DispQuals",
+    form: "bwskapcl\\.P_ProcQuals",
+    month: "#ud91month",
+    year: "#ud91year",
+  });
+  sameJson(spec("startDate", "P_DispAppPrvCollege"), {
+    key: "startDate",
+    page: "bwskapcl\\.P_DispAppPrvCollege",
+    form: "bwskapcl\\.P_ProcAppPrvCollege",
+    day: "#beg_date_dd",
+    month: "#beg_date_mm",
+    year: "#beg_date_yyyy",
+  });
+  sameJson(spec("endDate", "P_DispAppPrvCollege"), {
+    key: "endDate",
+    page: "bwskapcl\\.P_DispAppPrvCollege",
+    form: "bwskapcl\\.P_ProcAppPrvCollege",
+    day: "#end_date_dd",
+    month: "#end_date_mm",
+    year: "#end_date_yyyy",
+  });
+  sameJson(spec("preferredIntake", "P_DispAppPlan"), {
+    key: "preferredIntake",
+    page: "bwskapln\\.P_DispAppPlan",
+    form: "bwskapln\\.P_ProcAppPlan",
+    month: "#p_month",
+    year: "#p_year",
+  });
+});
+
+test("greenwich blocks agent id, interview dates, and teacher-training subject mis-matches", () => {
+  const ctx = loadGreenwich("/pls/prod/bwskanam.P_DispAppName");
+  for (const id of ["ud3", "ud8", "ud138", "addr2", "addr3", "ud91month", "ud91year", "p_month", "p_year"]) {
+    assert.equal(ctx.SAMS_ENGINE.isFillable(fakeEl({ id, label: id })), false, `${id} should be blocked`);
+  }
+  assert.equal(
+    ctx.SAMS_ENGINE.isFillable(fakeEl({ id: "addrflag", name: "addrflag", type: "radio" })),
+    false,
+    "mailing-address radio should be blocked"
+  );
+  assert.equal(
+    ctx.SAMS_ENGINE.isFillable(fakeEl({ id: "", name: "ud204", type: "checkbox" })),
+    false,
+    "name-only ud204 checkbox should be blocked"
+  );
 });
 
 test("greenwich blocks DOB selects, referee fields, and signature", () => {
@@ -164,6 +217,9 @@ test("greenwich blocks institution city/postcode on Previous Education form", ()
   );
   assert.ok(
     cfg.blockedControls.some((s) => s.includes("P_ProcAppPrvCollege") && s.includes("#natn"))
+  );
+  assert.ok(
+    cfg.blockedControls.some((s) => s.includes("P_ProcAppPrvCollege") && s.includes("#addr1"))
   );
 
   const institutionCity = fakeEl({

@@ -20,9 +20,9 @@ const config = {
     "P_ProcIndex",
     "P_DispIndex",
   ],
-  // Only selectors unique to applicant CRM fields on a single page type.
-  // No dateOfBirth: three selects (#bday_*) need split-date + section support first.
-  // No location/city/postcode: #addr1/#city/#zip also appear on institution address.
+  // Only selectors for applicant CRM fields. Split dates are filled only by splitDates;
+  // generic matching never touches them. Applicant address ids are reused on Previous /
+  // Current Education (institution address), so those controls are blocked by form action.
   selectorOverrides: {
     givenName: ["#fname"],
     middleName: ["#mname"],
@@ -35,14 +35,22 @@ const config = {
     gender: ["#gender"],
     nationality: ["#ud65"],
     countryOfBirth: ["#ud60"],
+    ethnicity: ["#ethn"],
     // Applicant phones only (not referee #ud25)
     phone: ["#mobiletelno", "#hometelno"],
+    // Applicant address (Permanent and Mailing); institution address is blocked
+    location: ["#addr1"],
+    city: ["#city"],
+    postcode: ["#zip"],
+    countryName: ["#natn"],
+    state: ["#ud70"],
     institutionName: ["#col_name"],
     // CRM reader emits "degree" for Qualification / Academic Level
     degree: ["#ud91qualtype"],
     major: ["#ud91subject"],
     grade: ["#ud91grade"],
     preferredCourse: ["#p_program_code"],
+    preferredRoute: ["#p_mode_poe"],
     cvCurrentEmployer: ["#ud11"],
     personalStatement: ["#p_sarstmt_desc"],
     funding: ["#ud35"],
@@ -74,34 +82,16 @@ const config = {
     personalStatement: ["personal statement (max 3950 characters)"],
     funding: ["who do you expect to pay your fees?"],
   },
-  // Optional fill-all (draft saves), from the 2026 supervised navigation inventory. The checklist
-  // (bwskalog.P_DispIndex) links to data-entry sections by GET, each carrying the application number
-  // (appno). A section posts to its own P_Proc* page through the exact Continue submit (matched by
-  // name and value: the id submit_btn is duplicated on the address form). Fill all never opens
-  // Signature, never presses Application is Complete or Finish Later on the checklist, and never
-  // takes the address Search or Delete controls. Referee Details is left out: every field in it is
-  // blocked above, so there is nothing to fill. The live response after Continue is unverified.
-  fillAll: {
-    kind: "checklist-link",
-    bind: { field: "appno" },
-    hub: { path: "/pls/prod/bwskalog.P_DispIndex", links: "a.submenulinktext2[href]" },
-    steps: [
-      { id: "name", label: "Name", path: "/pls/prod/bwskanam.P_DispAppName" },
-      { id: "employment", label: "Employment and supporting information", path: "/pls/prod/bwskaess.P_DispAppEssay" },
-      { id: "permanent-address", label: "Permanent Address", path: "/pls/prod/bwskaadr.P_DispAppAddr1" },
-      { id: "mailing-address", label: "Mailing Address", path: "/pls/prod/bwskaadr.P_DispAppAddr2" },
-      { id: "qualifications", label: "Qualifications", path: "/pls/prod/bwskapcl.P_DispQuals" },
-      { id: "statistical", label: "Statistical Information", path: "/pls/prod/bwskaper.P_DispAppPersonal" },
-      { id: "education", label: "Previous or Current Education", path: "/pls/prod/bwskapcl.P_DispAppPrvCollege" },
-      { id: "programme", label: "Programme Information", path: "/pls/prod/bwskapln.P_DispAppPlan" },
-    ],
-    save: { controls: "input[type='submit'][name='submit_btn']", text: "^continue$" },
-  },
   // #bday_* is date of birth on Statistical Information but employment start on Employment.
   splitDates: [
-    { key: "dateOfBirth", page: "bwskaper\\.P_DispAppPersonal", day: "#bday_dd", month: "#bday_mm", year: "#bday_yyyy" },
-    { key: "cvWorkStartDate", page: "bwskaess\\.P_DispAppEssay", day: "#bday_dd", month: "#bday_mm", year: "#bday_yyyy" },
-    { key: "cvWorkEndDate", page: "bwskaess\\.P_DispAppEssay", day: "#bday_dd2", month: "#bday_mm2", year: "#bday_yyyy2" },
+    { key: "dateOfBirth", page: "bwskaper\\.P_DispAppPersonal", form: "bwskaper\\.P_ProcAppPersonal", day: "#bday_dd", month: "#bday_mm", year: "#bday_yyyy" },
+    { key: "cvWorkStartDate", page: "bwskaess\\.P_DispAppEssay", form: "bwskaess\\.P_ProcAppEssay", day: "#bday_dd", month: "#bday_mm", year: "#bday_yyyy" },
+    { key: "cvWorkEndDate", page: "bwskaess\\.P_DispAppEssay", form: "bwskaess\\.P_ProcAppEssay", day: "#bday_dd2", month: "#bday_mm2", year: "#bday_yyyy2" },
+    { key: "startDate", page: "bwskapcl\\.P_DispAppPrvCollege", form: "bwskapcl\\.P_ProcAppPrvCollege", day: "#beg_date_dd", month: "#beg_date_mm", year: "#beg_date_yyyy" },
+    { key: "endDate", page: "bwskapcl\\.P_DispAppPrvCollege", form: "bwskapcl\\.P_ProcAppPrvCollege", day: "#end_date_dd", month: "#end_date_mm", year: "#end_date_yyyy" },
+    { key: "endDate", page: "bwskapcl\\.P_DispQuals", form: "bwskapcl\\.P_ProcQuals", month: "#ud91month", year: "#ud91year" },
+    { key: "graduationYear", page: "bwskapcl\\.P_DispQuals", form: "bwskapcl\\.P_ProcQuals", year: "#ud91year" },
+    { key: "preferredIntake", page: "bwskapln\\.P_DispAppPlan", form: "bwskapln\\.P_ProcAppPlan", month: "#p_month", year: "#p_year" },
   ],
   blockedControls: [
     // Auth
@@ -154,6 +144,47 @@ const config = {
     "#ud28",
     "#ud29",
     "#ud30",
+    // Name: fields with no CRM key (agent reference, previous student number, legal name, previous-apply)
+    "#ud50",
+    "#ud2",
+    "#ud3",
+    "input[name='ud1']",
+    // Employment: job description and full/part-time have no CRM key
+    "#ud16",
+    "#ud12",
+    // Statistical Information: sensitive or application-specific answers
+    "#medi",
+    "#ud80",
+    "input[name='ud4']",
+    "input[name='ud5']",
+    "#ud204",
+    "input[name='ud204']",
+    "#addrflag",
+    "input[name='addrflag']",
+    "#euk_dd",
+    "#euk_mm",
+    "#euk_yyyy",
+    "#ud8",
+    "#ud40",
+    "#ud45",
+    // Address lines 2/3 have no CRM key; institution address must not take the applicant address
+    "#addr2",
+    "#addr3",
+    "form[action*='P_ProcAppPrvCollege'] #addr1",
+    // Qualification award date selects are split-date targets
+    "#ud91month",
+    "#ud91year",
+    // Previous / Current Education attendance dates are split-date targets
+    "#beg_date_dd",
+    "#beg_date_mm",
+    "#beg_date_yyyy",
+    "#end_date_dd",
+    "#end_date_mm",
+    "#end_date_yyyy",
+    // Programme entry month/year are split-date targets; teacher-training subject has no CRM key
+    "#p_month",
+    "#p_year",
+    "#ud138",
     // Qualification rows 2-20 (#ud92*..#ud110*): CRM holds one qualification,
     // so only row 1 may fill; otherwise a repeat click duplicates it into row 2.
     ...Array.from({ length: 19 }, (_, i) =>

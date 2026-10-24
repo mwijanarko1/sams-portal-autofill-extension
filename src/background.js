@@ -1,10 +1,4 @@
 importScripts("../config/build-mode.js", "../config/allowlist.js");
-importScripts(
-  "../config/portals/greenwich.js",
-  "../config/portals/manchester.js",
-  "../config/portals/bangor.js",
-  "fill-all.js",
-);
 
 const CACHE_KEY = "studentCache";
 const ALARM_NAME = "expire-student-cache";
@@ -24,7 +18,6 @@ function serialized(operation) {
 }
 
 async function clearCache() {
-  SAMS_FILL_ALL.cacheChanged();
   await chrome.storage.session.remove(CACHE_KEY);
   await chrome.alarms.clear(ALARM_NAME);
 }
@@ -84,7 +77,6 @@ function validDocuments(documents, sourceOrigin) {
 }
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (SAMS_FILL_ALL.handle(message, sender, sendResponse)) return true;
   if (!message || !CACHE_ACTIONS.includes(message.action)) return false;
   if (!SAMS_ALLOWLIST.isPopupSender(sender)) {
     sendResponse({ error: "Student data actions are only available from the extension popup." });
@@ -97,13 +89,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       sendResponse({ error: "The copied student profile was not valid. Copy it again from an approved CRM profile." });
       return false;
     }
-    // A new Copy ends any run bound to the previous copy before the old cache is replaced.
-    SAMS_FILL_ALL.cacheChanged();
     operation = async () => ({ cache: await storeCache(profile) });
   } else if (message.action === "getStudentCache") operation = async () => ({ cache: await readCache() });
   else if (message.action === "touchStudentCache") operation = async () => ({ cache: await touchCache() });
   else {
-    SAMS_FILL_ALL.cacheChanged();
     operation = async () => {
       await clearCache();
       return { cleared: true };
@@ -124,5 +113,3 @@ chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name !== ALARM_NAME) return;
   serialized(expireIfDue).catch(() => console.warn("Student cache expiry check failed."));
 });
-
-SAMS_FILL_ALL.install({ readCache: () => serialized(readCache), touchCache: () => serialized(touchCache) });

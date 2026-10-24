@@ -2,7 +2,7 @@
 // that move as a result (FLIP) and never touches state. Newly shown elements fade in from CSS.
 (() => {
   const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
-  const tracked = ["#btnCopy", ".action-row", "#btnDocuments", "#btnStopFillAll", "#fillAllStatus", "#copiedDetails", "#copiedDocuments", "#statusArea"]
+  const tracked = ["#btnCopy", ".action-row", "#btnDocuments", "#copiedDetails", "#copiedDocuments", "#statusArea"]
     .map((selector) => document.querySelector(selector))
     .filter(Boolean);
 

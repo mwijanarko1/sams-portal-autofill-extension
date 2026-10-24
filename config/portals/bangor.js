@@ -8,6 +8,7 @@ const config = {
     "/apply/",
     "/apply/menu/",
     "/apply/personal/",
+    "/apply/international/",
     "/apply/course/",
     "/apply/additionalinfo/",
     "/apply/contacts/",
@@ -16,12 +17,11 @@ const config = {
     "/apply/language/",
     "/apply/finance/",
   ],
-  // Exact ids from supervised inventory 2026-10-08 on apps.bangor.ac.uk.
-  // Programme (/apply/course/) stays locked until Personal is saved; no course
-  // selectors yet. Split DOB and education/employment dates stay blocked until
-  // section-aware split-date fill exists.
+  // Exact ids from live inventory 2026-10-23 on apps.bangor.ac.uk (all sections).
+  // Programme (/apply/course/lookup/) is open once Personal is saved. Split dates
+  // are filled only by the splitDates specs below; generic matching never touches them.
   selectorOverrides: {
-    title: ["#id_title"],
+    title: ["select#id_title"],
     givenName: ["#id_forename"],
     middleName: ["#id_middlenames"],
     familyName: ["#id_surname"],
@@ -39,7 +39,11 @@ const config = {
     degree: ["#id_qualification_title"],
     grade: ["#id_result"],
     cvCurrentEmployer: ["#id_employer"],
+    cvCurrentJobTitle: ["#id_position"],
     funding: ["#id_choice"],
+    preferredCourse: ["#id_course"],
+    passportNumber: ["#id_passport_number"],
+    visaType: ["#id_visa_type"],
   },
   phoneKeepsDialPrefix: true,
   extraSynonyms: {
@@ -61,22 +65,11 @@ const config = {
     degree: ["title of qualification"],
     grade: ["grades achieved / expected", "grades achieved", "grades expected"],
     cvCurrentEmployer: ["employer"],
+    cvCurrentJobTitle: ["position"],
     funding: ["how will you finance your studies?"],
-  },
-  // Optional fill-all (draft saves). Only singleton sections with mapped CRM fields are listed:
-  // Additional Information has no mapped field and needs manual sensitive answers, and the
-  // Education, Employment and Language lists add a record per save, so all of those stay manual.
-  // Programme is locked until Personal is saved and was never inventoried.
-  fillAll: {
-    steps: [
-      { id: "personal", label: "Personal Details", path: "/apply/personal/" },
-      { id: "contacts", label: "Contact Details", path: "/apply/contacts/" },
-      { id: "finance", label: "Finance", path: "/apply/finance/" },
-    ],
-    // Review, declaration and submission: reaching one ends the run without touching it.
-    boundaries: ["^/apply/(?:summary|declaration|submit|confirm)"],
-    // The only control Fill all clicks, matched by its exact text.
-    save: { controls: "button[type='submit'], input[type='submit']", text: "^save (?:and|&) continue$" },
+    preferredCourse: ["programme"],
+    passportNumber: ["passport number"],
+    visaType: ["visa type"],
   },
   splitDates: [
     { key: "dateOfBirth", page: "^/apply/personal/", day: "#id_dob_day", month: "#id_dob_month", year: "#id_dob_year" },
@@ -85,6 +78,9 @@ const config = {
     { key: "graduationYear", page: "^/apply/education/", year: "#id_qualification_date_year" },
     { key: "cvWorkStartDate", page: "^/apply/employment/", month: "#id_start_date", year: "#id_start_date_year" },
     { key: "cvWorkEndDate", page: "^/apply/employment/", month: "#id_end_date", year: "#id_end_date_year" },
+    { key: "passportExpiryDate", page: "^/apply/international/", day: "#id_passport_expiry_date_day", month: "#id_passport_expiry_date_month", year: "#id_passport_expiry_date_year" },
+    { key: "visaStartDate", page: "^/apply/international/", day: "#id_visa_start_day", month: "#id_visa_start_month", year: "#id_visa_start_year" },
+    { key: "visaEndDate", page: "^/apply/international/", day: "#id_visa_end_day", month: "#id_visa_end_month", year: "#id_visa_end_year" },
   ],
   blockedControls: [
     // Auth / account
@@ -139,6 +135,90 @@ const config = {
     // Preferred name has no CRM key yet
     "#id_prefname",
     "input[name='prefname']",
+    // International: no safe CRM source for these (visa number, refusal count,
+    // course withdrawal, study level, passport nation of issue)
+    "#id_passport_issue_nation",
+    "select[name='passport_issue_nation']",
+    "#id_study_level",
+    "input[name='study_level']",
+    "#id_visa_number",
+    "input[name='visa_number']",
+    "#id_refused_visa_count",
+    "select[name='refused_visa_count']",
+    "#id_course_incomplete_institution",
+    "input[name='course_incomplete_institution']",
+    "#id_course_incomplete_reason",
+    "textarea[name='course_incomplete_reason']",
+    "#id_course_incomplete_date_month",
+    "#id_course_incomplete_date_day",
+    "#id_course_incomplete_date_year",
+    "select[name='course_incomplete_date_month']",
+    "select[name='course_incomplete_date_day']",
+    "select[name='course_incomplete_date_year']",
+    // International: passport/visa dates are split-date targets, not generic matches
+    "#id_passport_expiry_date_month",
+    "#id_passport_expiry_date_day",
+    "#id_passport_expiry_date_year",
+    "#id_visa_start_month",
+    "#id_visa_start_day",
+    "#id_visa_start_year",
+    "#id_visa_end_month",
+    "#id_visa_end_day",
+    "#id_visa_end_year",
+    // International: application-specific yes/no questions with no CRM answer
+    "input[name='european_settlement']",
+    "input[name='dependent_visa']",
+    "input[name='currently_or_previously_enrolled']",
+    "input[name='refused_visa']",
+    "input[name='course_incomplete']",
+    // Additional Information: application-specific yes/no and free text
+    "input[name='studied_at_bangor']",
+    "input[name='disability']",
+    "#id_medi_code",
+    "select[name='medi_code']",
+    "#id_other_disability",
+    "input[name='other_disability']",
+    "input[name='registered_elsewhere']",
+    "#id_elsewhere_details",
+    "textarea[name='elsewhere_details']",
+    "input[name='uk_continuously']",
+    "#id_uk_continuously_details",
+    "textarea[name='uk_continuously_details']",
+    // Language: "English or Welsh" is not the same question as the CRM key
+    "input[name='first_language_english_or_welsh']",
+    "input[name='welsh_comms']",
+    // Contact lines 2/3 and state have no CRM key
+    "#id_address2",
+    "input[name='address2']",
+    "#id_address3",
+    "input[name='address3']",
+    "#id_state",
+    "select[name='state']",
+    // Finance: scholarship detail only appears for sponsored/scholarship funding
+    "#id_scholarship_name",
+    "#id_other_scholarship_name",
+    "#id_finance_amount",
+    "#id_partial_amount",
+    "#id_value",
+    "#id_awarded",
+    "#id_admission_offer_required",
+    "input[name='awarded']",
+    "input[name='admission_offer_required']",
+    // Employment: free-text duties have no CRM key
+    "#id_responsibilities",
+    "textarea[name='responsibilities']",
+    // Restricted-admissions forms: application choices and supervisor details have no CRM key
+    "#id_part_time",
+    "select[name='part_time']",
+    "#id_term_month",
+    "select[name='term_month']",
+    "#id_point_of_entry",
+    "select[name='point_of_entry']",
+    "#id_academic_contact",
+    "input[name='academic_contact']",
+    // Research restricted forms reuse #id_title for a free-text project title, not a salutation
+    "input#id_title",
+    "input[name='title']",
   ],
 };
 const index = globalThis.SAMS_PORTALS.findIndex((portal) => portal.id === config.id);

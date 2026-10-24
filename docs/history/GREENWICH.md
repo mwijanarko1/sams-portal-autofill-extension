@@ -1,347 +1,274 @@
 # University of Greenwich portal field map
 
-**Origin:** `https://nelson.gre.ac.uk`  
-**System:** Ellucian Banner Self-Service Admissions RELEASE 8.7.2  
+**Origin:** `https://nelson.gre.ac.uk`
+**System:** Ellucian Banner Self-Service Admissions RELEASE 8.7.2
+**Login used for inventory:** Admissions Login at
+`/pls/prod/bwskalog.P_DispLoginNon` (Login ID + PIN)
+**Inventory date:** 2026-10-23 (full re-inventory; supersedes PR #1's 2026-09 inventory)
+**Config:** `config/portals/greenwich.js`
+**Raw captures:** `tmp/greenwich-inventory-2026-10-23/` (local only, gitignored)
 
-## Completed in PR #1
+## Journey shape
 
-[PR #1](https://github.com/mwijanarko1/sams-portal-autofill-extension/pull/1) merged on 2026-09-29 as `8d0f534`, including regression fixes from `a35ea9a`.
+After sign-in the application checklist is
+`/pls/prod/bwskalog.P_DispIndex?appno=1`. The checklist links to ten sections:
 
-- [x] ~~Confirm the origin and inventory all ten checklist sections (191 fields).~~
-- [x] ~~Ship reviewed selector overrides and block auth, navigation, signature, shared date selects, referee fields, and institution city/postcode/country.~~
-- [x] ~~Prevent repeated Autofill from duplicating qualifications into rows 2-20.~~
-- [x] ~~Map first-row Level to the CRM's `degree` key.~~
-- [x] ~~Correct UK phone formatting without changing the existing digits-only fallback for other portals.~~
-- [x] ~~Verify regression tests (16/16 total), the development build, and sanitized saved-form replay in Helium.~~
+| Section | Path (relative to `/pls/prod/`) | Controls |
+|---|---|---|
+| Name | `bwskanam.P_DispAppName?appno=1&wsct=NAME` | 10 |
+| Employment / Supporting Info. | `bwskaess.P_DispAppEssay?appno=1&wsct=ESSAY` | 10 |
+| Permanent Address | `bwskaadr.P_DispAppAddr1?appno=1&wsct=ADDR1` | 9 |
+| Referee Details | `bwskaudf.P_DispAppUserDef?appno=1&wsct=ADDITIONAL` | 14 |
+| Mailing Address | `bwskaadr.P_DispAppAddr2?appno=1&wsct=ADDR2` | 7 |
+| Qualifications | `bwskapcl.P_DispQuals?appno=1&wsct=QUALS` | 100 |
+| Statistical Information | `bwskaper.P_DispAppPersonal?appno=1&wsct=PERSONAL` | 22 |
+| Previous / Current Education | `bwskapcl.P_DispAppPrvCollege?appno=1&wsct=PRVCOLLEGE` | 13 |
+| Programme Information | `bwskapln.P_DispAppPlan?appno=1&wsct=PLAN` | 5 |
+| Signature | `bwskanam.P_Signature?appno=1&wsct=SIGNATURE` | 2 |
 
-These checks do not establish a live authenticated Copy-from-CRM + Autofill journey or complete every discovered field.
+Staff must sign in manually. The extension never fills Login ID/PIN, CAPTCHA, or clicks
+Continue / Submit / Application is Complete / Signature.
 
-## Checklist sections discovered
+The Permanent Address form is now **plain text** (`#addr1`, `#addr2`, `#addr3`, `#zip`,
+`#city`, `#natn`, `#hometelno`, `#mobiletelno`, `#addrflag`). The older postcode-search
+controls (`#searchzip`, `#search_btn`, address picker) no longer exist on this form.
 
-Name, Employment / Supporting Info., Permanent Address, Referee Details, Mailing Address, Qualifications, Statistical Information, Previous / Current Education, Programme Information, Signature
+## Page-by-page inventory
 
-## Global blocks
+Required controls are marked **required** in the source inventory. "Blocked" means the
+control is in `blockedControls` and is never written, even when a synonym matches its label.
 
-Login/PIN/reCAPTCHA, all submits (Continue/Submit/Fill Out Application), EXIT, Signature submit.
+### Name
 
-## Application Checklist
+| Control | Label | Type | CRM key | Status |
+|---|---|---|---|---|
+| `#pfx` | Title | select (8) | `title` | Mapped |
+| `#fname` | First Name | text | `givenName` | Mapped |
+| `#mname` | Middle Name | text | `middleName` | Mapped |
+| `#lname` | Family Name | text | `familyName` | Mapped |
+| `#plname` | Previous Name (first + middle + family) | text | `previousName` | Mapped |
+| `#ud50` | Full Legal Name | text | — | Blocked: no CRM key (not a name-part field) |
+| `#ud135` | Passport Number (Non EU applicants only) | text | `passportNumber` | Mapped |
+| `input[name='ud1']` | Previously applied to Greenwich? | radio (Y/N) | — | Blocked: application answer |
+| `#ud2` | Previous 9 digit ID / student number | text | — | Blocked: no CRM key |
+| `#ud3` | International Agent 9 digit ID | text | — | Blocked: no CRM key (contains "state" in its label) |
 
-**URL:** `https://nelson.gre.ac.uk/pls/prod/bwskalog.P_DispIndex?appno=1`
+### Employment / Supporting Info.
 
-_No fillable fields on this page (nav/menu/checklist)._
+| Control | Label | Type | CRM key | Status |
+|---|---|---|---|---|
+| `#ud11` | Name and Address of Employer | textarea | `cvCurrentEmployer` | Mapped |
+| `#ud16` | Description of Job / Nature of Employment | text | — | Blocked: no CRM key |
+| `#ud12` | Full or Part Time? | radio (Y/N) | — | Blocked: application answer |
+| `#bday_dd` | Employment Start Date | select | `cvWorkStartDate` | Split date |
+| `#bday_mm` | Employment Start Date | select | `cvWorkStartDate` | Split date |
+| `#bday_yyyy` | Employment Start Date | select | `cvWorkStartDate` | Split date |
+| `#bday_dd2` | Employment End Date | select | `cvWorkEndDate` | Split date |
+| `#bday_mm2` | Employment End Date | select | `cvWorkEndDate` | Split date |
+| `#bday_yyyy2` | Employment End Date | select | `cvWorkEndDate` | Split date |
+| `#p_sarstmt_desc` | Personal Statement (max 3950 characters) | textarea | `personalStatement` | Mapped |
 
-## Name
+### Permanent Address
 
-**URL:** `https://nelson.gre.ac.uk/pls/prod/bwskanam.P_DispAppName?appno=1&wsct=NAME`
+| Control | Label | Type | CRM key | Status |
+|---|---|---|---|---|
+| `#addr1` | Address Line 1 | text | `location` | Mapped |
+| `#addr2` | Address Line 2 | text | — | Blocked: no CRM key |
+| `#addr3` | Address Line 3 | text | — | Blocked: no CRM key |
+| `#zip` | Postcode / Zipcode | text | `postcode` | Mapped |
+| `#city` | City / Town | text | `city` | Mapped |
+| `#natn` | Country | select (249) | `countryName` | Mapped |
+| `#hometelno` | Home Telephone No. | text | `phone` | Mapped |
+| `#mobiletelno` | Mobile Telephone No. | text | `phone` | Mapped |
+| `#addrflag` | Mailing address same as permanent? | radio (Y/N) | — | Blocked: application answer |
 
-| Portal field | Type | name / id | Selector | Options (sample) | CRM key | Status |
-|---|---|---|---|---|---|---|
-| Title | `select` | `pfx` / `pfx` | `#pfx` |  (``) · Mr (`Mr`) · Miss (`Miss`) · Dr (`Dr`) · Ms (`Ms`) · Mrs (`Mrs`) · Prof (`Prof`) · Mx (`Mx`) | `title` | mapped_guess |
-| First Name | `text` | `fname` / `fname` | `#fname` | - | `givenName` | mapped_guess |
-| Middle Name | `text` | `mname` / `mname` | `#mname` | - | `middleName` | mapped_guess |
-| Family Name | `text` | `lname` / `lname` | `#lname` | - | `familyName` | mapped_guess |
-| Previous Name (first name + middle name + family name) | `text` | `plname` / `plname` | `#plname` | - | `previousName` | mapped_guess |
-| Full Legal Name | `text` | `ud50` / `ud50` | `#ud50` | - | `-` | portal_or_unmapped |
-| Passport Number (Non EU applicants only) | `text` | `ud135` / `ud135` | `#ud135` | - | `passportNumber` | mapped_guess |
-| Have you Previously applied to the University of Greenwich? | `radio` | `ud1` / `None` | `[name='ud1']` | `Y` / `N` | `-` | portal_only |
-| Have you Previously applied to the University of Greenwich? | `radio` | `ud1` / `ud1` | `#ud1` | `Y` / `N` | `-` | portal_only |
-| Please provide your previous 9 digit ID number or student number (if known) | `text` | `ud2` / `ud2` | `#ud2` | - | `-` | portal_or_unmapped |
-| If you applied through an International Agent please state their 9 digit ID number | `text` | `ud3` / `ud3` | `#ud3` | - | `-` | portal_only |
+### Referee Details
 
-## Employment / Supporting Info.
+All 14 controls are blocked: the referee is a different person from the CRM applicant.
 
-**URL:** `https://nelson.gre.ac.uk/pls/prod/bwskaess.P_DispAppEssay?appno=1&wsct=ESSAY`
+| Control | Label |
+|---|---|
+| `#ud17` | Name of Referee |
+| `#ud18` | E-mail Address |
+| `#ud19` | Address Line 1 |
+| `#ud20` | Address Line 2 |
+| `#ud21` | Address Line 3 |
+| `#ud22` | City |
+| `#ud23` | Postcode |
+| `#ud24` | Country (select, 249) |
+| `#ud25` | Telephone Number |
+| `#ud26` | Fax Number |
+| `#ud27` | Organisation Name |
+| `#ud28` | Post / Occupation / Relationship to Applicant |
+| `#ud29` | How long have you known this applicant / referee? |
+| `#ud30` | Reference text (max 2000) |
 
-| Portal field | Type | name / id | Selector | Options (sample) | CRM key | Status |
-|---|---|---|---|---|---|---|
-| Name and Address of Employer | `textarea` | `ud11` / `ud11` | `#ud11` | - | `cvCurrentEmployer` | mapped_guess |
-| Description of Job / Nature of Employment | `text` | `ud16` / `ud16` | `#ud16` | - | `-` | portal_or_unmapped |
-| Full or Part Time? | `radio` | `ud12` / `ud12` | `#ud12` | `Y` / `N` | `-` | portal_or_unmapped |
-| Employment Start Date | `select` | `bday_dd` / `bday_dd` | `#bday_dd` |  (``) · 01 (`01`) · 02 (`02`) · 03 (`03`) · 04 (`04`) · 05 (`05`) · 06 (`06`) · 07 (`07`) ... +24 | `-` | blocked_until_split_date |
-| Employment Start Date | `select` | `bday_mm` / `bday_mm` | `#bday_mm` |  (``) · 01 (`01`) · 02 (`02`) · 03 (`03`) · 04 (`04`) · 05 (`05`) · 06 (`06`) · 07 (`07`) ... +5 | `-` | blocked_until_split_date |
-| Employment Start Date | `select` | `bday_yyyy` / `bday_yyyy` | `#bday_yyyy` |  (``) · 2026 (`2026`) · 2025 (`2025`) · 2024 (`2024`) · 2023 (`2023`) · 2022 (`2022`) · 2021 (`2021`) · 2020 (`2020`) ... +24 | `-` | blocked_until_split_date |
-| Employment End Date | `select` | `bday_dd2` / `bday_dd2` | `#bday_dd2` |  (``) · 01 (`01`) · 02 (`02`) · 03 (`03`) · 04 (`04`) · 05 (`05`) · 06 (`06`) · 07 (`07`) ... +24 | `-` | portal_or_unmapped |
-| Employment End Date | `select` | `bday_mm2` / `bday_mm2` | `#bday_mm2` |  (``) · 01 (`01`) · 02 (`02`) · 03 (`03`) · 04 (`04`) · 05 (`05`) · 06 (`06`) · 07 (`07`) ... +5 | `-` | portal_or_unmapped |
-| Employment End Date | `select` | `bday_yyyy2` / `bday_yyyy2` | `#bday_yyyy2` |  (``) · 2026 (`2026`) · 2025 (`2025`) · 2024 (`2024`) · 2023 (`2023`) · 2022 (`2022`) · 2021 (`2021`) · 2020 (`2020`) ... +24 | `-` | portal_or_unmapped |
-| Personal Statement (max 3950 characters) | `textarea` | `p_sarstmt_desc` / `p_sarstmt_desc` | `#p_sarstmt_desc` | - | `state` | mapped_guess |
+### Mailing Address
 
-## Permanent Address
+| Control | Label | Type | CRM key | Status |
+|---|---|---|---|---|
+| `#addr1` | Address Line 1 | text | `location` | Mapped |
+| `#addr2` | Address Line 2 | text | — | Blocked: no CRM key |
+| `#addr3` | Address Line 3 | text | — | Blocked: no CRM key |
+| `#zip` | Postcode / Zipcode | text | `postcode` | Mapped |
+| `#city` | City / Town | text | `city` | Mapped |
+| `#natn` | Country | select (249) | `countryName` | Mapped |
+| `#hometelno` | Home Telephone No. | text | `phone` | Mapped |
 
-**URL:** `https://nelson.gre.ac.uk/pls/prod/bwskaadr.P_DispAppAddr1?appno=1&wsct=ADDR1`
+### Qualifications
 
-| Portal field | Type | name / id | Selector | Options (sample) | CRM key | Status |
-|---|---|---|---|---|---|---|
-| Postcode | `text` | `searchzip` / `searchzip` | `#searchzip` | - | `postcode` | mapped_guess |
-| Postcode | `submit` | `search_btn` / `search_btn` | `#search_btn` | - | `-` | blocked_submit |
-| Address | `select` | `addr1` / `None` | `[name='addr1']` | Please select your address... (``) | `-` | portal_or_unmapped |
-| Town | `text` | `city` / `city` | `#city` | - | `city` | mapped_guess |
-| Postcode | `text` | `zip` / `zip` | `#zip` | - | `postcode` | mapped_guess |
-| Home Telephone No. | `text` | `hometelno` / `hometelno` | `#hometelno` | - | `phone` | mapped_guess |
-| Mobile Telephone No. | `text` | `mobiletelno` / `mobiletelno` | `#mobiletelno` | - | `phone` | mapped_guess |
-| Mailing address same as permanent address? | `radio` | `addrflag` / `addrflag` | `#addrflag` | `Y` / `N` | `-` | portal_or_unmapped |
+Twenty identical rows. Each row has five controls:
+`#ud<N>qualtype` (Level), `#ud<N>subject` (Subject including Modules or Units),
+`#ud<N>grade` (Grade leave blank if pending), `#ud<N>month` and `#ud<N>year`
+(Date Awarded / Expected), where `<N>` runs from 91 to 110.
 
-## Referee Details
+| Row | Controls | CRM key | Status |
+|---|---|---|---|
+| Row 1 (`#ud91*`) | Level, Subject, Grade | `degree`, `major`, `grade` | Mapped |
+| Row 1 date (`#ud91month`, `#ud91year`) | Date Awarded / Expected | `endDate`; `graduationYear` fallback | Split date |
+| Rows 2-20 (`#ud92*`..`#ud110*`) | Level, Subject, Grade, Month, Year | — | Blocked: CRM holds one qualification |
 
-**URL:** `https://nelson.gre.ac.uk/pls/prod/bwskaudf.P_DispAppUserDef?appno=1&wsct=ADDITIONAL`
+### Statistical Information
 
-| Portal field | Type | name / id | Selector | Options (sample) | CRM key | Status |
-|---|---|---|---|---|---|---|
-| Name of Referee | `text` | `ud17` / `ud17` | `#ud17` | - | `-` | blocked_referee |
-| E-mail Address | `text` | `ud18` / `ud18` | `#ud18` | - | `-` | blocked_referee |
-| Address Line 1 | `text` | `ud19` / `ud19` | `#ud19` | - | `-` | blocked_referee |
-| Address Line 2 | `text` | `ud20` / `ud20` | `#ud20` | - | `-` | blocked_referee |
-| Address Line 3 | `text` | `ud21` / `ud21` | `#ud21` | - | `-` | blocked_referee |
-| City | `text` | `ud22` / `ud22` | `#ud22` | - | `-` | blocked_referee |
-| Postcode | `text` | `ud23` / `ud23` | `#ud23` | - | `-` | blocked_referee |
-| Country | `select` | `ud24` / `ud24` | `#ud24` |  (``) · Afghanistan (`1602`) · Albania (`1603`) · Alderney (`1592`) · Algeria (`1604`) · American Samoa (`2010`) · Andorra (`1605`) · Angola (`1606`) ... +241 | `-` | blocked_referee |
-| Telephone Number | `text` | `ud25` / `ud25` | `#ud25` | - | `-` | blocked_referee |
-| Fax Number | `text` | `ud26` / `ud26` | `#ud26` | - | `-` | blocked_referee |
-| Organisation Name | `text` | `ud27` / `ud27` | `#ud27` | - | `-` | blocked_referee |
-| Post / Occupation / Relationship to Applicant | `text` | `ud28` / `ud28` | `#ud28` | - | `-` | blocked_referee |
-| How long have you known this applicant / referee? | `text` | `ud29` / `ud29` | `#ud29` | - | `-` | blocked_referee |
-| If you already have a reference please paste here (max 2000 characters) | `textarea` | `ud30` / `ud30` | `#ud30` | - | `-` | blocked_referee |
+| Control | Label | Type | CRM key | Status |
+|---|---|---|---|---|
+| `#email` | E-mail Address | text | `email` | Mapped |
+| `#dup_email` | Verify e-mail address | text | `email` | Mapped |
+| `#gender` | Gender | select (3) | `gender` | Mapped |
+| `#bday_dd` | Date of Birth | select | `dateOfBirth` | Split date |
+| `#bday_mm` | Date of Birth | select | `dateOfBirth` | Split date |
+| `#bday_yyyy` | Date of Birth | select | `dateOfBirth` | Split date |
+| `#ethn` | Ethnicity | select (20) | `ethnicity` | Mapped |
+| `#medi` | Disability / Special Needs | select (10, multi) | — | Blocked: sensitive |
+| `#ud80` | Other disability details | text | — | Blocked: sensitive |
+| `#ud4` | Have you been in care? | radio | — | Blocked: sensitive |
+| `#ud5` | Parents attended Higher Education? | radio | — | Blocked: application answer |
+| `#ud204` | First UK entry is date of birth? | checkbox | — | Blocked (never filled) |
+| `#euk_dd` | Date of First Entry to the UK | select | — | Blocked: not the same value as DOB |
+| `#euk_mm` | Date of First Entry to the UK | select | — | Blocked |
+| `#euk_yyyy` | Date of First Entry to the UK | select | — | Blocked |
+| `#ud60` | Country of Birth | select (256) | `countryOfBirth` | Mapped |
+| `#ud65` | Nationality | select (253) | `nationality` | Mapped |
+| `#ud70` | Area of Permanent Residence | select (513) | `state` | Mapped; fills only when the CRM county/country matches a live option |
+| `#ud35` | Who do you expect to pay your fees? | select (13) | `funding` | Mapped |
+| `#ud8` | Dates unavailable for interview | text | — | Blocked: contains "State" in its label |
+| `#ud40` | Confidential Contact Name | text | — | Blocked: nominated access |
+| `#ud45` | Confidential Contact Password | text | — | Blocked: nominated access |
 
-## Mailing Address
+### Previous / Current Education
 
-**URL:** `https://nelson.gre.ac.uk/pls/prod/bwskaadr.P_DispAppAddr2?appno=1&wsct=ADDR2`
+| Control | Label | Type | CRM key | Status |
+|---|---|---|---|---|
+| `#col_name` | Institution Name | text | `institutionName` | Mapped |
+| `#addr1` | Street1 | text | — | Blocked: institution address |
+| `#addr2` | Street2 | text | — | Blocked |
+| `#addr3` | Street3 | text | — | Blocked |
+| `#city` | City | text | — | Blocked: institution address |
+| `#zip` | Postcode | text | — | Blocked: institution address |
+| `#natn` | Country | select (249) | — | Blocked: institution address |
+| `#beg_date_dd` | Attended From | select | `startDate` | Split date |
+| `#beg_date_mm` | Attended From | select | `startDate` | Split date |
+| `#beg_date_yyyy` | Attended From | select | `startDate` | Split date |
+| `#end_date_dd` | Attended To | select | `endDate` | Split date |
+| `#end_date_mm` | Attended To | select | `endDate` | Split date |
+| `#end_date_yyyy` | Attended To | select | `endDate` | Split date |
 
-| Portal field | Type | name / id | Selector | Options (sample) | CRM key | Status |
-|---|---|---|---|---|---|---|
-| Postcode | `text` | `searchzip` / `searchzip` | `#searchzip` | - | `postcode` | mapped_guess |
-| Postcode | `submit` | `search_btn` / `search_btn` | `#search_btn` | - | `-` | blocked_submit |
-| Address | `select` | `addr1` / `None` | `[name='addr1']` | Please select your address... (``) | `-` | portal_or_unmapped |
-| Town | `text` | `city` / `city` | `#city` | - | `city` | mapped_guess |
-| Postcode | `text` | `zip` / `zip` | `#zip` | - | `postcode` | mapped_guess |
-| Home Telephone No. | `text` | `hometelno` / `hometelno` | `#hometelno` | - | `phone` | mapped_guess |
+The CRM supplies education dates as month/year (for example `September 2016`). Month and year
+fill; the day select stays manual because the CRM has no day.
 
-## Qualifications
+### Programme Information
 
-**URL:** `https://nelson.gre.ac.uk/pls/prod/bwskapcl.P_DispQuals?appno=1&wsct=QUALS`
+| Control | Label | Type | CRM key | Status |
+|---|---|---|---|---|
+| `#p_month` | Month/Year of Entry (month) | select (12) | `preferredIntake` | Split date |
+| `#p_year` | Month/Year of Entry (year) | select (2026-2028) | `preferredIntake` | Split date |
+| `#p_program_code` | Programme of Study | select (237 after intake) | `preferredCourse` | Mapped |
+| `#p_mode_poe` | Mode/Point of Entry | select (14 after programme) | `preferredRoute` | Mapped |
+| `#ud138` | Teacher-training subject(s) | text | — | Blocked: no CRM key |
 
-| Portal field | Type | name / id | Selector | Options (sample) | CRM key | Status |
-|---|---|---|---|---|---|---|
-| Level | `text` | `ud91qualtype` / `ud91qualtype` | `#ud91qualtype` | - | ~~`qualificationLevel`~~ `degree` | ~~mapped_guess~~ verified_first_row |
-| Subject including Modules or Units | `text` | `ud91subject` / `ud91subject` | `#ud91subject` | - | `major` | mapped_guess |
-| Grade leave blank if pending | `text` | `ud91grade` / `ud91grade` | `#ud91grade` | - | `grade` | mapped_guess |
-| Date Awarded / Expected | `select` | `ud91month` / `ud91month` | `#ud91month` |  (``) · 01 (`01`) · 02 (`02`) · 03 (`03`) · 04 (`04`) · 05 (`05`) · 06 (`06`) · 07 (`07`) ... +5 | `degree` | mapped_guess |
-| Date Awarded / Expected | `select` | `ud91year` / `ud91year` | `#ud91year` |  (``) · 2028 (`2028`) · 2027 (`2027`) · 2026 (`2026`) · 2025 (`2025`) · 2024 (`2024`) · 2023 (`2023`) · 2022 (`2022`) ... +64 | `degree` | mapped_guess |
-| Level | `text` | `ud92qualtype` / `ud92qualtype` | `#ud92qualtype` | - | `qualificationLevel` | mapped_guess |
-| Subject including Modules or Units | `text` | `ud92subject` / `ud92subject` | `#ud92subject` | - | `major` | mapped_guess |
-| Grade leave blank if pending | `text` | `ud92grade` / `ud92grade` | `#ud92grade` | - | `grade` | mapped_guess |
-| Date Awarded / Expected | `select` | `ud92month` / `ud92month` | `#ud92month` |  (``) · 01 (`01`) · 02 (`02`) · 03 (`03`) · 04 (`04`) · 05 (`05`) · 06 (`06`) · 07 (`07`) ... +5 | `degree` | mapped_guess |
-| Date Awarded / Expected | `select` | `ud92year` / `ud92year` | `#ud92year` |  (``) · 2028 (`2028`) · 2027 (`2027`) · 2026 (`2026`) · 2025 (`2025`) · 2024 (`2024`) · 2023 (`2023`) · 2022 (`2022`) ... +64 | `degree` | mapped_guess |
-| Level | `text` | `ud93qualtype` / `ud93qualtype` | `#ud93qualtype` | - | `qualificationLevel` | mapped_guess |
-| Subject including Modules or Units | `text` | `ud93subject` / `ud93subject` | `#ud93subject` | - | `major` | mapped_guess |
-| Grade leave blank if pending | `text` | `ud93grade` / `ud93grade` | `#ud93grade` | - | `grade` | mapped_guess |
-| Date Awarded / Expected | `select` | `ud93month` / `ud93month` | `#ud93month` |  (``) · 01 (`01`) · 02 (`02`) · 03 (`03`) · 04 (`04`) · 05 (`05`) · 06 (`06`) · 07 (`07`) ... +5 | `degree` | mapped_guess |
-| Date Awarded / Expected | `select` | `ud93year` / `ud93year` | `#ud93year` |  (``) · 2028 (`2028`) · 2027 (`2027`) · 2026 (`2026`) · 2025 (`2025`) · 2024 (`2024`) · 2023 (`2023`) · 2022 (`2022`) ... +64 | `degree` | mapped_guess |
-| Level | `text` | `ud94qualtype` / `ud94qualtype` | `#ud94qualtype` | - | `qualificationLevel` | mapped_guess |
-| Subject including Modules or Units | `text` | `ud94subject` / `ud94subject` | `#ud94subject` | - | `major` | mapped_guess |
-| Grade leave blank if pending | `text` | `ud94grade` / `ud94grade` | `#ud94grade` | - | `grade` | mapped_guess |
-| Date Awarded / Expected | `select` | `ud94month` / `ud94month` | `#ud94month` |  (``) · 01 (`01`) · 02 (`02`) · 03 (`03`) · 04 (`04`) · 05 (`05`) · 06 (`06`) · 07 (`07`) ... +5 | `degree` | mapped_guess |
-| Date Awarded / Expected | `select` | `ud94year` / `ud94year` | `#ud94year` |  (``) · 2028 (`2028`) · 2027 (`2027`) · 2026 (`2026`) · 2025 (`2025`) · 2024 (`2024`) · 2023 (`2023`) · 2022 (`2022`) ... +64 | `degree` | mapped_guess |
-| Level | `text` | `ud95qualtype` / `ud95qualtype` | `#ud95qualtype` | - | `qualificationLevel` | mapped_guess |
-| Subject including Modules or Units | `text` | `ud95subject` / `ud95subject` | `#ud95subject` | - | `major` | mapped_guess |
-| Grade leave blank if pending | `text` | `ud95grade` / `ud95grade` | `#ud95grade` | - | `grade` | mapped_guess |
-| Date Awarded / Expected | `select` | `ud95month` / `ud95month` | `#ud95month` |  (``) · 01 (`01`) · 02 (`02`) · 03 (`03`) · 04 (`04`) · 05 (`05`) · 06 (`06`) · 07 (`07`) ... +5 | `degree` | mapped_guess |
-| Date Awarded / Expected | `select` | `ud95year` / `ud95year` | `#ud95year` |  (``) · 2028 (`2028`) · 2027 (`2027`) · 2026 (`2026`) · 2025 (`2025`) · 2024 (`2024`) · 2023 (`2023`) · 2022 (`2022`) ... +64 | `degree` | mapped_guess |
-| Level | `text` | `ud96qualtype` / `ud96qualtype` | `#ud96qualtype` | - | `qualificationLevel` | mapped_guess |
-| Subject including Modules or Units | `text` | `ud96subject` / `ud96subject` | `#ud96subject` | - | `major` | mapped_guess |
-| Grade leave blank if pending | `text` | `ud96grade` / `ud96grade` | `#ud96grade` | - | `grade` | mapped_guess |
-| Date Awarded / Expected | `select` | `ud96month` / `ud96month` | `#ud96month` |  (``) · 01 (`01`) · 02 (`02`) · 03 (`03`) · 04 (`04`) · 05 (`05`) · 06 (`06`) · 07 (`07`) ... +5 | `degree` | mapped_guess |
-| Date Awarded / Expected | `select` | `ud96year` / `ud96year` | `#ud96year` |  (``) · 2028 (`2028`) · 2027 (`2027`) · 2026 (`2026`) · 2025 (`2025`) · 2024 (`2024`) · 2023 (`2023`) · 2022 (`2022`) ... +64 | `degree` | mapped_guess |
-| Level | `text` | `ud97qualtype` / `ud97qualtype` | `#ud97qualtype` | - | `qualificationLevel` | mapped_guess |
-| Subject including Modules or Units | `text` | `ud97subject` / `ud97subject` | `#ud97subject` | - | `major` | mapped_guess |
-| Grade leave blank if pending | `text` | `ud97grade` / `ud97grade` | `#ud97grade` | - | `grade` | mapped_guess |
-| Date Awarded / Expected | `select` | `ud97month` / `ud97month` | `#ud97month` |  (``) · 01 (`01`) · 02 (`02`) · 03 (`03`) · 04 (`04`) · 05 (`05`) · 06 (`06`) · 07 (`07`) ... +5 | `degree` | mapped_guess |
-| Date Awarded / Expected | `select` | `ud97year` / `ud97year` | `#ud97year` |  (``) · 2028 (`2028`) · 2027 (`2027`) · 2026 (`2026`) · 2025 (`2025`) · 2024 (`2024`) · 2023 (`2023`) · 2022 (`2022`) ... +64 | `degree` | mapped_guess |
-| Level | `text` | `ud98qualtype` / `ud98qualtype` | `#ud98qualtype` | - | `qualificationLevel` | mapped_guess |
-| Subject including Modules or Units | `text` | `ud98subject` / `ud98subject` | `#ud98subject` | - | `major` | mapped_guess |
-| Grade leave blank if pending | `text` | `ud98grade` / `ud98grade` | `#ud98grade` | - | `grade` | mapped_guess |
-| Date Awarded / Expected | `select` | `ud98month` / `ud98month` | `#ud98month` |  (``) · 01 (`01`) · 02 (`02`) · 03 (`03`) · 04 (`04`) · 05 (`05`) · 06 (`06`) · 07 (`07`) ... +5 | `degree` | mapped_guess |
-| Date Awarded / Expected | `select` | `ud98year` / `ud98year` | `#ud98year` |  (``) · 2028 (`2028`) · 2027 (`2027`) · 2026 (`2026`) · 2025 (`2025`) · 2024 (`2024`) · 2023 (`2023`) · 2022 (`2022`) ... +64 | `degree` | mapped_guess |
-| Level | `text` | `ud99qualtype` / `ud99qualtype` | `#ud99qualtype` | - | `qualificationLevel` | mapped_guess |
-| Subject including Modules or Units | `text` | `ud99subject` / `ud99subject` | `#ud99subject` | - | `major` | mapped_guess |
-| Grade leave blank if pending | `text` | `ud99grade` / `ud99grade` | `#ud99grade` | - | `grade` | mapped_guess |
-| Date Awarded / Expected | `select` | `ud99month` / `ud99month` | `#ud99month` |  (``) · 01 (`01`) · 02 (`02`) · 03 (`03`) · 04 (`04`) · 05 (`05`) · 06 (`06`) · 07 (`07`) ... +5 | `degree` | mapped_guess |
-| Date Awarded / Expected | `select` | `ud99year` / `ud99year` | `#ud99year` |  (``) · 2028 (`2028`) · 2027 (`2027`) · 2026 (`2026`) · 2025 (`2025`) · 2024 (`2024`) · 2023 (`2023`) · 2022 (`2022`) ... +64 | `degree` | mapped_guess |
-| Level | `text` | `ud100qualtype` / `ud100qualtype` | `#ud100qualtype` | - | `qualificationLevel` | mapped_guess |
-| Subject including Modules or Units | `text` | `ud100subject` / `ud100subject` | `#ud100subject` | - | `major` | mapped_guess |
-| Grade leave blank if pending | `text` | `ud100grade` / `ud100grade` | `#ud100grade` | - | `grade` | mapped_guess |
-| Date Awarded / Expected | `select` | `ud100month` / `ud100month` | `#ud100month` |  (``) · 01 (`01`) · 02 (`02`) · 03 (`03`) · 04 (`04`) · 05 (`05`) · 06 (`06`) · 07 (`07`) ... +5 | `degree` | mapped_guess |
-| Date Awarded / Expected | `select` | `ud100year` / `ud100year` | `#ud100year` |  (``) · 2028 (`2028`) · 2027 (`2027`) · 2026 (`2026`) · 2025 (`2025`) · 2024 (`2024`) · 2023 (`2023`) · 2022 (`2022`) ... +64 | `degree` | mapped_guess |
-| Level | `text` | `ud101qualtype` / `ud101qualtype` | `#ud101qualtype` | - | `qualificationLevel` | mapped_guess |
-| Subject including Modules or Units | `text` | `ud101subject` / `ud101subject` | `#ud101subject` | - | `major` | mapped_guess |
-| Grade leave blank if pending | `text` | `ud101grade` / `ud101grade` | `#ud101grade` | - | `grade` | mapped_guess |
-| Date Awarded / Expected | `select` | `ud101month` / `ud101month` | `#ud101month` |  (``) · 01 (`01`) · 02 (`02`) · 03 (`03`) · 04 (`04`) · 05 (`05`) · 06 (`06`) · 07 (`07`) ... +5 | `degree` | mapped_guess |
-| Date Awarded / Expected | `select` | `ud101year` / `ud101year` | `#ud101year` |  (``) · 2028 (`2028`) · 2027 (`2027`) · 2026 (`2026`) · 2025 (`2025`) · 2024 (`2024`) · 2023 (`2023`) · 2022 (`2022`) ... +64 | `degree` | mapped_guess |
-| Level | `text` | `ud102qualtype` / `ud102qualtype` | `#ud102qualtype` | - | `qualificationLevel` | mapped_guess |
-| Subject including Modules or Units | `text` | `ud102subject` / `ud102subject` | `#ud102subject` | - | `major` | mapped_guess |
-| Grade leave blank if pending | `text` | `ud102grade` / `ud102grade` | `#ud102grade` | - | `grade` | mapped_guess |
-| Date Awarded / Expected | `select` | `ud102month` / `ud102month` | `#ud102month` |  (``) · 01 (`01`) · 02 (`02`) · 03 (`03`) · 04 (`04`) · 05 (`05`) · 06 (`06`) · 07 (`07`) ... +5 | `degree` | mapped_guess |
-| Date Awarded / Expected | `select` | `ud102year` / `ud102year` | `#ud102year` |  (``) · 2028 (`2028`) · 2027 (`2027`) · 2026 (`2026`) · 2025 (`2025`) · 2024 (`2024`) · 2023 (`2023`) · 2022 (`2022`) ... +64 | `degree` | mapped_guess |
-| Level | `text` | `ud103qualtype` / `ud103qualtype` | `#ud103qualtype` | - | `qualificationLevel` | mapped_guess |
-| Subject including Modules or Units | `text` | `ud103subject` / `ud103subject` | `#ud103subject` | - | `major` | mapped_guess |
-| Grade leave blank if pending | `text` | `ud103grade` / `ud103grade` | `#ud103grade` | - | `grade` | mapped_guess |
-| Date Awarded / Expected | `select` | `ud103month` / `ud103month` | `#ud103month` |  (``) · 01 (`01`) · 02 (`02`) · 03 (`03`) · 04 (`04`) · 05 (`05`) · 06 (`06`) · 07 (`07`) ... +5 | `degree` | mapped_guess |
-| Date Awarded / Expected | `select` | `ud103year` / `ud103year` | `#ud103year` |  (``) · 2028 (`2028`) · 2027 (`2027`) · 2026 (`2026`) · 2025 (`2025`) · 2024 (`2024`) · 2023 (`2023`) · 2022 (`2022`) ... +64 | `degree` | mapped_guess |
-| Level | `text` | `ud104qualtype` / `ud104qualtype` | `#ud104qualtype` | - | `qualificationLevel` | mapped_guess |
-| Subject including Modules or Units | `text` | `ud104subject` / `ud104subject` | `#ud104subject` | - | `major` | mapped_guess |
-| Grade leave blank if pending | `text` | `ud104grade` / `ud104grade` | `#ud104grade` | - | `grade` | mapped_guess |
-| Date Awarded / Expected | `select` | `ud104month` / `ud104month` | `#ud104month` |  (``) · 01 (`01`) · 02 (`02`) · 03 (`03`) · 04 (`04`) · 05 (`05`) · 06 (`06`) · 07 (`07`) ... +5 | `degree` | mapped_guess |
-| Date Awarded / Expected | `select` | `ud104year` / `ud104year` | `#ud104year` |  (``) · 2028 (`2028`) · 2027 (`2027`) · 2026 (`2026`) · 2025 (`2025`) · 2024 (`2024`) · 2023 (`2023`) · 2022 (`2022`) ... +64 | `degree` | mapped_guess |
-| Level | `text` | `ud105qualtype` / `ud105qualtype` | `#ud105qualtype` | - | `qualificationLevel` | mapped_guess |
-| Subject including Modules or Units | `text` | `ud105subject` / `ud105subject` | `#ud105subject` | - | `major` | mapped_guess |
-| Grade leave blank if pending | `text` | `ud105grade` / `ud105grade` | `#ud105grade` | - | `grade` | mapped_guess |
-| Date Awarded / Expected | `select` | `ud105month` / `ud105month` | `#ud105month` |  (``) · 01 (`01`) · 02 (`02`) · 03 (`03`) · 04 (`04`) · 05 (`05`) · 06 (`06`) · 07 (`07`) ... +5 | `degree` | mapped_guess |
-| Date Awarded / Expected | `select` | `ud105year` / `ud105year` | `#ud105year` |  (``) · 2028 (`2028`) · 2027 (`2027`) · 2026 (`2026`) · 2025 (`2025`) · 2024 (`2024`) · 2023 (`2023`) · 2022 (`2022`) ... +64 | `degree` | mapped_guess |
-| Level | `text` | `ud106qualtype` / `ud106qualtype` | `#ud106qualtype` | - | `qualificationLevel` | mapped_guess |
-| Subject including Modules or Units | `text` | `ud106subject` / `ud106subject` | `#ud106subject` | - | `major` | mapped_guess |
-| Grade leave blank if pending | `text` | `ud106grade` / `ud106grade` | `#ud106grade` | - | `grade` | mapped_guess |
-| Date Awarded / Expected | `select` | `ud106month` / `ud106month` | `#ud106month` |  (``) · 01 (`01`) · 02 (`02`) · 03 (`03`) · 04 (`04`) · 05 (`05`) · 06 (`06`) · 07 (`07`) ... +5 | `degree` | mapped_guess |
-| Date Awarded / Expected | `select` | `ud106year` / `ud106year` | `#ud106year` |  (``) · 2028 (`2028`) · 2027 (`2027`) · 2026 (`2026`) · 2025 (`2025`) · 2024 (`2024`) · 2023 (`2023`) · 2022 (`2022`) ... +64 | `degree` | mapped_guess |
-| Level | `text` | `ud107qualtype` / `ud107qualtype` | `#ud107qualtype` | - | `qualificationLevel` | mapped_guess |
-| Subject including Modules or Units | `text` | `ud107subject` / `ud107subject` | `#ud107subject` | - | `major` | mapped_guess |
-| Grade leave blank if pending | `text` | `ud107grade` / `ud107grade` | `#ud107grade` | - | `grade` | mapped_guess |
-| Date Awarded / Expected | `select` | `ud107month` / `ud107month` | `#ud107month` |  (``) · 01 (`01`) · 02 (`02`) · 03 (`03`) · 04 (`04`) · 05 (`05`) · 06 (`06`) · 07 (`07`) ... +5 | `degree` | mapped_guess |
-| Date Awarded / Expected | `select` | `ud107year` / `ud107year` | `#ud107year` |  (``) · 2028 (`2028`) · 2027 (`2027`) · 2026 (`2026`) · 2025 (`2025`) · 2024 (`2024`) · 2023 (`2023`) · 2022 (`2022`) ... +64 | `degree` | mapped_guess |
-| Level | `text` | `ud108qualtype` / `ud108qualtype` | `#ud108qualtype` | - | `qualificationLevel` | mapped_guess |
-| Subject including Modules or Units | `text` | `ud108subject` / `ud108subject` | `#ud108subject` | - | `major` | mapped_guess |
-| Grade leave blank if pending | `text` | `ud108grade` / `ud108grade` | `#ud108grade` | - | `grade` | mapped_guess |
-| Date Awarded / Expected | `select` | `ud108month` / `ud108month` | `#ud108month` |  (``) · 01 (`01`) · 02 (`02`) · 03 (`03`) · 04 (`04`) · 05 (`05`) · 06 (`06`) · 07 (`07`) ... +5 | `degree` | mapped_guess |
-| Date Awarded / Expected | `select` | `ud108year` / `ud108year` | `#ud108year` |  (``) · 2028 (`2028`) · 2027 (`2027`) · 2026 (`2026`) · 2025 (`2025`) · 2024 (`2024`) · 2023 (`2023`) · 2022 (`2022`) ... +64 | `degree` | mapped_guess |
-| Level | `text` | `ud109qualtype` / `ud109qualtype` | `#ud109qualtype` | - | `qualificationLevel` | mapped_guess |
-| Subject including Modules or Units | `text` | `ud109subject` / `ud109subject` | `#ud109subject` | - | `major` | mapped_guess |
-| Grade leave blank if pending | `text` | `ud109grade` / `ud109grade` | `#ud109grade` | - | `grade` | mapped_guess |
-| Date Awarded / Expected | `select` | `ud109month` / `ud109month` | `#ud109month` |  (``) · 01 (`01`) · 02 (`02`) · 03 (`03`) · 04 (`04`) · 05 (`05`) · 06 (`06`) · 07 (`07`) ... +5 | `degree` | mapped_guess |
-| Date Awarded / Expected | `select` | `ud109year` / `ud109year` | `#ud109year` |  (``) · 2028 (`2028`) · 2027 (`2027`) · 2026 (`2026`) · 2025 (`2025`) · 2024 (`2024`) · 2023 (`2023`) · 2022 (`2022`) ... +64 | `degree` | mapped_guess |
-| Level | `text` | `ud110qualtype` / `ud110qualtype` | `#ud110qualtype` | - | `qualificationLevel` | mapped_guess |
-| Subject including Modules or Units | `text` | `ud110subject` / `ud110subject` | `#ud110subject` | - | `major` | mapped_guess |
-| Grade leave blank if pending | `text` | `ud110grade` / `ud110grade` | `#ud110grade` | - | `grade` | mapped_guess |
-| Date Awarded / Expected | `select` | `ud110month` / `ud110month` | `#ud110month` |  (``) · 01 (`01`) · 02 (`02`) · 03 (`03`) · 04 (`04`) · 05 (`05`) · 06 (`06`) · 07 (`07`) ... +5 | `degree` | mapped_guess |
-| Date Awarded / Expected | `select` | `ud110year` / `ud110year` | `#ud110year` |  (``) · 2028 (`2028`) · 2027 (`2027`) · 2026 (`2026`) · 2025 (`2025`) · 2024 (`2024`) · 2023 (`2023`) · 2022 (`2022`) ... +64 | `degree` | mapped_guess |
+Programme is a three-step cascade and fills over successive Autofill passes:
 
-## Statistical Information
+1. Pass 1 fills Month/Year of Entry (`preferredIntake`). The Programme select now loads 237 options.
+2. Pass 2 fills Programme (`preferredCourse`). The Mode/PoE select now loads 14 options.
+3. Pass 3 fills Mode/Point of Entry (`preferredRoute`).
 
-**URL:** `https://nelson.gre.ac.uk/pls/prod/bwskaper.P_DispAppPersonal?appno=1&wsct=PERSONAL`
+Verified live on 2026-10-23. Each pass is a draft-only UI change; the extension never saves.
 
-| Portal field | Type | name / id | Selector | Options (sample) | CRM key | Status |
-|---|---|---|---|---|---|---|
-| E-mail Address | `text` | `email` / `email` | `#email` | - | `email` | mapped_guess |
-| Verify e-mail address | `text` | `dup_email` / `dup_email` | `#dup_email` | - | `email` | mapped_guess |
-| Gender | `select` | `gender` / `gender` | `#gender` |  (``) · Male (`M`) · Female (`F`) | `gender` | mapped_guess |
-| Date of Birth | `select` | `bday_dd` / `bday_dd` | `#bday_dd` |  (``) · 01 (`01`) · 02 (`02`) · 03 (`03`) · 04 (`04`) · 05 (`05`) · 06 (`06`) · 07 (`07`) ... +24 | `-` | blocked_until_split_date |
-| Date of Birth | `select` | `bday_mm` / `bday_mm` | `#bday_mm` |  (``) · 01 (`01`) · 02 (`02`) · 03 (`03`) · 04 (`04`) · 05 (`05`) · 06 (`06`) · 07 (`07`) ... +5 | `-` | blocked_until_split_date |
-| Date of Birth | `select` | `bday_yyyy` / `bday_yyyy` | `#bday_yyyy` |  (``) · 2011 (`2011`) · 2010 (`2010`) · 2009 (`2009`) · 2008 (`2008`) · 2007 (`2007`) · 2006 (`2006`) · 2005 (`2005`) ... +54 | `-` | blocked_until_split_date |
-| Ethnicity | `select` | `ethn` / `ethn` | `#ethn` |  (``) · Arab (`50`) · Asian\Asian Brit - Bangladeshi (`33`) · Asian\Asian Brit - Indian (`31`) · Asian\Asian Brit - Pakistani (`32`) · Black\Black Brit - African (`22`) · Black\Black Brit - Caribbean (`21`) · Chinese (`34`) ... +12 | `-` | portal_only |
-| Disability/Special Needs Information (Hold down the Ctrl (windows) / Command (Mac) button to select multiple options.) | `select` | `medi` / `medi` | `#medi` | No disability (`00`) · You have two or more impairments and/or disabling medical conditions (`08`) · You have a specific learning difficulty such as dyslexia, dyspraxia or AD(H)D (`51`) · You have a social/communication impairment such as Asperger's syndrome/other autistic spectrum disorder (`53`) · You have a long standing illness or health condition such as cancer, HIV, diabetes, chronic heart disease, or epilepsy (`54`) · You have a mental health condition, such as depression, schizophrenia or anxiety disorder (`55`) · You have physical impairment or mobility issues, such as difficulty using your arms or using a wheelchair or crutches (`56`) · You are deaf or have a serious hearing impairment (`57`) ... +2 | `-` | portal_or_unmapped |
-| Enter any disability not listed above | `text` | `ud80` / `ud80` | `#ud80` | - | `-` | portal_or_unmapped |
-| Have you been in care? | `radio` | `ud4` / `ud4` | `#ud4` | `1` / `2` / `7` | `-` | portal_or_unmapped |
-| Have your parent(s)/guardian(s) attended Higher Education? | `radio` | `ud5` / `ud5` | `#ud5` | `1` / `2` / `8` | `-` | portal_or_unmapped |
-| Date of First Entry to the UK (Please indicate whether this is your date of birth or enter the actual or intended date. If you are not planning to study in the UK, for example if you are applying to Greenwich Online, ple | `checkbox` | `ud204` / `None` | `[name='ud204']` | - | `dateOfBirth` | mapped_guess |
-| Date of First Entry to the UK (Please indicate whether this is your date of birth or enter the actual or intended date. If you are not planning to study in the UK, for example if you are applying to Greenwich Online, ple | `select` | `euk_dd` / `euk_dd` | `#euk_dd` |  (``) · 01 (`01`) · 02 (`02`) · 03 (`03`) · 04 (`04`) · 05 (`05`) · 06 (`06`) · 07 (`07`) ... +24 | `dateOfBirth` | mapped_guess |
-| Date of First Entry to the UK (Please indicate whether this is your date of birth or enter the actual or intended date. If you are not planning to study in the UK, for example if you are applying to Greenwich Online, ple | `select` | `euk_mm` / `euk_mm` | `#euk_mm` |  (``) · 01 (`01`) · 02 (`02`) · 03 (`03`) · 04 (`04`) · 05 (`05`) · 06 (`06`) · 07 (`07`) ... +5 | `dateOfBirth` | mapped_guess |
-| Date of First Entry to the UK (Please indicate whether this is your date of birth or enter the actual or intended date. If you are not planning to study in the UK, for example if you are applying to Greenwich Online, ple | `select` | `euk_yyyy` / `euk_yyyy` | `#euk_yyyy` |  (``) · 2028 (`2028`) · 2027 (`2027`) · 2026 (`2026`) · 2025 (`2025`) · 2024 (`2024`) · 2023 (`2023`) · 2022 (`2022`) ... +76 | `dateOfBirth` | mapped_guess |
-| Country of Birth | `select` | `ud60` / `ud60` | `#ud60` |  (``) · Afghanistan (`1602`) · Albania (`1603`) · Alderney (`1592`) · Algeria (`1604`) · American Samoa (`2010`) · Andorra (`1605`) · Angola (`1606`) ... +248 | `countryOfBirth` | mapped_guess |
-| Nationality | `select` | `ud65` / `ud65` | `#ud65` |  (``) · Afghanistan (`1602`) · Albania (`1603`) · Alderney (`1592`) · Algeria (`1604`) · American Samoa (`2010`) · Andorra (`1605`) · Angola (`1606`) ... +245 | `nationality` | mapped_guess |
-| Area of Permanent Residence (UK residents please select your county) | `select` | `ud70` / `ud70` | `#ud70` |  (``) · Aberdeen (`161`) · Aberdeen (`161`) · Aberdeenshire (`162`) · Aberdeenshire (`162`) · Afghanistan (`602`) · Aland Islands (`853`) · Albania (`603`) ... +505 | `state` | mapped_guess |
-| Who do you expect to pay your fees? | `select` | `ud35` / `ud35` | `#ud35` |  (``) · Entire cost of tuition fees is paid by private finance. (`01`) · Applying for student support assessment by LEA, SAAS, Northern Ireland Education and Library Board, DfES or Channel Islands or Isle of Man agency. (`02`) · Contribution from a Research Council. (`04`) · Contribution from the Department of Health or a Regional Health Authority. (`05`) · Overseas student award from the UK government or the British Council. (`06`) · Contribution from a training agency. (`07`) · Other UK government award. (`08`) ... +5 | `-` | portal_or_unmapped |
-| State any dates you are not available for interview | `text` | `ud8` / `ud8` | `#ud8` | - | `state` | mapped_guess |
-| Confidential Contact Name Please refer to notes relating to nominated access | `text` | `ud40` / `ud40` | `#ud40` | - | `-` | portal_or_unmapped |
-| Confidential Contact Password | `text` | `ud45` / `ud45` | `#ud45` | - | `-` | portal_or_unmapped |
+### Signature
 
-## Previous / Current Education
+| Control | Label | Type | Status |
+|---|---|---|---|
+| `#ud130` | I agree to the Terms and Conditions | checkbox | Blocked |
+| `#ud131` | I have read the Guidance Notes | checkbox | Blocked |
 
-**URL:** `https://nelson.gre.ac.uk/pls/prod/bwskapcl.P_DispAppPrvCollege?appno=1&wsct=PRVCOLLEGE`
+## Split dates
 
-| Portal field | Type | name / id | Selector | Options (sample) | CRM key | Status |
-|---|---|---|---|---|---|---|
-| Institution Name | `text` | `col_name` / `col_name` | `#col_name` | - | `institutionName` | mapped_guess |
-| Street1 | `text` | `addr1` / `addr1` | `#addr1` | - | `location` | mapped_guess |
-| Street2 | `text` | `addr2` / `addr2` | `#addr2` | - | `location` | mapped_guess |
-| Street3 | `text` | `addr3` / `addr3` | `#addr3` | - | `location` | mapped_guess |
-| City | `text` | `city` / `city` | `#city` | - | `city` | mapped_guess |
-| Postcode | `text` | `zip` / `zip` | `#zip` | - | `postcode` | mapped_guess |
-| Country | `select` | `natn` / `natn` | `#natn` | ---------Select your country----------- (``) · Afghanistan (`1602`) · Albania (`1603`) · Alderney (`1592`) · Algeria (`1604`) · American Samoa (`2010`) · Andorra (`1605`) · Angola (`1606`) ... +241 | `countryName` | mapped_guess |
-| Attended From | `select` | `beg_date_dd` / `beg_date_dd` | `#beg_date_dd` |  (``) · 01 (`01`) · 02 (`02`) · 03 (`03`) · 04 (`04`) · 05 (`05`) · 06 (`06`) · 07 (`07`) ... +24 | `-` | portal_or_unmapped |
-| Attended From | `select` | `beg_date_mm` / `beg_date_mm` | `#beg_date_mm` |  (``) · 01 (`01`) · 02 (`02`) · 03 (`03`) · 04 (`04`) · 05 (`05`) · 06 (`06`) · 07 (`07`) ... +5 | `-` | portal_or_unmapped |
-| Attended From | `select` | `beg_date_yyyy` / `beg_date_yyyy` | `#beg_date_yyyy` |  (``) · 2026 (`2026`) · 2025 (`2025`) · 2024 (`2024`) · 2023 (`2023`) · 2022 (`2022`) · 2021 (`2021`) · 2020 (`2020`) ... +54 | `-` | portal_or_unmapped |
-| Attended To | `select` | `end_date_dd` / `end_date_dd` | `#end_date_dd` |  (``) · 01 (`01`) · 02 (`02`) · 03 (`03`) · 04 (`04`) · 05 (`05`) · 06 (`06`) · 07 (`07`) ... +24 | `-` | portal_or_unmapped |
-| Attended To | `select` | `end_date_mm` / `end_date_mm` | `#end_date_mm` |  (``) · 01 (`01`) · 02 (`02`) · 03 (`03`) · 04 (`04`) · 05 (`05`) · 06 (`06`) · 07 (`07`) ... +5 | `-` | portal_or_unmapped |
-| Attended To | `select` | `end_date_yyyy` / `end_date_yyyy` | `#end_date_yyyy` |  (``) · 2026 (`2026`) · 2025 (`2025`) · 2024 (`2024`) · 2023 (`2023`) · 2022 (`2022`) · 2021 (`2021`) · 2020 (`2020`) ... +54 | `-` | portal_or_unmapped |
+| CRM key | Page | Controls |
+|---|---|---|
+| `dateOfBirth` | `bwskaper.P_DispAppPersonal` | `#bday_dd`, `#bday_mm`, `#bday_yyyy` |
+| `cvWorkStartDate` | `bwskaess.P_DispAppEssay` | `#bday_dd`, `#bday_mm`, `#bday_yyyy` |
+| `cvWorkEndDate` | `bwskaess.P_DispAppEssay` | `#bday_dd2`, `#bday_mm2`, `#bday_yyyy2` |
+| `startDate` | `bwskapcl.P_DispAppPrvCollege` | `#beg_date_dd`, `#beg_date_mm`, `#beg_date_yyyy` |
+| `endDate` | `bwskapcl.P_DispAppPrvCollege` | `#end_date_dd`, `#end_date_mm`, `#end_date_yyyy` |
+| `endDate` | `bwskapcl.P_DispQuals` | `#ud91month`, `#ud91year` |
+| `graduationYear` | `bwskapcl.P_DispQuals` | `#ud91year` |
+| `preferredIntake` | `bwskapln.P_DispAppPlan` | `#p_month`, `#p_year` |
 
-## Programme Information
+`#bday_*` is Date of Birth on Statistical Information but Employment Start Date on
+Employment / Supporting Info. The page and form patterns keep the two uses apart.
 
-**URL:** `https://nelson.gre.ac.uk/pls/prod/bwskapln.P_DispAppPlan?appno=1&wsct=PLAN`
+## Explicitly not auto-filled
 
-| Portal field | Type | name / id | Selector | Options (sample) | CRM key | Status |
-|---|---|---|---|---|---|---|
-| Month/Year of Entry | `select` | `p_month` / `p_month` | `#p_month` |  (``) · 01 (`01`) · 02 (`02`) · 03 (`03`) · 04 (`04`) · 05 (`05`) · 06 (`06`) · 07 (`07`) ... +5 | `-` | portal_or_unmapped |
-| Month/Year of Entry | `select` | `p_year` / `p_year` | `#p_year` |  (``) · 2026 (`2026`) · 2027 (`2027`) · 2028 (`2028`) | `-` | portal_or_unmapped |
-| Programme of Study | `select` | `p_program_code` / `p_program_code` | `#p_program_code` | -- Please select a programme -- (``) | `preferredCourse` | mapped_guess |
-| Mode/Point of Entry | `select` | `p_mode_poe` / `p_mode_poe` | `#p_mode_poe` | -- Please select a Mode/PoE -- (``) | `-` | portal_or_unmapped |
-| If you are applying for post 16/adult teacher training please indicate which subject(s) you wish to teach | `text` | `ud138` / `ud138` | `#ud138` | - | `major` | mapped_guess |
+| Control | Reason |
+|---|---|
+| Full Legal Name, previous student number, agent ID | No CRM keys |
+| Address Line 2/3 | No CRM keys |
+| Job description, Full/Part Time | No CRM key / application answer |
+| Referee block | Different person |
+| Disability, care status, parents' HE, UK entry dates | Sensitive or application-specific |
+| Confidential contact name/password | Nominated access |
+| Qualification rows 2-20 | CRM holds one qualification |
+| Institution address on Previous Education | Must not take the applicant address |
+| Teacher-training subject | No CRM key |
+| Signature checkboxes, Continue/Submit | Draft-only policy |
 
-## Signature
+## Fixes made in this pass
 
-**URL:** `https://nelson.gre.ac.uk/pls/prod/bwskanam.P_Signature?appno=1&wsct=SIGNATURE`
+The live run exposed four mis-fills that the old config allowed:
 
-| Portal field | Type | name / id | Selector | Options (sample) | CRM key | Status |
-|---|---|---|---|---|---|---|
-| I agree to the Terms and Conditions | `checkbox` | `ud130` / `ud130` | `#ud130` | - | `-` | portal_or_unmapped |
-| I have read the Guidance Notes | `checkbox` | `ud131` / `ud131` | `#ud131` | - | `-` | portal_or_unmapped |
+| Field | Old behaviour | Fix |
+|---|---|---|
+| `#ud3` agent 9-digit ID | Filled with the CRM county because its label contains "state" | Blocked |
+| `#addr2` address line 2 | Filled with the full address when line 1 was already populated | `location` is now scoped to `#addr1`; `#addr2`/`#addr3` blocked |
+| `#ud8` interview dates | Filled with the CRM county because its label starts "State any dates…" | Blocked |
+| `#ud138` teacher-training subject | Filled with the CRM major | Blocked |
 
+Also fixed: qualification award month/year and education attendance dates were left blank or
+received an unsplit month-year string in a day select; both now use split-date specs.
 
+The 2026-10-23 screenshot audit added two selector fixes: the mailing-same radios are blocked
+by `input[name='addrflag']`, and the "From Birth" checkbox is blocked by `input[name='ud204']`
+because the live control has no id. Both were re-checked live as blocked.
 
-## Extension mapping status (config)
+## Verification
 
-Inventory rows above may still say `mapped_guess` from the live scrape. That is the discovery label, not a guarantee that the extension will fill the field.
+- Full live authenticated inventory: 2026-10-23, all ten sections, including the existing
+  application's populated values.
+- Live engine run on 2026-10-23 with a synthetic CRM map:
+  - Name filled middle and previous name; existing title, names and passport were preserved;
+    the agent-ID mis-fill is gone.
+  - Employment filled employer, personal statement and work start month/year.
+  - Permanent and Mailing Address matched only line 1 / city / postcode / country / phone;
+    address lines 2-3 stayed untouched.
+  - Statistical filled gender, nationality, birth country, ethnicity, email pair, funding, and
+    split DOB; `#ud70` matched only when the residence option exists.
+  - Qualifications filled row 1 plus award month/year; rows 2-20 stayed empty.
+  - Previous Education filled institution and both attendance month/year ranges.
+  - Programme filled intake, then programme, then mode across three passes.
+- Automated config tests: `test/greenwich.test.js` (part of `npm test`, 112/112 on 2026-10-23).
+- Live CRM Copy → Autofill with a real profile: still pending.
+- Sanitized HTML fixtures in repo: pending.
 
-### Shipped in `config/portals/greenwich.js` (safe overrides only)
-
-- Name: `#fname` `#mname` `#lname` `#plname` `#pfx`
-- Passport: `#ud135`
-- Applicant email: `#email` `#dup_email` (not referee)
-- Applicant phone: `#mobiletelno` `#hometelno` (not referee)
-- Personal: `#gender` `#ud65` `#ud60`
-- Education first row: `#col_name` `#ud91qualtype` `#ud91subject` `#ud91grade`
-- Programme: `#p_program_code`
-- Employment employer text: `#ud11`
-- Personal statement: `#p_sarstmt_desc`
-- Funding: `#ud35`
-
-### Explicitly NOT overridden (unsafe until engine support)
-
-- `dateOfBirth` / `#bday_dd` `#bday_mm` `#bday_yyyy` (split selects; also reused on Employment Start Date)
-- `location` `city` `postcode` / `#addr1` `#city` `#zip` (shared with institution address on education)
-
-### Blocked from fill (`blockedControls`)
-
-- Auth, submits, signature, postcode search
-- All `#bday_dd` `#bday_mm` `#bday_yyyy`
-- Institution address on Previous / Current Education (`form[action*='P_ProcAppPrvCollege']` `#city` `#zip` `#natn`)
-- Referee `#ud17` through `#ud30`
-- Qualification rows 2-20: `#ud92*` through `#ud110*` Level, Subject, Grade, Month, and Year fields. Only row 1 may receive the single CRM qualification.
-- Ethnicity remains unmapped (`#ethn`); do not treat as `city`
-
-### Phone formatting and manual review
-
-Greenwich sets `phoneKeepsDialPrefix: true`. UK values beginning `+44`, `+44 (0)`, or `0044` become national format (for example, `07700900123`); other international values retain their country code (for example, `+8801712345678`).
-
-Home Telephone permits 11 characters; Mobile permits 16. Autofill can assign a longer international value to Home Telephone and report it as filled. Staff must correct or clear that value before continuing. Existing non-empty phone values are not overwritten.
-
-### Still open
-
-- [ ] Live authenticated Copy-from-CRM + Autofill with a CRM test student, recording filled/skipped/manual fields per step.
-- [ ] Section-aware split-date support; DOB and Employment Start Date remain manual.
-- [ ] Separate referee data and safe section-scoped mappings; referee fields remain manual.
-- [ ] Complete select-option coverage audit and remaining CRM-field coverage review.
-- [ ] Committed sanitized step fixtures and the full staff journey demo.
-
-### Fixtures
-
-Live HTML/screenshots stay local under `tmp/` (gitignored). No sanitized fixtures are in-repo yet.
-
-### Fill all (draft saves), added 2026-10-19
+## Fill all (draft saves), added 2026-10-19
 
 `fillAll` in `config/portals/greenwich.js` lets the optional, consented Fill all mode walk the application checklist: `a.submenulinktext2` links to recognised data-entry sections, each saved by the `input[name=submit_btn][value=Continue]` of its own form (the id `submit_btn` is duplicated on the address form, so it is not used). The checklist `appno` binds the run. Signature, **Application is Complete**, **Finish Later**, Search Address and Delete Record are never used. Synthetic E2E only; unverified live: the response to Continue (checklist or next section), whether `wsct` must stay in sequence, and the `P_Proc*` names for sections other than Name, Permanent Address and Previous/Current Education.

@@ -1745,16 +1745,10 @@ function splitDateOption(select, part, kind) {
 }
 
 /**
- * The select a split-date spec names. Without a scope this is the first match on the page. With a scope
- * (Fill all filling one panel or form) only a visible match inside that element counts, so a hidden
- * panel's or another form's date selects are never written.
+ * The select a split-date spec names: the first match on the page.
  */
-function splitDateSelect(selector, scope) {
-  if (!scope) return document.querySelector(selector);
-  var matches = Array.prototype.slice.call(Element.prototype.querySelectorAll.call(scope, selector));
-  return matches.find(function (element) {
-    return element.getClientRects().length > 0 && getComputedStyle(element).visibility !== "hidden";
-  }) || null;
+function splitDateSelect(selector) {
+  return document.querySelector(selector);
 }
 
 /**
@@ -1762,18 +1756,21 @@ function splitDateSelect(selector, scope) {
  * Generic matching never touches these selects (portals block them), because ids such as
  * Greenwich #bday_* mean date of birth on one page and employment start on another.
  */
-function fillSplitDates(fieldMap, filled, scope) {
+function fillSplitDates(fieldMap, filled) {
   var specs = (ACTIVE_PORTAL && ACTIVE_PORTAL.splitDates) || [];
   var here = location.pathname + location.search;
   specs.forEach(function (spec) {
-    if (!new RegExp(spec.page).test(here)) return;
+    var onPage = new RegExp(spec.page).test(here);
     var parts = splitDateParts(fieldMap[spec.key]);
     if (!parts) return;
     [["day", parts.d], ["month", parts.m], ["year", parts.y]].forEach(function (entry) {
       var selector = spec[entry[0]];
       if (!selector || !entry[1]) return;
-      var select = splitDateSelect(selector, scope);
+      var select = splitDateSelect(selector);
       if (!select || select.tagName !== "SELECT" || select.disabled) return;
+      // A page reached by saving the previous one keeps that save's address, so the form it posts to
+      // says which screen this is.
+      if (!onPage && !(spec.form && select.form && new RegExp(spec.form).test(select.form.action))) return;
       var current = select.options[select.selectedIndex];
       var placeholder = !select.value || (select.selectedIndex === 0 &&
         /^(month|year|day|select\b.*|choose\b.*|-+|)$/i.test(String(current && current.textContent || "").trim()));
@@ -2785,11 +2782,14 @@ async function pickLightningComboboxOption(inputEl, value, crmKey) {
  *
  * @param {Record<string,string>} fieldMap - CRM key → value
  * @param {Array} fields - detected form fields (from scanFormFields)
- * @param {Element} [scope] - when given, split dates are filled only inside this element
  * @returns {Promise<{filled:Array, skippedEmpty:Array, skippedExisting:Array, skippedSelect:Array, unmatched:string[]}>}
  */
-async function autofillPage(fieldMap, fields, scope) {
+async function autofillPage(fieldMap, fields) {
   if (!ACTIVE_PORTAL) return autofillGeneric(fieldMap, fields);
+  // The CRM has no country of birth; staff chose to fill it with the student's nationality.
+  if (!String(fieldMap.countryOfBirth || "").trim() && String(fieldMap.nationality || "").trim()) {
+    fieldMap = Object.assign({}, fieldMap, { countryOfBirth: fieldMap.nationality });
+  }
 
   /** @type {Array<{name:string,value:string,fieldName:string,fieldLabel:string,score:number,matchReason:string}>} */
   var filled = [];
@@ -3010,7 +3010,7 @@ async function autofillPage(fieldMap, fields, scope) {
     }
   }
 
-  fillSplitDates(fieldMap, filled, scope);
+  fillSplitDates(fieldMap, filled);
 
   return {
     mapping: ACTIVE_PORTAL.name,

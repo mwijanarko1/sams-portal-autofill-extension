@@ -1,0 +1,51 @@
+{
+  "review_status": "local draft, pending publisher review",
+  "synthetic_data": "synthetic: Aisha Rahman, apply.example-university.test; no live CRM or portal data",
+  "assets": [
+    {
+      "file": "store-screenshot-1-1280x800-draft.png",
+      "width": 1280,
+      "height": 800,
+      "mode": "RGB",
+      "sha256": "97ed5c8b8a896c6db9c0fcd0dad5d9786695fc59f5a2e800fc5c9a38aa337e43"
+    },
+    {
+      "file": "store-screenshot-2-1280x800-draft.png",
+      "width": 1280,
+      "height": 800,
+      "mode": "RGB",
+      "sha256": "3294bf8eb8beab2e4f43504d9174c8db28deb0a99dcdb27c710583863c17dd10"
+    },
+    {
+      "file": "store-promo-small-440x280-draft.png",
+      "width": 440,
+      "height": 280,
+      "mode": "RGB",
+      "sha256": "f870ed8ae80a69e18636a15379bd1d85a72fde65ac909b8cc3de07efb131210e"
+    },
+    {
+      "file": "store-icon-128-draft.png",
+      "width": 128,
+      "height": 128,
+      "mode": "RGBA",
+      "sha256": "486d3db828655c73102b3fe73517f29f0d2cc6483803e8bb9c20d100d296ae6b"
+    }
+  ],
+  "sources": [
+    {
+      "file": "source/popup-generic-success.png",
+      "sha256": "5be5df81e38c815e2960eea0543fc11b7830c7b8214993fc58aa911f2e7ced8b",
+      "origin": "tmp/general-portal-evidence/popup-generic-success.png, npm run test:e2e 2026-10-22T13:20:23Z, 780x1084, CSS 390x542 at DPR 2"
+    },
+    {
+      "file": "source/site-access-granted-before.png",
+      "sha256": "83f34aea4901fc4e2745448ddd02a1f84d97a40f92237adaf2bb461c4da59f8a",
+      "origin": "tmp/general-portal-evidence/site-access-granted-before.png, npm run test:e2e 2026-10-22T13:20:21Z, 780x486, DPR 2"
+    },
+    {
+      "file": "source/icon128.png",
+      "sha256": "7fd570cdb1032f07b534f7ab2afe46c6d1bb47a462969cfbbb5c1d10fc8e66ec",
+      "origin": "repository icon128.png, copied unchanged"
+    }
+  ]
+}

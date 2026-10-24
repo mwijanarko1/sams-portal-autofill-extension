@@ -119,6 +119,8 @@ distribution, production allowlist change, or private-browsing policy. Those nee
 decisions listed in
 [the architecture document](../docs/SAFARI-ARCHITECTURE-AND-PARITY.md#decisions-still-owned-by-sams).
 
+Current Safari acceptance status and blockers (2026-10-22): [docs/publication/PREPARATION-REPORT.md](../docs/publication/PREPARATION-REPORT.md). The 2026-10-12 snapshot below is historical.
+
 ## Verification snapshot (2026-10-12)
 
 - Independent lead checks: `npm test` passed 61/61; `npm run test:e2e` passed 5/5 Chromium extension journeys.

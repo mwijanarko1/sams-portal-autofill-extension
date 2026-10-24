@@ -75,9 +75,8 @@ function validateResources(dir, manifest) {
     ...[...worker.matchAll(/importScripts\(([^)]*)\)/g)]
       .flatMap((match) => [...match[1].matchAll(/"([^"]+)"/g)])
       .map((match) => join(workerDir, match[1])),
-    // Files the popup and the fill-all worker inject into CRM and portal documents.
-    ...["popup.js", "src/fill-all.js"].flatMap((file) =>
-      [...readFileSync(join(dir, file), "utf8").matchAll(/"((?:config|src)\/[^"]+\.js)"/g)].map((match) => match[1])),
+    // Files the popup injects into CRM and portal documents.
+    ...[...readFileSync(join(dir, "popup.js"), "utf8").matchAll(/"((?:config|src)\/[^"]+\.js)"/g)].map((match) => match[1]),
   ];
   const missing = [...new Set(referenced)].filter((path) => !existsSync(join(dir, path)));
   if (missing.length) throw new Error(`Build output is missing referenced resources: ${missing.join(", ")}`);

@@ -1,0 +1,430 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>CRM lead Profile tab fixture</title>
+  <style>
+    body { font-family: sans-serif; }
+    [hidden] { display: none; }
+    td, th { padding: 4px; }
+    .nav-link { display: inline-block; padding: 4px 8px; cursor: pointer; }
+    .nav-link.active { font-weight: bold; }
+    .row { display: block; margin: 8px 0; }
+    .select2-hidden-accessible { position: absolute; width: 1px; height: 1px; clip: rect(0 0 0 0); overflow: hidden; }
+    .pro_left_side_part { display: inline-block; width: 30%; vertical-align: top; }
+    .tab_content_components { display: inline-block; width: 65%; vertical-align: top; }
+    dd, dt { display: inline; margin: 0 4px; }
+  </style>
+</head>
+<body>
+  <nav>
+    <a class="nav-link active" data-tab="applications">Applications</a>
+    <a class="nav-link" data-tab="profile">Profile</a>
+  </nav>
+
+  <div class="lead_header">
+    <div class="fixedElement mb-1">
+      <div class="student_portal_top"><span class="top_capsule_title">Student Portal</span>
+        <div class="top_capsule_info"><div class="name">Approved</div></div>
+      </div>
+      <div class="student_portal_top"><span class="top_capsule_title">Connection</span>
+        <div class="top_capsule_info"><div class="name"><span>No Connection Found</span></div></div>
+      </div>
+      <div class="student_portal_top"><span class="top_capsule_title">Sub-Agent / Referral</span>
+        <div class="top_capsule_info"><div class="name">Sub-Agent</div></div>
+      </div>
+      <div class="mr-0">
+        <div class="student_portal_top"><span class="top_capsule_title">Counsellor/Assistance</span></div>
+        <ul><li><div class="top_capsule_info mr-2"><div class="name">Demo Admin UK</div></div></li></ul>
+      </div>
+      <div>
+        <div class="student_portal_top"><span class="top_capsule_title">Office</span></div>
+        <div class="top_capsule_info"><div class="name">Head Office</div></div>
+      </div>
+    </div>
+    <div class="file_number">Sep-26-2</div>
+    <div class="file_number">8398723</div>
+    <div class="dropdown">
+      <a class="dropdown-item lead_p_status">Fast Track</a>
+      <a class="dropdown-item lead_p_status activate">Regular</a>
+    </div>
+    <div class="summary_bordered_box" hidden><span class="hover_for_edit_delete">Hidden summary.</span></div>
+    <div class="summary_bordered_box"><span class="hover_for_edit_delete">Excellent lead summary.</span></div>
+    <div class="top_right_info_box">
+      <table><tbody>
+        <tr><td>Registered on</td><td>10 Sep 2026 1:06 PM</td></tr>
+        <tr><td>Creation Month</td><td>10 Sep 2026 1:06 PM</td></tr>
+        <tr><td>Channel</td><td class="lead_channel_div"><span class="channel_drop"> Instagram
+          <div class="dropdown-menu"><a class="channel_val">Digital Marketing</a><a class="channel_val">Instagram</a></div>
+        </span></td></tr>
+      </tbody></table>
+    </div>
+  </div>
+
+  <div id="applicationsPane">
+    <h2>Personal Information</h2>
+    <div class="pro_left_side_part">
+      <div class="load_primary_information">
+        <dd>Given Name</dd><dt>Jake</dt>
+        <dd>Family Name</dd><dt>Mufoy</dt>
+      </div>
+    </div>
+    <div class="tab_content_components">
+      <div class="row">
+        <div class="col-lg-12"><div class="content_header"><span class="main_title">Admission Preference</span></div></div>
+      </div>
+      <form>
+        <div class="form-group" hidden><label class="form_label">Study Destination</label>
+          <select><option>Hiddenland</option></select></div>
+        <div class="form-group"><label class="form_label">Study Destination</label>
+          <select class="select2-hidden-accessible"><option selected>Hiddenland</option></select></div>
+        <div class="form-group"><label class="form_label">Funding Status</label>
+          <select><option>Choose one..</option><option selected>Self-Funded</option></select></div>
+        <div class="form-group"><label class="form_label">Study Destination</label>
+          <select><option>Choose one..</option><option selected>Canada</option></select></div>
+        <div class="form-group"><label class="form_label">Institute Name</label>
+          <select><option>Select Institute</option><option selected>Example University</option></select></div>
+        <div class="form-group"><label class="form_label">Level</label>
+          <select><option>Select Level</option><option selected>Masters</option></select></div>
+        <div class="form-group"><label class="form_label">Course Title</label>
+          <input type="text" value="MSc Data Science"></div>
+        <div class="form-group"><label class="form_label">Start Year</label>
+          <select><option>Year</option><option selected>2027</option></select></div>
+        <div class="form-group"><label class="form_label">Start Month</label>
+          <select><option>Month</option><option selected>September</option></select></div>
+        <div class="form-group"><label class="form_label">Test Name</label>
+          <select id="appsTestName"><option selected>PTE</option><option>IELTS</option></select></div>
+        <div class="form-group"><label class="form_label">Test Date</label>
+          <input id="appsTestDate" type="text" value="2025-03-01"></div>
+        <div class="form-group"><label class="form_label">Reading</label>
+          <input type="text" value="80"></div>
+        <div class="form-group"><label class="form_label">Skype</label>
+          <input type="text" value="jake.skype"></div>
+        <div class="form-group"><label class="form_label">Whatsapp</label>
+          <input type="text" value="+8801712345678"></div>
+      </form>
+    </div>
+  </div>
+
+  <div id="profilePane" hidden>
+    <div class="row">
+      <div class="col-lg-3 pro_left_side_part">
+        <div class="load_primary_information">
+          <dd>Given Name</dd><dt>Jake</dt>
+          <dd>Family Name</dd><dt>Mufoy</dt>
+          <dd>Date Of Birth</dd><dt> 15 Apr 2001 (25 Years) </dt>
+          <dd>Nationality</dd><dt>Angola</dt>
+          <dd>Gender</dd><dt>Male</dt>
+          <dd>Marital Status</dd><dt>Single</dt>
+        </div>
+        <ul>
+          <li class="only_home_address_div">
+            <div class="home_address_inner_right">
+              <dd>Permanent Address</dd>
+              <dt class="hover_for_edit_address">1 Test Street, Example Area Dhaka 1207 Bangladesh</dt>
+            </div>
+          </li>
+          <li class="only_present_address_div">
+            <div class="present_address_inner_right">
+              <dd>Present Address</dd>
+              <dt class="hover_for_edit_pre_address">1 Test Street, Example Area Dhaka 1207 Bangladesh</dt>
+            </div>
+          </li>
+        </ul>
+        <div class="only_contact_detail_div">
+          <dl>
+            <dt class="hover_for_edit_phone"><i class="fa fa-phone"></i> +244  456746456456 </dt>
+            <dt class="hover_for_edit_mail"><i class="fa fa-envelope-o"></i> jake.mufoy.student@yopmail.com </dt>
+          </dl>
+        </div>
+        <div class="only_emg_contact_div">
+          <dt>Test Guardian</dt>
+          <span>Parent</span>
+          <div>
+            <dt><i class="fa fa-phone"></i> +880  1712345678 </dt>
+            <dt><i class="fa fa-envelope-o"></i> guardian.test@example.com </dt>
+          </div>
+        </div>
+        <div class="other_part_item_right">
+          <label class="form_label">Applicant Occupation</label>
+          <div class="form-group form_group_bb">
+            <input type="text" placeholder="Applicant Occupation" value="Student">
+          </div>
+        </div>
+        <div class="other_part_item_right">
+          <label class="form_label">Maximum Study Budget</label>
+          <div class="form-group form_group_bb">
+            <div class="form-row">
+              <div class="form-group col-lg-6">
+                <select id="currency_country_id">
+                  <option value="">Select Currency..</option>
+                  <option value="16">US dollar ($)</option>
+                </select>
+              </div>
+              <div class="form-group col-lg-6">
+                <input type="number" placeholder="Maximum Study Budget" value="15000">
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-lg-9 tab_content_components">
+        <div class="row">
+          <div class="col-lg-12"><div class="content_header"><span class="main_title">Personal Information</span></div></div>
+          <div class="col-md-12 pro_top_info">
+            <div class="single_part"><table><tbody>
+              <tr><td>Name</td><td>Jake Mufoy</td></tr>
+              <tr><td>Gender</td><td>Male</td></tr>
+              <tr><td>Date of Birth</td><td>15 Apr 2001</td></tr>
+              <tr><td>Nationality</td><td>Angola</td></tr>
+              <tr><td>Marital Status</td><td>Single</td></tr>
+              <tr><td>Current City</td><td>Dhaka</td></tr>
+            </tbody></table></div>
+            <div class="single_part"><table><tbody>
+              <tr><td>Funding</td><td>Self Funded</td></tr>
+              <tr><td>Self Funded Status</td><td>N/A</td></tr>
+              <tr><td>Status</td><td>Regular</td></tr>
+              <tr><td>Student Quality</td><td>Best</td></tr>
+            </tbody></table></div>
+            <div class="single_part"><table><tbody>
+              <tr><td>Visa History</td><td>Yes</td></tr>
+              <tr><td>Prev Visa Refusal</td><td>N/A</td></tr>
+              <tr><td>Passport Expiry</td><td>09 Jan 2032</td></tr>
+            </tbody></table></div>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="col-lg-6"><div class="content_header"><span class="main_title">Education History</span></div></div>
+          <div class="col-md-12" id="educationSection"><div class="alert">No Education History available.</div></div>
+        </div>
+
+        <div class="row">
+          <div class="col-lg-6"><div class="content_header"><span class="main_title">Study Gap</span></div></div>
+          <div class="col-md-12" id="studyGapSection"><div class="alert">No Study Gap available.</div></div>
+        </div>
+
+        <div class="row">
+          <div class="col-lg-6"><div class="content_header"><span class="main_title">Previous Study Abroad</span></div></div>
+          <div class="col-md-12" id="previousStudySection"><div class="alert">No Previous Study available.</div></div>
+        </div>
+
+        <div class="row">
+          <div class="col-lg-6"><div class="content_header"><span class="main_title">Test Score</span></div></div>
+          <div class="col-md-12" id="testScoreSection"><div class="alert">No Test Score available.</div></div>
+        </div>
+
+        <div class="row">
+          <div class="col-lg-6"><div class="content_header"><span class="main_title">Work Experience</span></div></div>
+          <div class="col-md-12" id="workSection"><div class="alert">No Work Experience available.</div></div>
+        </div>
+
+        <div class="row">
+          <div class="col-lg-6"><div class="content_header"><span class="main_title">References</span></div></div>
+          <div class="col-md-12" id="referenceSection"><div class="alert">No References available.</div></div>
+        </div>
+
+        <div class="row">
+          <div class="col-lg-6"><div class="content_header"><span class="main_title">Passport Details</span></div></div>
+          <div class="col-md-12" id="passportSection"><div class="alert">No Passport Details available.</div></div>
+        </div>
+
+        <div class="row">
+          <div class="col-lg-6"><div class="content_header"><span class="main_title">Visa History</span></div></div>
+          <div class="col-md-12" id="visaSection"><div class="alert">No Passport Details available.</div></div>
+        </div>
+
+        <div class="row">
+          <div class="col-lg-6"><div class="content_header"><span class="main_title">Visa Refusal</span></div></div>
+          <div class="col-md-12" id="refusalSection"><div class="alert">No Visa Refusal available.</div></div>
+        </div>
+
+        <div class="with_yes_no_radio_inner">
+          <input type="radio" name="s_gap" value="1" checked><span>Yes</span>
+          <input type="radio" name="s_gap" value="0"><span>No</span>
+          <input type="radio" name="work_ex" value="1" checked><span>Yes</span>
+          <input type="radio" name="work_ex" value="0"><span>No</span>
+          <input type="radio" name="radio_ref" value="1" checked><span>Yes</span>
+          <input type="radio" name="radio_ref" value="0"><span>No</span>
+          <input type="radio" name="has_passport" value="1" checked><span>Yes</span>
+          <input type="radio" name="has_passport" value="0"><span>No</span>
+          <input type="radio" name="has_visa" value="1" checked><span>Yes</span>
+          <input type="radio" name="has_visa" value="0"><span>No</span>
+          <input type="radio" name="Vref" value="1"><span>Yes</span>
+          <input type="radio" name="Vref" value="0" checked><span>No</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <template data-section="#educationSection">
+    <table class="table list_table">
+      <thead><tr><th>Institution</th><th>Subject</th><th>Result</th><th>Duration</th><th>Transcript</th><th>Certificate</th><th>Action</th><th></th></tr></thead>
+      <tbody><tr>
+        <td><div class="institute_info"><strong hidden>HIDDEN UNIVERSITY</strong><strong>Example Test University</strong><span class="label_badge_light">Bachelor  Year 1</span></div></td>
+        <td>Computer Science (TEST)</td>
+        <td>3.50</td>
+        <td>September 2019 - June 2023</td>
+        <td></td><td></td><td></td><td></td>
+      </tr></tbody>
+    </table>
+  </template>
+
+  <template data-section="#studyGapSection">
+    <table class="table list_table">
+      <thead><tr><th>Institution</th><th>Study Gap Type</th><th>Duration</th><th>Upload</th><th>Action</th></tr></thead>
+      <tbody><tr><td>King's Academy</td><td>Medical</td><td>September 2020 - June 2021</td><td></td><td></td></tr></tbody>
+    </table>
+  </template>
+
+  <template data-section="#previousStudySection">
+    <table class="table list_table">
+      <thead><tr><th>Institution</th><th>Subject</th><th>Country &amp; Visa Type</th><th>Upload</th><th>Action</th></tr></thead>
+      <tbody><tr><td>Example College</td><td>Business</td><td>United Kingdom - Student Visa</td><td></td><td></td></tr></tbody>
+    </table>
+  </template>
+
+  <template data-section="#testScoreSection">
+    <table class="table list_table"><tbody>
+      <tr hidden>
+        <td><div class="institute_info"><strong>Hidden Test</strong><span class="label_badge_light test_score_level">GREGMAT</span><span class="test_date">Test Date: 01 Jan 2020</span></div></td>
+        <td><strong>99</strong><br><strong>Overall</strong></td>
+        <td><strong>99</strong><br><label class="form_label">Listening</label></td>
+        <td><strong>99</strong><br><label class="form_label">Speaking</label></td>
+        <td><strong>99</strong><br><label class="form_label">Writing</label></td>
+        <td><strong>99</strong><br><label class="form_label">Reading</label></td>
+      </tr>
+      <tr>
+        <td><div class="institute_info"><strong>International English Language Testing System</strong><span class="label_badge_light test_score_level">IELTS</span><span class="test_date">Test Date: 01 Mar 2025</span></div></td>
+        <td><strong>7</strong><br><strong>Overall</strong></td>
+        <td><strong>7</strong><br><label class="form_label">Listening</label></td>
+        <td><strong>6.5</strong><br><label class="form_label">Speaking</label></td>
+        <td><strong>6.5</strong><br><label class="form_label">Writing</label></td>
+        <td><strong>7.5</strong><br><label class="form_label">Reading</label></td>
+      </tr>
+      <tr>
+        <td><div class="institute_info"><strong>Pearson Test of English</strong><span class="label_badge_light test_score_level">PTE</span><span class="test_date">Test Date: 01 Apr 2025</span></div></td>
+        <td><strong>80</strong><br><strong>Overall</strong></td>
+        <td><strong>80</strong><br><label class="form_label">Listening</label></td>
+        <td><strong>80</strong><br><label class="form_label">Speaking</label></td>
+        <td><strong>80</strong><br><label class="form_label">Writing</label></td>
+        <td><strong>80</strong><br><label class="form_label">Reading</label></td>
+      </tr>
+    </tbody></table>
+  </template>
+
+  <template data-section="#workSection">
+    <table class="table list_table">
+      <thead><tr><th>Company Name</th><th>Designation</th><th>Duration</th><th>Upload</th><th>Action</th></tr></thead>
+      <tbody><tr><td><strong>Example Test Ltd</strong></td><td>Intern (TEST)</td><td>01 Jul 2023 - 30 Jun 2024</td><td></td><td></td></tr></tbody>
+    </table>
+  </template>
+
+  <template data-section="#referenceSection">
+    <table class="table list_table">
+      <thead><tr><th>Name</th><th>Reference Source</th><th>Phone</th><th>Email</th><th>Upload</th><th>Action</th></tr></thead>
+      <tbody><tr><td><strong>Dr Smith</strong></td><td>University</td><td>+44 7700 900000</td><td>smith@example.com</td><td></td><td></td></tr></tbody>
+    </table>
+  </template>
+
+  <template data-section="#passportSection">
+    <table class="table list_table">
+      <thead><tr><th>Passport Number</th><th>Duration</th><th>Comments</th><th>Status</th><th>Upload</th><th>Action</th></tr></thead>
+      <tbody><tr><td><strong>TEST1234567</strong></td><td>10 Jan 2022 - 09 Jan 2032</td><td>London</td><td></td><td></td><td></td></tr></tbody>
+    </table>
+  </template>
+
+  <template data-section="#visaSection">
+    <table class="table list_table">
+      <thead><tr><th>Visa Type</th><th>Country</th><th>Purpose</th><th>Duration</th><th>Upload</th><th>Action</th></tr></thead>
+      <tbody><tr><td>Short Term Student Visa</td><td><strong>United Kingdom</strong></td><td>Study</td><td>05 Aug 2026 - 21 Oct 2027</td><td></td><td></td></tr></tbody>
+    </table>
+  </template>
+
+  <template data-section="#refusalSection">
+    <table class="table list_table">
+      <thead><tr><th>Visa Type</th><th>Country</th><th>Purpose</th><th>Duration</th><th>Upload</th><th>Action</th></tr></thead>
+      <tbody><tr><td>Visitor Visa</td><td><strong>United States</strong></td><td>Tourism</td><td>01 Jan 2020 - 01 Jun 2020</td><td></td><td></td></tr></tbody>
+    </table>
+  </template>
+
+  <pre id="result"></pre>
+  <script>
+    globalThis.SAMS_ALLOWLIST = { isCrmOrigin: () => true };
+    globalThis.chrome = { runtime: { onMessage: { addListener() {} } } };
+  </script>
+  <script src="../../config/crm-source.js"></script>
+  <script>
+    SAMS_CRM_SOURCE.profilePathPatterns = [/.*/];
+  </script>
+  <script src="../../src/crm-reader.js"></script>
+  <script>
+    // Scenario switches for regression tests: section delay, city and address.
+    const params = new URLSearchParams(location.search);
+    const sectionDelay = Number(params.get("delay") || 250);
+    const emptyEducation = params.get("emptyEducation") === "1";
+    const noProfile = params.get("noProfile") === "1";
+    if (params.get("sameFamily") === "1") {
+      document.getElementById("appsTestName").value = "IELTS";
+      document.getElementById("appsTestDate").value = "2026-04-01";
+    }
+    if (noProfile) {
+      document.querySelector('.nav-link[data-tab="profile"]')?.remove();
+      document.getElementById("profilePane")?.remove();
+    }
+    const currentCity = params.get("city") || "Dhaka";
+    const address = params.get("addr") || "1 Test Street, Example Area Dhaka 1207 Bangladesh";
+    const cityCell = Array.from(document.querySelectorAll(".tab_content_components td"))
+      .find((cell) => cell.textContent.trim() === "Current City");
+    if (cityCell?.nextElementSibling) cityCell.nextElementSibling.textContent = currentCity;
+    document.querySelectorAll(".hover_for_edit_pre_address, .hover_for_edit_address").forEach((element) => {
+      element.textContent = address;
+    });
+
+    // The real Profile tab paints section titles first, then replaces the empty
+    // states with data from its section request. Reproduce that delay.
+    document.querySelectorAll(".nav-link").forEach((link) => {
+      link.addEventListener("click", () => {
+        document.querySelectorAll(".nav-link").forEach((item) => item.classList.toggle("active", item === link));
+        const isProfile = link.dataset.tab === "profile";
+        document.getElementById("profilePane").hidden = !isProfile;
+        document.getElementById("applicationsPane").hidden = isProfile;
+        if (link.dataset.tab !== "profile" || window.__sectionsLoaded) return;
+        window.__sectionsLoaded = true;
+        // The live CRM covers the profile with .waitMe while its section request runs.
+        const overlay = document.createElement("div");
+        overlay.className = "waitMe";
+        overlay.style.cssText = "position:fixed;inset:0;background:rgba(255,255,255,.6);z-index:9999;";
+        document.body.appendChild(overlay);
+        setTimeout(() => {
+          document.querySelectorAll("template[data-section]").forEach((template) => {
+            if (emptyEducation && template.dataset.section === "#educationSection") return;
+            document.querySelector(template.dataset.section).replaceChildren(template.content.cloneNode(true));
+          });
+          if (params.get("missingReading") === "1") {
+            const row = Array.from(document.querySelectorAll("#testScoreSection tbody tr"))
+              .find((entry) => entry.querySelector(".test_score_level") && entry.offsetParent !== null);
+            row?.querySelectorAll("td").forEach((cell) => { if (/Reading/.test(cell.innerText)) cell.remove(); });
+          }
+          if (params.get("referenceTable") === "1") {
+            document.querySelector("#referenceSection").innerHTML = `
+              <table><tbody>
+                <tr><td>Name</td><td>Dr Smith</td></tr>
+                <tr><td>Reference Source</td><td>University</td></tr>
+                <tr><td>Phone</td><td>+44 7700 900000</td></tr>
+                <tr><td>Email</td><td>smith@example.com</td></tr>
+              </tbody></table>`;
+          }
+          overlay.remove();
+        }, sectionDelay);
+      });
+    });
+
+    SAMS_CRM_READER.readProfile().then(
+      (profile) => { document.getElementById("result").textContent = JSON.stringify(profile); },
+      (error) => { document.getElementById("result").textContent = JSON.stringify({ error: error.message }); },
+    );
+  </script>
+</body>
+</html>

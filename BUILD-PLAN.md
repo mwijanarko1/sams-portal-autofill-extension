@@ -29,9 +29,9 @@ The demo-era `content.js` / localhost API path has been replaced. Current shared
 - `src/crm-reader.js`, `src/portal-fill.js`, `src/background.js` (session cache only)
 - `config/allowlist.js`, `config/crm-source.js`, `config/synonyms.js`, `config/portals/{greenwich,bangor,manchester}.js`
 - Chrome + Safari packaging via `scripts/build.mjs` and `scripts/package-safari.mjs`
-- Tests: `npm test` (61), `npm run test:e2e`, Safari manual checklist under `e2e/safari/`
+- Tests: `npm test` (108 on 2026-10-22), `npm run test:e2e`, Safari manual checklist under `e2e/safari/`
 
-Still open relative to the original gates: Campora + Greater Manchester origins, live CRM-to-portal journeys, committed `fixtures/<portal>/` warranty HTML, production packaging, Safari runtime acceptance and signing.
+Still open relative to the original gates (current detail: `docs/publication/PREPARATION-REPORT.md`): the Campora origin (Greater Manchester's is in tree), live CRM-to-portal journeys, committed `fixtures/<portal>/` warranty HTML, production packaging, Safari runtime acceptance and signing.
 
 Historical demo problems below are **done** (kept for audit trail):
 

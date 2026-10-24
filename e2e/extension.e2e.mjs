@@ -12,6 +12,11 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const fixtureRoot = join(root, "e2e/fixtures");
 const executablePath = process.env.SAMS_E2E_BROWSER || "/Applications/Helium.app/Contents/MacOS/Helium";
 const crmUrl = "https://app.samscrm.co.uk/agent/leads/full-profile/e2e-synthetic/";
+const greenwichCrmUrl = "https://app.samscrm.co.uk/agent/leads/full-profile/e2e-greenwich-synthetic/";
+const statisticalAfterSaveUrl = "https://nelson.gre.ac.uk/pls/prod/bwskaadr.P_ProcAppAddr1";
+const statisticalUrl = "https://nelson.gre.ac.uk/pls/prod/bwskaper.P_DispAppPersonal";
+const employmentUrl = "https://nelson.gre.ac.uk/pls/prod/bwskaess.P_DispAppEssay";
+const employmentAfterSaveUrl = "https://nelson.gre.ac.uk/pls/prod/bwskanam.P_ProcAppName";
 const documentCrmUrl = "https://app.samscrm.co.uk/agent/leads/full-profile/424242/";
 const documentsPortalUrl = "https://apps.bangor.ac.uk/apply/documents/";
 const documentsFrameUrl = "https://apps.bangor.ac.uk/apply/documents-frame/";
@@ -169,6 +174,9 @@ before(async () => {
   }]);
   const fixtures = new Map([
     [crmUrl, "crm.html"], [documentCrmUrl, "crm-documents.html"],
+    [greenwichCrmUrl, "crm-greenwich-regression.html"],
+    [statisticalAfterSaveUrl, "greenwich-personal.html"], [statisticalUrl, "greenwich-personal.html"],
+    [employmentUrl, "greenwich-employment.html"], [employmentAfterSaveUrl, "greenwich-employment.html"],
     [documentsPortalUrl, "portal-documents.html"], [documentsFrameUrl, "portal-documents-frame.html"],
     [noDocumentsUrl, "portal-no-documents.html"],
     ...portalCases.map((portal) => [portal.url, portal.fixture]),
@@ -275,6 +283,11 @@ async function activate(page) {
 async function cache() {
   return popup.evaluate(async () => (await chrome.runtime.sendMessage({ action: "getStudentCache" })).cache);
 }
+async function copiedProfile() {
+  // Autofill refreshes the session timer, but must not change the copied profile.
+  const { expiresAt, lastActivityAt, ...profile } = await cache();
+  return profile;
+}
 
 async function openPage(url) {
   const page = await context.newPage();
@@ -289,8 +302,8 @@ async function clear() {
   assert.equal(await popup.locator("#btnAutofill").isDisabled(), true);
 }
 
-async function copyStudent() {
-  const crm = await openPage(crmUrl);
+async function copyStudent(url = crmUrl) {
+  const crm = await openPage(url);
   await activate(crm);
   await popup.locator("#btnCopy").click();
   await popup.locator("#statusArea .success").waitFor();
@@ -300,6 +313,83 @@ async function copyStudent() {
   assert.equal(student.fields.email, "aisha.rahman@example.com");
   assert.ok(student.expiresAt > Date.now());
   return crm;
+}
+
+test("Greenwich regression: Statistical Information fills DOB at the previous address-save URL", { timeout: 20000 }, async () => {
+  const page = await openPage(statisticalAfterSaveUrl);
+  await copyStudent(greenwichCrmUrl);
+  const beforeCache = await copiedProfile();
+  assert.equal(beforeCache.fields.dateOfBirth, "2001-04-15");
+  assert.equal(beforeCache.fields.cvWorkStartDate, "2019-06-02");
+  assert.equal(page.url(), statisticalAfterSaveUrl);
+  assert.equal(await page.locator("form").getAttribute("action"), "/pls/prod/bwskaper.P_ProcAppPersonal");
+  await activate(page);
+  await popup.locator("#btnAutofill").click();
+  await popup.locator("#statusArea .success").waitFor();
+  assert.deepEqual(await page.locator("#bday_dd, #bday_mm, #bday_yyyy").evaluateAll((selects) => selects.map((select) => select.value)),
+    ["15", "04", "2001"], "The form action identifies DOB even when the URL still names the previous save");
+  const firstActivity = await page.evaluate(() => activity);
+  assert.equal(firstActivity.submissions, 0);
+  assert.equal(firstActivity.clicks, 0);
+  assert.deepEqual([...firstActivity.changes].sort(), ["bday_dd", "bday_mm", "bday_yyyy", "ud60"]);
+  await mkdir(evidenceDir, { recursive: true });
+  await page.screenshot({ path: join(evidenceDir, "greenwich-statistical-after-save.png") });
+  await popup.screenshot({ path: join(evidenceDir, "greenwich-statistical-popup.png") });
+  await popup.locator("#btnAutofill").click();
+  await popup.locator("#statusArea .success").waitFor();
+  assert.deepEqual(await page.evaluate(() => activity), firstActivity, "Repeat Autofill preserves filled split dates");
+  assert.deepEqual(await copiedProfile(), beforeCache, "DOB and nationality fallback must not rewrite the copied student");
+});
+
+for (const [screen, url] of [["display URL", employmentUrl], ["previous save URL", employmentAfterSaveUrl]]) {
+  test(`Greenwich regression: Employment at ${screen} fills work dates, not DOB`, { timeout: 20000 }, async () => {
+    const page = await openPage(url);
+    await copyStudent(greenwichCrmUrl);
+    assert.equal((await cache()).fields.cvWorkEndDate, "2023-07-03");
+    await activate(page);
+    await popup.locator("#btnAutofill").click();
+    await popup.locator("#statusArea .success").waitFor();
+    assert.deepEqual(await controlValues(page), {
+      bday_dd: "02", bday_mm: "06", bday_yyyy: "2019",
+      bday_dd2: "03", bday_mm2: "07", bday_yyyy2: "2023",
+    });
+    const firstActivity = await page.evaluate(() => activity);
+    assert.equal(firstActivity.clicks, 0);
+    assert.equal(firstActivity.submissions, 0);
+    assert.deepEqual([...firstActivity.changes].sort(), ["bday_dd", "bday_dd2", "bday_mm", "bday_mm2", "bday_yyyy", "bday_yyyy2"]);
+    await popup.locator("#btnAutofill").click();
+    await popup.locator("#statusArea .success").waitFor();
+    assert.deepEqual(await page.evaluate(() => activity), firstActivity);
+  });
+}
+
+for (const existing of ["", "GB"]) {
+  test(`Greenwich regression: nationality fills country of birth and preserves ${existing ? "an existing country" : "the copied student"}`, { timeout: 20000 }, async () => {
+    const page = await openPage(statisticalUrl);
+    if (existing) await page.locator("#ud60").selectOption(existing);
+    await copyStudent(greenwichCrmUrl);
+    const beforeCache = await copiedProfile();
+    assert.equal(beforeCache.fields.nationality, "Angola");
+    assert.equal(Object.hasOwn(beforeCache.fields, "countryOfBirth"), false, "The CRM supplies nationality only");
+    const beforeChanges = (await page.evaluate(() => activity)).changes.length;
+    await activate(page);
+    await popup.locator("#btnAutofill").click();
+    await popup.locator("#statusArea .success").waitFor();
+    assert.equal(await page.locator("#ud60").inputValue(), existing || "AO");
+    assert.equal(await page.locator("#ud60 option:checked").textContent(), existing ? "United Kingdom" : "Angola");
+    const firstActivity = await page.evaluate(() => activity);
+    assert.deepEqual(firstActivity.changes.slice(beforeChanges).sort(), existing
+      ? ["bday_dd", "bday_mm", "bday_yyyy"] : ["bday_dd", "bday_mm", "bday_yyyy", "ud60"]);
+    assert.equal(firstActivity.clicks, 0);
+    assert.equal(firstActivity.submissions, 0);
+    assert.deepEqual(await copiedProfile(), beforeCache, "Country-of-birth fallback is portal-only, never cached");
+    await mkdir(evidenceDir, { recursive: true });
+    await page.screenshot({ path: join(evidenceDir, `greenwich-country-${existing || "empty"}.png`) });
+    await popup.locator("#btnAutofill").click();
+    await popup.locator("#statusArea .success").waitFor();
+    assert.deepEqual(await page.evaluate(() => activity), firstActivity);
+    assert.deepEqual(await copiedProfile(), beforeCache);
+  });
 }
 
 for (const portal of portalCases) {
@@ -350,6 +440,8 @@ test("Copied details list every CRM field and copy one value", { timeout: 15000 
   assert.equal(await popup.locator("#copiedFields .field-row").count(), Object.keys(student.fields).length);
   const emailRow = popup.locator("#copiedFields .field-row", { hasText: "aisha.rahman@example.com" });
   assert.equal(await emailRow.locator(".field-label").textContent(), "Email");
+  await popup.locator("#copiedFields").evaluate((element) => { element.scrollTop = 0; });
+  await emailRow.scrollIntoViewIfNeeded();
   await emailRow.getByRole("button", { name: "Copy Email" }).click();
   await emailRow.locator("button.copy[data-copied]").waitFor();
   // Chrome refuses clipboard grants for extension origins, so an approved page reads the shared clipboard back.
@@ -414,20 +506,16 @@ test("Clear in another popup stops a stale popup from filling", { timeout: 15000
 
 test("Session expiry disables Autofill and removes the student cache", { timeout: 10000 }, async () => {
   const crm = await copyStudent();
-  for (const selector of ["#btnAutofill", "#btnFillAll"]) {
-    await popup.locator(selector).waitFor({ state: "visible" });
-    assert.equal(await popup.locator(selector).isEnabled(), true, `${selector} must be enabled after Copy`);
-  }
+  await popup.locator("#btnAutofill").waitFor({ state: "visible" });
+  assert.equal(await popup.locator("#btnAutofill").isEnabled(), true, "Autofill must be enabled after Copy");
   await worker.evaluate(async () => {
     const { studentCache } = await chrome.storage.session.get("studentCache");
     await chrome.storage.session.set({ studentCache: { ...studentCache, expiresAt: Date.now() - 1 } });
   });
   await popup.reload();
-  for (const selector of ["#btnAutofill", "#btnFillAll"]) {
-    await popup.locator(`${selector}:disabled`).waitFor({ state: "attached" });
-    assert.equal(await popup.locator(selector).isDisabled(), true, `${selector} must be disabled after expiry`);
-    assert.equal(await popup.locator(selector).isVisible(), false, `${selector} must be hidden after expiry`);
-  }
+  await popup.locator("#btnAutofill:disabled").waitFor({ state: "attached" });
+  assert.equal(await popup.locator("#btnAutofill").isDisabled(), true, "Autofill must be disabled after expiry");
+  assert.equal(await popup.locator("#btnAutofill").isVisible(), false, "Autofill must be hidden after expiry");
   await popup.locator("#studentCard").waitFor({ state: "hidden" });
   assert.equal(await cache(), null);
   assert.equal(await popup.locator("#studentCard").isVisible(), false);
@@ -691,8 +779,19 @@ test("Unmapped university: real toolbar popup fills shared fields in the selecte
       className: "status warning",
       text: "10 fields filled in 2 of 3 page frames. Some frames were not filled: review the whole page before continuing.",
     });
-    assert.match(await toolbar.evaluate(`document.querySelector("#statusArea details").textContent`),
-      /^Frames not filled \(1\)Frame \d+: Could not access this page\. Allow SAMS Portal Autofill to access this website, reload the page, and try again\.$/);
+    const failedFrames = await toolbar.evaluate(`(() => {
+      const details = document.querySelector("#statusArea details");
+      return {
+        title: details.querySelector(".summary-title").textContent,
+        count: details.querySelector(".summary-count").textContent,
+        rows: [...details.querySelectorAll("li")].map((row) => row.textContent),
+      };
+    })()`);
+    assert.equal(failedFrames.title, "Frames not filled");
+    assert.equal(failedFrames.count, "1");
+    assert.equal(failedFrames.rows.length, 1);
+    assert.match(failedFrames.rows[0],
+      /^Frame \d+: Could not access this page\. Allow SAMS Portal Autofill to access this website, reload the page, and try again\.$/);
     assert.deepEqual(await controlValues(page.mainFrame()), {
       login_email: "", login_password: "",
       title: "Ms", first_name: "Aisha", middle_names: "", surname: "Rahman",

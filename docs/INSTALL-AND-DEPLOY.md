@@ -15,7 +15,7 @@ Enablement steps and resource ownership are in [safari/README.md](../safari/READ
 
 ## Production package (Chrome)
 
-1. Add the confirmed exact origins to `config/allowlist.js`.
+1. Add the confirmed Campora origin to `config/allowlist.js` (`camporaOrigins`). The Greenwich, Bangor and Greater Manchester origins are already in `portalOrigins`, so the empty Campora list is the only condition that fails the production gate today.
 2. Complete and verify all three portal configs and fixtures.
 3. Set the release version in `manifest.json`, `package.json`, and the Safari Xcode `MARKETING_VERSION`.
 4. Run `npm test && npm run build:prod`.
@@ -24,7 +24,7 @@ Enablement steps and resource ownership are in [safari/README.md](../safari/READ
 
 The production build rejects an incomplete Campora or portal allowlist. It never includes localhost or `<all_urls>`. Each build target cleans only its own `dist` paths, so a Chrome build does not delete Safari output.
 
-Chrome Web Store submission also needs a SAMS-owned privacy policy URL, data-use disclosures, and host-permission justification. Store and device-management fees are SAMS costs.
+Chrome Web Store submission also needs a SAMS-owned privacy policy URL, data-use disclosures, and host-permission justification. Store and device-management fees are SAMS costs. Local drafts of the policy text, permission justifications, listing, reviewer instructions and image inventory are in [publication/STORE-SUBMISSION-PACK.md](publication/STORE-SUBMISSION-PACK.md); they are not hosted, reviewed or submitted. Current blockers: [publication/PREPARATION-REPORT.md](publication/PREPARATION-REPORT.md).
 
 ## Updates
 

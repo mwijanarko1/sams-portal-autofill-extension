@@ -23,6 +23,10 @@ other HTTP requests. No live credentials or applicant data are used.
 Coverage:
 
 - CRM Copy and portal Autofill on both portals.
+- Greenwich split DOB on Statistical Information at a previous address-save URL,
+  and employment dates on both display and previous-save URLs, via form actions.
+- Greenwich country of birth uses nationality when the CRM has no birth country,
+  preserves an existing portal selection, and leaves cached student data unchanged.
 - Existing values preserved and repeated Autofill does not duplicate values.
 - Blocked DOB controls, referee fields, signatures, authentication fields,
   finance-name controls, chat, uploads, and secondary qualification rows.

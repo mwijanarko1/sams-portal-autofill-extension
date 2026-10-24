@@ -55,12 +55,15 @@ function fakeEl({ id, name = "", label = "", type = "text" } = {}) {
       return "";
     },
     matches: (selector) => {
+      const isSelect = type === "select-one" || type === "select";
       if (selector === `#${id}`) return true;
+      if (selector === `input#${id}`) return !isSelect;
+      if (selector === `select#${id}`) return isSelect;
       if (selector === `input[name='${name}']` || selector === `input[name="${name}"]`) {
-        return true;
+        return !isSelect;
       }
       if (selector === `select[name='${name}']` || selector === `select[name="${name}"]`) {
-        return true;
+        return isSelect;
       }
       if (selector === "input[type='submit']" && type === "submit") return true;
       if (selector === "input[type='file']" && type === "file") return true;
@@ -96,6 +99,53 @@ test("bangor selector overrides target known personal and contact ids", () => {
   sameJson(cfg.selectorOverrides.institutionName, ["#id_institution"]);
 });
 
+test("bangor selector overrides cover programme, employment position, and passport", () => {
+  const cfg = loadBangor("/apply/course/lookup/form/ug/").SAMS_PORTALS.find((p) => p.id === "bangor");
+  sameJson(cfg.selectorOverrides.preferredCourse, ["#id_course"]);
+  sameJson(cfg.selectorOverrides.cvCurrentJobTitle, ["#id_position"]);
+  sameJson(cfg.selectorOverrides.passportNumber, ["#id_passport_number"]);
+  sameJson(cfg.selectorOverrides.visaType, ["#id_visa_type"]);
+});
+
+test("bangor scopes salutation to the personal select and blocks the research title input", () => {
+  const ctx = loadBangor("/apply/personal/");
+  const cfg = ctx.SAMS_PORTALS.find((p) => p.id === "bangor");
+  sameJson(cfg.selectorOverrides.title, ["select#id_title"]);
+  assert.equal(
+    ctx.SAMS_ENGINE.isFillable(fakeEl({ id: "id_title", name: "title", type: "text" })),
+    false,
+    "research free-text title input should be blocked"
+  );
+  assert.equal(
+    ctx.SAMS_ENGINE.isFillable(fakeEl({ id: "id_title", name: "title", type: "select-one" })),
+    true,
+    "personal salutation select should remain fillable"
+  );
+});
+
+test("bangor split dates cover passport expiry and visa validity", () => {
+  const cfg = loadBangor("/apply/international/").SAMS_PORTALS.find((p) => p.id === "bangor");
+  const spec = (key) => cfg.splitDates.find((entry) => entry.key === key);
+  sameJson(spec("passportExpiryDate"), {
+    key: "passportExpiryDate", page: "^/apply/international/",
+    day: "#id_passport_expiry_date_day",
+    month: "#id_passport_expiry_date_month",
+    year: "#id_passport_expiry_date_year",
+  });
+  sameJson(spec("visaStartDate"), {
+    key: "visaStartDate", page: "^/apply/international/",
+    day: "#id_visa_start_day",
+    month: "#id_visa_start_month",
+    year: "#id_visa_start_year",
+  });
+  sameJson(spec("visaEndDate"), {
+    key: "visaEndDate", page: "^/apply/international/",
+    day: "#id_visa_end_day",
+    month: "#id_visa_end_month",
+    year: "#id_visa_end_year",
+  });
+});
+
 test("bangor blocks DOB splits, chat widget, files, and finance name", () => {
   const ctx = loadBangor("/apply/personal/");
   assert.equal(typeof ctx.SAMS_ENGINE.isFillable, "function");
@@ -105,6 +155,22 @@ test("bangor blocks DOB splits, chat widget, files, and finance name", () => {
     { id: "id_transcript_file", name: "transcript_file", type: "file" },
     { id: "id_name", name: "name", type: "text" },
     { id: "id_country", name: "country", type: "select-one" },
+    { id: "id_passport_issue_nation", name: "passport_issue_nation", type: "select-one" },
+    { id: "id_study_level", name: "study_level", type: "text" },
+    { id: "id_visa_number", name: "visa_number", type: "text" },
+    { id: "id_responsibilities", name: "responsibilities", type: "textarea" },
+    { id: "id_scholarship_name", name: "scholarship_name", type: "select-one" },
+    { id: "id_medi_code", name: "medi_code", type: "select-one" },
+    { id: "id_european_settlement_0", name: "european_settlement", type: "radio" },
+    { id: "id_address2", name: "address2", type: "text" },
+    { id: "id_address3", name: "address3", type: "text" },
+    { id: "id_state", name: "state", type: "select-one" },
+    { id: "id_awarded_0", name: "awarded", type: "radio" },
+    { id: "id_admission_offer_required_0", name: "admission_offer_required", type: "radio" },
+    { id: "id_part_time", name: "part_time", type: "select-one" },
+    { id: "id_term_month", name: "term_month", type: "select-one" },
+    { id: "id_point_of_entry", name: "point_of_entry", type: "select-one" },
+    { id: "id_academic_contact", name: "academic_contact", type: "text" },
   ];
   for (const spec of blocked) {
     assert.equal(

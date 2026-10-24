@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Synthetic Greenwich Employment</title></head>
+<body>
+  <h1>Employment and supporting information</h1>
+  <form action="/pls/prod/bwskaess.P_ProcAppEssay" method="post">
+    <fieldset><legend>Employment start date</legend>
+      <label for="bday_dd">Day</label><select id="bday_dd"><option value="">Day</option><option value="02">02</option><option value="15">15</option></select>
+      <label for="bday_mm">Month</label><select id="bday_mm"><option value="">Month</option><option value="06">June</option><option value="04">April</option></select>
+      <label for="bday_yyyy">Year</label><select id="bday_yyyy"><option value="">Year</option><option value="2019">2019</option><option value="2001">2001</option></select>
+    </fieldset>
+    <fieldset><legend>Employment end date</legend>
+      <label for="bday_dd2">Day</label><select id="bday_dd2"><option value="">Day</option><option value="03">03</option></select>
+      <label for="bday_mm2">Month</label><select id="bday_mm2"><option value="">Month</option><option value="07">July</option></select>
+      <label for="bday_yyyy2">Year</label><select id="bday_yyyy2"><option value="">Year</option><option value="2023">2023</option></select>
+    </fieldset>
+    <button type="submit">Continue</button>
+  </form>
+  <script>
+    window.activity = { submissions: 0, clicks: 0, changes: [] };
+    document.addEventListener("submit", (event) => { event.preventDefault(); activity.submissions++; });
+    document.addEventListener("click", (event) => { if (event.target.closest("button, a")) activity.clicks++; });
+    document.addEventListener("change", (event) => { activity.changes.push(event.target.id); });
+  </script>
+</body>
+</html>

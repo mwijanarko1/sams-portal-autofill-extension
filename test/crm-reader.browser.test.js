@@ -60,6 +60,7 @@ test("CRM reader opens collapsed sections and reads their forms and lists", () =
     givenName: "Rahim",
     dateOfBirth: "2001-04-15",
     funding: "Self-Funded",
+    phone: "+880 1712345678",
     location: "1 Test Street, Example Area",
     city: "Dhaka",
     postcode: "1207",
@@ -89,6 +90,14 @@ test("CRM reader opens collapsed sections and reads their forms and lists", () =
     familyName: "Uddin",
     studyStartYear: "2019",
     studyEndYear: "2023",
+    previousStudyDestination: "Canada",
+    previousStudyVisaType: "Student Visa",
+    preferredDestination: "United Kingdom",
+    preferredUniversity: "Example University",
+    preferredLevel: "Masters",
+    preferredCourse: "MSc Data Science",
+    preferredStartYear: "2027",
+    preferredStartMonth: "September",
   });
 });
 
@@ -125,6 +134,274 @@ test("CRM reader preserves an explicit CRM title over gender", () => {
   assert.equal(mismatched.fields.title, "Mrs");
   const withoutGender = readFixture("crm-title-profile.html", "?title=Prof");
   assert.equal(withoutGender.fields.title, "Prof");
+});
+
+test("CRM reader reads the individual lead Profile tab after its sections load", () => {
+  const profile = readFixture("crm-profile-tab.html");
+  assert.equal(profile.error, undefined);
+  assert.equal(profile.studentName, "Jake Mufoy");
+  assert.deepEqual(
+    {
+      givenName: profile.fields.givenName,
+      familyName: profile.fields.familyName,
+      dateOfBirth: profile.fields.dateOfBirth,
+      nationality: profile.fields.nationality,
+      gender: profile.fields.gender,
+      maritalStatus: profile.fields.maritalStatus,
+      title: profile.fields.title,
+      city: profile.fields.city,
+      postcode: profile.fields.postcode,
+      countryName: profile.fields.countryName,
+      location: profile.fields.location,
+      phone: profile.fields.phone,
+      email: profile.fields.email,
+      emergencyName: profile.fields.emergencyName,
+      emergencyRelationship: profile.fields.emergencyRelationship,
+      emergencyPhone: profile.fields.emergencyPhone,
+      emergencyEmail: profile.fields.emergencyEmail,
+      applicantOccupation: profile.fields.applicantOccupation,
+      studyBudget: profile.fields.studyBudget,
+    },
+    {
+      givenName: "Jake",
+      familyName: "Mufoy",
+      dateOfBirth: "2001-04-15",
+      nationality: "Angola",
+      gender: "Male",
+      maritalStatus: "Single",
+      title: "Mr",
+      city: "Dhaka",
+      postcode: "1207",
+      countryName: "Bangladesh",
+      location: "1 Test Street, Example Area",
+      phone: "+244 456746456456",
+      email: "jake.mufoy.student@yopmail.com",
+      emergencyName: "Test Guardian",
+      emergencyRelationship: "Parent",
+      emergencyPhone: "+880 1712345678",
+      emergencyEmail: "guardian.test@example.com",
+      applicantOccupation: "Student",
+      studyBudget: "15000",
+    },
+  );
+});
+
+test("CRM reader reads every lead Profile tab section and its table", () => {
+  const { fields } = readFixture("crm-profile-tab.html");
+  assert.deepEqual(
+    {
+      funding: fields.funding,
+      studentQuality: fields.studentQuality,
+      leadStatus: fields.leadStatus,
+      hasVisaHistory: fields.hasVisaHistory,
+      passportExpiryDate: fields.passportExpiryDate,
+      institutionName: fields.institutionName,
+      degree: fields.degree,
+      major: fields.major,
+      grade: fields.grade,
+      studyDates: fields.studyDates,
+      startDate: fields.startDate,
+      endDate: fields.endDate,
+      englishTestName: fields.englishTestName,
+      testDate: fields.testDate,
+      overallScore: fields.overallScore,
+      listeningScore: fields.listeningScore,
+      speakingScore: fields.speakingScore,
+      writingScore: fields.writingScore,
+      readingScore: fields.readingScore,
+      cvCurrentEmployer: fields.cvCurrentEmployer,
+      cvCurrentJobTitle: fields.cvCurrentJobTitle,
+      cvWorkDates: fields.cvWorkDates,
+      cvWorkStartDate: fields.cvWorkStartDate,
+      cvWorkEndDate: fields.cvWorkEndDate,
+      referenceName: fields.referenceName,
+      referenceSource: fields.referenceSource,
+      referencePhone: fields.referencePhone,
+      referenceEmail: fields.referenceEmail,
+      passportNumber: fields.passportNumber,
+      passportDates: fields.passportDates,
+      passportIssueDate: fields.passportIssueDate,
+      passportPlaceOfIssue: fields.passportPlaceOfIssue,
+      visaType: fields.visaType,
+      visaCountry: fields.visaCountry,
+      visaPurpose: fields.visaPurpose,
+      visaStartDate: fields.visaStartDate,
+      visaEndDate: fields.visaEndDate,
+      visaRefusalType: fields.visaRefusalType,
+      visaRefusalCountry: fields.visaRefusalCountry,
+      visaRefusalPurpose: fields.visaRefusalPurpose,
+      studyGapInstitution: fields.studyGapInstitution,
+      studyGapType: fields.studyGapType,
+      studyGapStartDate: fields.studyGapStartDate,
+      previousInstitution: fields.previousInstitution,
+      previousSubject: fields.previousSubject,
+      previousStudyCountryVisa: fields.previousStudyCountryVisa,
+    },
+    {
+      funding: "Self Funded",
+      studentQuality: "Best",
+      leadStatus: "Regular",
+      hasVisaHistory: "Yes",
+      passportExpiryDate: "2032-01-09",
+      institutionName: "Example Test University",
+      degree: "Bachelor Year 1",
+      major: "Computer Science (TEST)",
+      grade: "3.50",
+      studyDates: "September 2019 - June 2023",
+      startDate: "September 2019",
+      endDate: "June 2023",
+      englishTestName: "IELTS",
+      testDate: "2025-03-01",
+      overallScore: "7",
+      listeningScore: "7",
+      speakingScore: "6.5",
+      writingScore: "6.5",
+      readingScore: "7.5",
+      cvCurrentEmployer: "Example Test Ltd",
+      cvCurrentJobTitle: "Intern (TEST)",
+      cvWorkDates: "01 Jul 2023 - 30 Jun 2024",
+      cvWorkStartDate: "2023-07-01",
+      cvWorkEndDate: "2024-06-30",
+      referenceName: "Dr Smith",
+      referenceSource: "University",
+      referencePhone: "+44 7700 900000",
+      referenceEmail: "smith@example.com",
+      passportNumber: "TEST1234567",
+      passportDates: "10 Jan 2022 - 09 Jan 2032",
+      passportIssueDate: "2022-01-10",
+      passportPlaceOfIssue: "London",
+      visaType: "Short Term Student Visa",
+      visaCountry: "United Kingdom",
+      visaPurpose: "Study",
+      visaStartDate: "2026-08-05",
+      visaEndDate: "2027-10-21",
+      visaRefusalType: "Visitor Visa",
+      visaRefusalCountry: "United States",
+      visaRefusalPurpose: "Tourism",
+      studyGapInstitution: "King's Academy",
+      studyGapType: "Medical",
+      studyGapStartDate: "September 2020",
+      previousInstitution: "Example College",
+      previousSubject: "Business",
+      previousStudyCountryVisa: "United Kingdom - Student Visa",
+    },
+  );
+});
+
+test("CRM reader reads lead header cards, status and section flags", () => {
+  const { fields } = readFixture("crm-profile-tab.html");
+  assert.deepEqual(
+    {
+      leadRef: fields.leadRef,
+      fileNumber: fields.fileNumber,
+      counsellorName: fields.counsellorName,
+      officeName: fields.officeName,
+      studentPortalStatus: fields.studentPortalStatus,
+      channel: fields.channel,
+      registeredOn: fields.registeredOn,
+      leadCreatedOn: fields.leadCreatedOn,
+      studentQualitySummary: fields.studentQualitySummary,
+      hasStudyGap: fields.hasStudyGap,
+      hasWorkExperience: fields.hasWorkExperience,
+      hasReference: fields.hasReference,
+      hasPassport: fields.hasPassport,
+      hasVisaRefusal: fields.hasVisaRefusal,
+    },
+    {
+      leadRef: "Sep-26-2",
+      fileNumber: "8398723",
+      counsellorName: "Demo Admin UK",
+      officeName: "Head Office",
+      studentPortalStatus: "Approved",
+      channel: "Instagram",
+      registeredOn: "10 Sep 2026 1:06 PM",
+      leadCreatedOn: "10 Sep 2026 1:06 PM",
+      studentQualitySummary: "Excellent lead summary.",
+      hasStudyGap: "Yes",
+      hasWorkExperience: "Yes",
+      hasReference: "Yes",
+      hasPassport: "Yes",
+      hasVisaRefusal: "No",
+    },
+  );
+});
+
+test("CRM reader merges both tabs with Profile precedence and first-record test scores", () => {
+  const { fields } = readFixture("crm-profile-tab.html");
+  // Profile wins on a shared key.
+  assert.equal(fields.funding, "Self Funded");
+  assert.equal(fields.studentQualitySummary, "Excellent lead summary.", "Hidden summary must not win");
+  // Applications-only values survive the merge.
+  assert.equal(fields.preferredDestination, "Canada");
+  assert.equal(fields.preferredUniversity, "Example University");
+  assert.equal(fields.preferredCourse, "MSc Data Science");
+  assert.equal(fields.preferredStartYear, "2027");
+  assert.equal(fields.preferredStartMonth, "September");
+  assert.equal(fields.skypeId, "jake.skype");
+  assert.equal(fields.whatsapp, "+8801712345678");
+  // Admission "Institute Name" must not become the education institution.
+  assert.equal(fields.institutionName, "Example Test University");
+  // Only the first visible saved test record is read; hidden rows and a
+  // different Applications test (PTE 80) must not mix into the IELTS record.
+  assert.equal(fields.englishTestName, "IELTS");
+  assert.equal(fields.overallScore, "7");
+  assert.equal(fields.readingScore, "7.5");
+  assert.notEqual(fields.readingScore, "80");
+  assert.notEqual(fields.englishTestName, "GREGMAT");
+});
+
+test("CRM reader waits for a slow Profile section load", () => {
+  const { fields } = readFixture("crm-profile-tab.html", "?delay=3500");
+  assert.equal(fields.institutionName, "Example Test University");
+  assert.equal(fields.visaType, "Short Term Student Visa");
+  assert.equal(fields.readingScore, "7.5");
+});
+
+test("CRM reader does not turn an admission institute into the education institution", () => {
+  const { fields } = readFixture("crm-profile-tab.html", "?emptyEducation=1");
+  assert.equal(fields.preferredUniversity, "Example University");
+  assert.equal("institutionName" in fields, false);
+});
+
+test("CRM reader reads the visible Applications form without a Profile tab", () => {
+  const { fields } = readFixture("crm-profile-tab.html", "?noProfile=1");
+  assert.equal(fields.preferredUniversity, "Example University");
+  assert.equal(fields.preferredStartYear, "2027");
+  assert.equal(fields.preferredDestination, "Canada");
+  assert.equal("institutionName" in fields, false);
+  assert.equal(fields.givenName, "Jake");
+});
+
+test("CRM reader does not borrow a missing Profile score from another test tab", () => {
+  const { fields } = readFixture("crm-profile-tab.html", "?missingReading=1");
+  assert.equal(fields.englishTestName, "IELTS");
+  assert.equal("readingScore" in fields, false, "Applications PTE 80 must not fill an IELTS gap");
+});
+
+test("CRM reader does not merge a different attempt of the same test family", () => {
+  const { fields } = readFixture("crm-profile-tab.html", "?missingReading=1&sameFamily=1");
+  assert.equal(fields.englishTestName, "IELTS");
+  assert.equal("readingScore" in fields, false, "A later IELTS attempt must not fill an older IELTS gap");
+});
+
+test("CRM reader maps a headerless References table to reference fields", () => {
+  const { fields } = readFixture("crm-profile-tab.html", "?referenceTable=1");
+  assert.equal(fields.referenceName, "Dr Smith");
+  assert.equal(fields.referenceSource, "University");
+  assert.equal(fields.referencePhone, "+44 7700 900000");
+  assert.equal(fields.referenceEmail, "smith@example.com");
+  assert.equal(fields.phone, "+244 456746456456", "Applicant phone must not take the referee phone");
+  assert.equal(fields.email, "jake.mufoy.student@yopmail.com", "Applicant email must not take the referee email");
+});
+
+test("CRM reader splits a spaced UK postcode without corrupting the country", () => {
+  const { fields } = readFixture(
+    "crm-profile-tab.html",
+    "?city=London&addr=10%20Downing%20Street%20London%20SW1A%202AA%20United%20Kingdom",
+  );
+  assert.equal(fields.location, "10 Downing Street");
+  assert.equal(fields.postcode, "SW1A 2AA");
+  assert.equal(fields.countryName, "United Kingdom");
 });
 
 test("CRM reader reads the selected gender radio through its shared field label", () => {

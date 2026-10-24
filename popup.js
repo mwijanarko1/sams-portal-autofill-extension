@@ -310,6 +310,76 @@ async function inject(tabId, frameIds, files) {
   }
 }
 
+// The CRM's section request runs in the page's MAIN world, which the isolated
+// reader cannot observe. Bridge its pending state through a data attribute.
+async function installProfileTracker(tabId) {
+  try {
+    await chrome.scripting.executeScript({
+      target: { tabId, frameIds: [0] },
+      world: "MAIN",
+      func: () => {
+        if (window.__SAMS_PROFILE_TRACKER__) {
+          window.__SAMS_PROFILE_TRACKER__.pending = 0;
+          window.__SAMS_PROFILE_TRACKER__.seen = 0;
+          document.documentElement.dataset.samsProfilePending = "0";
+          document.documentElement.dataset.samsProfileSeen = "0";
+          return;
+        }
+        const state = { pending: 0, seen: 0 };
+        const sync = () => {
+          document.documentElement.dataset.samsProfilePending = String(state.pending);
+          document.documentElement.dataset.samsProfileSeen = String(state.seen);
+        };
+        const urls = new WeakMap();
+        const open = XMLHttpRequest.prototype.open;
+        const send = XMLHttpRequest.prototype.send;
+        XMLHttpRequest.prototype.open = function (method, url, ...rest) {
+          urls.set(this, String(url || ""));
+          return open.call(this, method, url, ...rest);
+        };
+        XMLHttpRequest.prototype.send = function (...args) {
+          const url = urls.get(this) || "";
+          if (url.includes("fp_crm_profile_sections")) {
+            state.pending += 1;
+            state.seen += 1;
+            sync();
+            this.addEventListener("loadend", () => {
+              state.pending = Math.max(0, state.pending - 1);
+              sync();
+            }, { once: true });
+          }
+          return send.apply(this, args);
+        };
+        if (typeof window.fetch === "function") {
+          const originalFetch = window.fetch;
+          window.fetch = function (...args) {
+            const input = args[0];
+            const url = typeof input === "string" ? input : (input && input.url) || "";
+            if (!String(url).includes("fp_crm_profile_sections")) return originalFetch.apply(this, args);
+            state.pending += 1;
+            state.seen += 1;
+            sync();
+            const responsePromise = originalFetch.apply(this, args);
+            // Headers resolve before the JSON body; read a clone to body completion.
+            responsePromise.then((response) => {
+              response.clone().text().catch(() => {}).finally(() => {
+                state.pending = Math.max(0, state.pending - 1);
+                sync();
+              });
+            }).catch(() => {
+              state.pending = Math.max(0, state.pending - 1);
+              sync();
+            });
+            return responsePromise;
+          };
+        }
+        window.__SAMS_PROFILE_TRACKER__ = state;
+        sync();
+      },
+    });
+  } catch { /* the reader's overlay/mutation fallback still applies */ }
+}
+
 async function injectDocument(tabId, documentId, files) {
   try {
     await chrome.scripting.executeScript({ target: { tabId, documentIds: [documentId] }, files });
@@ -332,6 +402,7 @@ async function copyFromCrm() {
   setStatus("info", "Opening CRM sections and reading student fields...");
   try {
     const tab = await approvedTab(SAMS_ALLOWLIST.isCrmOrigin, "Open an approved SAMS CRM or Campora student profile first.");
+    await installProfileTracker(tab.id);
     await inject(tab.id, [0], [
       "config/build-mode.js",
       "config/allowlist.js",

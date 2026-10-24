@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Synthetic SAMS CRM profile</title></head>
+<body>
+  <main data-sams-profile>
+    <h1>Student Profile</h1>
+    <h2>Personal Information</h2>
+    <label>Given Name <input value="Aisha"></label>
+    <label>Family Name <input value="Rahman"></label>
+    <label>Date of Birth <input value="2001-04-15"></label>
+    <label>Nationality <select><option selected>Angola</option></select></label>
+    <label>Primary Email <input value="aisha.rahman@example.com"></label>
+    <ul><li class="btn_collapse_work"><button type="button" id="work">Work History</button></li></ul>
+    <section class="collapse_common"></section>
+  </main>
+  <script>
+    document.querySelector(".btn_collapse_work").addEventListener("click", () => {
+      document.querySelector(".collapse_common").innerHTML = `
+        <h2 class="title_in_border">Work History</h2>
+        <div class="single_part">
+          <div class="progress-lbl">Synthetic Employer</div>
+          <span>02 Jun 2019 - 03 Jul 2023</span>
+          <span>Analyst</span>
+        </div>`;
+    });
+  </script>
+</body>
+</html>

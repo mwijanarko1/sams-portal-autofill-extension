@@ -56,9 +56,9 @@ Production packaging rejects empty Campora origins or fewer than three portal or
 | `config/synonyms.js` | Shared deterministic field synonyms and autocomplete keys. |
 | `config/portals/greenwich.js` | Greenwich origin, selectors, split dates, blocked controls. |
 | `config/portals/bangor.js` | Bangor origin, selectors, split dates, blocked controls. |
-| `config/portals/manchester.js` | Greater Manchester placeholder (no origins yet). |
+| `config/portals/manchester.js` | Greater Manchester origin (`evision.bolton.ac.uk`), SITS IPP selector map, split dates, blocked controls. |
 | `src/background.js` | Serialized session cache, expiry alarm, identity-checked messages. |
-| `src/crm-reader.js` | Visible CRM DOM reader; expands sections; refuses non-profile pages. |
+| `src/crm-reader.js` | Visible CRM DOM reader; refuses non-profile pages. Reads the Applications stage panels when the tracker is mounted and the read-only Profile tab for any lead type; Profile values win on shared keys. Older layouts without a Profile tab are read in place. |
 | `src/crm-documents.js` | Lists the profile's documents from the nine `fp_*_docs` GET endpoints with the page `api-token`; keeps metadata for `/tmp_aws_media/` files only. Fetches one file on attach inside the CRM tab, because the session cookie is not sent from extension pages. |
 | `src/portal-fill.js` | Page handler on a popup-only port; checks selected origin, sandboxing and top page; runs engine; returns fill report. |
 | `src/engine/engine.js` | Core scan/match/format/fill, split dates, click guard, skip-if-filled. |
@@ -122,7 +122,7 @@ Safari runtime acceptance is manual. Playwright WebKit and `npm run test:e2e` do
 
 ### Production gate
 
-`npm run build:prod` and `npm run build:safari:prod` refuse until Campora origin(s) and three portal origins are configured. Live CRM-to-portal journeys, signing/distribution, and Greater Manchester mapping remain open.
+`npm run build:prod` and `npm run build:safari:prod` refuse until Campora origin(s) and three portal origins are configured. The three portal origins are present in `config/allowlist.js`; only the empty `camporaOrigins` fails the gate. Live CRM-to-portal journeys and signing/distribution remain open. Current status: [publication/PREPARATION-REPORT.md](publication/PREPARATION-REPORT.md).
 
 ## Navigation: where guidance lives
 
@@ -137,12 +137,14 @@ Safari runtime acceptance is manual. Playwright WebKit and `npm run test:e2e` do
 | Safari manual acceptance | `e2e/safari/README.md` |
 | Chromium E2E and live smoke rules | `e2e/README.md` |
 | Historical Greenwich/Bangor inventories | `docs/history/` |
+| CRM lead lists, lead types, Profile-tab field map | `docs/history/CRM-LEAD-PROFILE.md` |
+| Current publication preparation, store drafts, blockers | `docs/publication/` |
 | Phased delivery plan (partly historical) | `BUILD-PLAN.md` |
 | This map | `docs/CODEBASE_MAP.md` |
 
 ## Known Risks
 
-- **Incomplete production allowlist:** Campora and Greater Manchester origins missing; prod builds intentionally fail.
+- **Incomplete production allowlist:** the Campora origin is missing (Greenwich, Bangor and Greater Manchester origins are present); prod builds intentionally fail.
 - **Safari runtime unverified:** containing app builds and embeds resources; installed Safari behavior still needs operator checklist (ports 3000/3001 may be owned by other projects).
 - **Localhost fixtures use generic matching:** Bangor/Greenwich portal-specific maps apply on production origins only. Safari fixture parity is not portal-origin parity.
 - **Generic matching is conservative:** unmapped universities get shared personal/contact fields only; everything ambiguous or third-party stays manual. Sandboxed same-origin frames are not filled and are reported as not filled.
@@ -151,11 +153,12 @@ Safari runtime acceptance is manual. Playwright WebKit and `npm run test:e2e` do
 - **Non-UK Home Telephone length:** Greenwich 11-character limit can require manual clear/correct.
 - **Student replacement race:** popup cache read vs in-flight fill can race; no operation token yet (release hardening).
 - **Portal autosave:** extension does not block network writes; no-save harness must detect unexpected POSTs.
+- **CRM Copy is flat and first-entry only:** the Profile tab is read in full, but `studentCache.fields` keeps one value per key, so a second education, passport, visa, work or reference entry is not stored. The Applications stage panels, lead lists, remarks, tasks and documents are separate surfaces.
 - **Do not treat `tmp/` or `.pstack/` as product docs.**
 
-## Verification snapshot at last map
+## Verification snapshot (refreshed 2026-10-23)
 
-- `npm test`: 61/61 pass (unit + Chromium DOM, including Safari build/fixture and session lifecycle tests).
-- `npm run test:e2e`: documented 5/5 Chromium loaded-extension journeys when Helium is available (not re-run for this map refresh).
-- Safari: unsigned app path and docs present; runtime acceptance still pending operator enablement.
+- `npm test`: 124/124 pass on 2026-10-23 (unit + Chromium DOM, including the CRM Profile-tab fixture with its asynchronous section load).
+- 2026-10-23 (Helium, synthetic pages): `npm run test:e2e` 33/33. Details: [publication/PREPARATION-REPORT.md](publication/PREPARATION-REPORT.md).
+- Safari: unsigned app builds (23 embedded resources, ad hoc signature, no team); runtime acceptance still pending operator enablement and a free port 3000.
 - Version: `0.1.0` across `package.json`, `manifest.json`, and Safari `MARKETING_VERSION`.

@@ -30,10 +30,13 @@
     <div class="col-lg-9">
       <ul class="list-group">
         <li class="list-group-item incomplete_li btn_collapse_personal_info"><strong>Personal Information</strong></li>
+        <li class="list-group-item incomplete_li btn_collapse_contact_info"><strong>Contact Information</strong></li>
         <li class="list-group-item incomplete_li btn_collapse_educational_add"><strong>Educational Information</strong></li>
+        <li class="list-group-item incomplete_li btn_collapse_prev_study_abroad"><strong>Previous Study Abroad</strong></li>
         <li class="list-group-item incomplete_li btn_collapse_passport_details"><strong>Passport Details</strong></li>
         <li class="list-group-item incomplete_li btn_collapse_test_score"><strong>Test Score</strong></li>
         <li class="list-group-item incomplete_li btn_collapse_reference_and_work"><strong>Reference &amp; Work</strong></li>
+        <li class="list-group-item incomplete_li btn_collapse_admission_preference"><strong>Admission Preference</strong></li>
       </ul>
       <div class="collapse_common" hidden></div>
     </div>
@@ -50,8 +53,45 @@
       <div class="form-group"><span><label class="form_label">City (Present)</label></span><input id="city" type="text" value="Dhaka"></div>
       <div class="form-group"><span><label class="form_label">Zip Code (Present)</label></span><input id="zip_code_present" type="text" value="1207"></div>
       <div class="form-group"><span><label class="form_label">Country (Present)</label></span>
-        <select id="nationality_present" class="select2-photo select2-hidden-accessible"><option>Choose one..</option><option>Bangladesh (BGD)</option></select></div>
+        <select id="nationality_present" class="select2-photo select2-hidden-accessible"><option>Choose one..</option><option>Bangladesh (BGD)</option></select>
+        <span class="select2-container" style="display:inline-block;width:30px;height:20px">Bangladesh</span></div>
       <button type="submit">Save</button>
+    </form>
+  </template>
+
+  <template id="contact_info">
+    <form>
+      <div class="row">
+        <div class="form-group col-lg-6"><label class="form_label">Mobile No *</label>
+          <select><option>Choose one..</option><option>Bangladesh +880</option></select></div>
+        <div class="form-group col-lg-6"><input type="text" placeholder="Mobile Number" value="1712345678"></div>
+      </div>
+    </form>
+  </template>
+
+  <template id="prev_study_abroad">
+    <form>
+      <div class="form-group"><label class="form_label">Study Destination *</label>
+        <select><option>Choose one..</option><option>Canada</option></select></div>
+      <div class="form-group"><label class="form_label">Visa Type *</label>
+        <select><option>Select Visa Type</option><option>Student Visa</option></select></div>
+    </form>
+  </template>
+
+  <template id="admission_preference">
+    <form>
+      <div class="form-group"><label class="form_label">Study Destination *</label>
+        <select><option>Choose one..</option><option>United Kingdom</option></select></div>
+      <div class="form-group"><label class="form_label">Institute Name *</label>
+        <select><option>Select Institute</option><option>Example University</option></select></div>
+      <div class="form-group"><label class="form_label">Level *</label>
+        <select><option>Select Level</option><option>Masters</option></select></div>
+      <div class="form-group"><label class="form_label">Course Title</label>
+        <input type="text" value="MSc Data Science"></div>
+      <div class="form-group"><label class="form_label">Start Year *</label>
+        <select><option>Year</option><option>2027</option></select></div>
+      <div class="form-group"><label class="form_label">Start Month *</label>
+        <select><option>Month</option><option>September</option></select></div>
     </form>
   </template>
 

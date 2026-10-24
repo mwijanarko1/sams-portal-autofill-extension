@@ -12,7 +12,7 @@ const variants = ["onHistoryStateUpdated", "onCommitted", "onCompleted", "webNav
 // The real browser supplies every API except the explicitly missing Safari capability.
 // This verifies extension startup and popup messaging, not actual Safari acceptance.
 for (const missing of variants) {
-  test(`Background and cache survive missing ${missing}; Fill all refuses unsafe navigation`, { timeout: 25000 }, async () => {
+  test(`Background, cache and popup survive missing ${missing} without mutating the portal`, { timeout: 25000 }, async () => {
     await mkdir(join(root, "tmp"), { recursive: true });
     const run = await mkdtemp(join(root, "tmp/safari-api-compat-"));
     const extension = join(run, "extension");
@@ -72,20 +72,22 @@ for (const missing of variants) {
       assert.deepEqual(stored.cache.fields, { firstName: "Synthetic", lastName: "Safari" });
       const portal = await context.newPage();
       await portal.goto(`${portalOrigin}/apply/personal/`);
-      const result = await popup.evaluate(async () => {
-        const tabs = await chrome.tabs.query({ url: "https://apps.bangor.ac.uk/*" });
-        return chrome.runtime.sendMessage({ action: "startFillAll", tabId: tabs[0].id, consent: true });
-      });
-      assert.match(result.error || "", /browser|Chrome|Edge|unavailable|not supported/i, "Missing navigation safety must refuse Fill all explicitly");
-      const status = await popup.evaluate(() => chrome.runtime.sendMessage({ action: "getFillAllStatus" }));
-      assert.deepEqual(status, { run: null }, "No run may start without required navigation safety");
-      assert.equal(await portal.locator("#id_forename").inputValue(), "", "Refused Fill all must not mutate the form");
-      assert.deepEqual(requests, [], "Refused Fill all must not save or contact external sites");
+      await popup.reload();
+      await popup.locator("#studentCard").waitFor({ state: "visible" });
+      assert.equal(await popup.locator("#studentName").textContent(), "Synthetic Safari Student");
+      assert.equal(await popup.locator("#btnAutofill").isEnabled(), true, "Popup stays functional with a cached student");
+      const reread = await popup.evaluate(() => chrome.runtime.sendMessage({ action: "getStudentCache" }));
+      assert.deepEqual(reread, stored, "Opening the popup preserves the cached student");
+      assert.equal(await portal.locator("#id_forename").inputValue(), "", "Opening the popup must not mutate the form");
+      assert.deepEqual(requests, [], "Opening the popup must not save or contact external sites");
       const cleared = await popup.evaluate(() => chrome.runtime.sendMessage({ action: "clearStudentCache" }));
       assert.deepEqual(cleared, { cleared: true });
       const empty = await popup.evaluate(() => chrome.runtime.sendMessage({ action: "getStudentCache" }));
       assert.deepEqual(empty, { cache: null }, "Clear remains functional without optional browser APIs");
-      await writeFile(join(run, "result.json"), JSON.stringify({ missing, boot, refusal: result.error, status, cleared, requests }, null, 2));
+      await popup.reload();
+      await popup.locator("#studentCard").waitFor({ state: "hidden" });
+      assert.equal(await popup.locator("#btnAutofill").isDisabled(), true);
+      await writeFile(join(run, "result.json"), JSON.stringify({ missing, boot, cachePreserved: true, cleared, requests }, null, 2));
     } finally {
       await context.close();
     }

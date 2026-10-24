@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Synthetic Greenwich Statistical Information</title></head>
+<body>
+  <h1>Statistical Information</h1>
+  <form action="/pls/prod/bwskaper.P_ProcAppPersonal" method="post">
+    <label for="bday_dd">Date of birth day</label><select id="bday_dd"><option value="">Day</option><option value="15">15</option><option value="02">02</option></select>
+    <label for="bday_mm">Date of birth month</label><select id="bday_mm"><option value="">Month</option><option value="04">April</option><option value="06">June</option></select>
+    <label for="bday_yyyy">Date of birth year</label><select id="bday_yyyy"><option value="">Year</option><option value="2001">2001</option><option value="2019">2019</option></select>
+    <label for="ud60">Country of birth</label><select id="ud60"><option value="">Select</option><option value="AO">Angola</option><option value="GB">United Kingdom</option></select>
+    <button type="submit">Continue</button>
+  </form>
+  <script>
+    window.activity = { submissions: 0, clicks: 0, changes: [] };
+    document.addEventListener("submit", (event) => { event.preventDefault(); activity.submissions++; });
+    document.addEventListener("click", (event) => { if (event.target.closest("button, a")) activity.clicks++; });
+    document.addEventListener("change", (event) => { activity.changes.push(event.target.id); });
+  </script>
+</body>
+</html>
