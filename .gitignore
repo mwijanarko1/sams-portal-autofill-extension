@@ -8,3 +8,8 @@ tmp/
 
 # Xcode per-user state
 xcuserdata/
+
+# Local agent/tooling state
+.commandcode/
+.pstack/
+.papercuts.jsonl
