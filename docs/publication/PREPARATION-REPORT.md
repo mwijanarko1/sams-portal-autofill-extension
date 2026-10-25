@@ -1,12 +1,24 @@
 # Publication preparation report
 
-Status date: 2026-10-22. Extension version `0.1.0`, branch `main`.
+Original snapshot date: 2026-10-22. Extension version `0.1.0`, branch `main`.
 
-This is the current record of what has been checked locally and what is still blocked for Safari acceptance, three-portal acceptance and store submission. It supersedes the older status lines in `README.md`, `PORTALS.md`, `docs/CODEBASE_MAP.md` and `BUILD-PLAN.md`, which are kept for history. Nothing here is a release approval. No package has been distribution-signed, uploaded, published or submitted.
+The original snapshot below records publication-preparation work and its blockers. It is historical, not current operating instructions. The current update immediately below takes precedence over its old test counts, scripts, and feature descriptions. Nothing here is a release approval. No new signing, upload, publication, submission, or live acceptance is claimed by this update.
 
 Related: [store submission pack](STORE-SUBMISSION-PACK.md), [privacy policy extension addendum draft](PRIVACY-POLICY-EXTENSION-ADDENDUM-DRAFT.md), [historical standalone privacy policy draft](PRIVACY-POLICY-DRAFT.md), [Safari manual checklist](../../e2e/safari/README.md), [Safari build notes](../../safari/README.md), [portal matrix](../../PORTALS.md).
 
 Paths under `tmp/` are local, git-ignored evidence, and `.pstack/` records are local and untracked. They are quoted here by result so this report stands on its own.
+
+## Current implementation and verification update
+
+At source revision `dbb76d8`, `npm test` passed 126/126 and `npm run test:e2e` passed 50/50 in visible Helium. The suite includes a Manchester Personal Details Copy-to-Autofill journey for derived birth/residence countries and preservation of existing residence. Greenwich funding, intake, job-title, residence, and referee regressions are also covered. These replace the old current-status counts of 28 or 33 cases, not the historical run records below.
+
+The current popup is page-by-page Autofill. There is no Fill all action or `fillAll` portal config, and `package.json` has no `test:e2e:fill-all` or `test:e2e:fill-all:portals` scripts. Original descriptions of those features and their results below must not be read as features or rerunnable commands in the current source. Staff save and submit manually, but portal handlers can autosave or upload on change.
+
+The live smoke runner now supports Bangor, Greenwich, and Greater Manchester. Manchester targets PD, CD, QU, and EX with blocked-write diagnostics. A tab-loading POST remains blocked, not silently permitted. Adding this support does not establish a live pass. Complete live CRM-to-portal acceptance and actual Safari acceptance remain outstanding. The Campora-origin production build gate is unchanged.
+
+The [technical handover](../TECHNICAL-HANDOVER.md) documents data locations, rolling expiry, document transfer, account-revocation limits, and an IT offboarding checklist. It does not establish legal compliance or implemented remote wipe. CRM media-server authorisation after logout, account and token revocation, endpoint cleanup, and downstream retention still require operational verification. The [user handover](../USER-HANDOVER.md) explains the corresponding staff steps.
+
+Current coverage and commands: [E2E guide](../../e2e/README.md). Portal-specific status: [portal matrix](../../PORTALS.md). The remaining sections preserve the original dated snapshot.
 
 ## Privacy policy status
 

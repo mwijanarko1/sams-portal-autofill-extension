@@ -278,8 +278,12 @@ Verified live on 2026-10-23: after choosing those options, a second Autofill fil
   - PS, PA and SU reported no writable CRM targets.
 - Automated config tests: `test/manchester.test.js` (part of `npm test`).
 - Live CRM Copy → Autofill with a real profile: still pending.
-- Sanitized HTML fixtures in repo: pending.
+- Synthetic Personal Details fixture: `e2e/fixtures/manchester-personal-mapping.html`, with CRM Copy through `e2e/fixtures/crm-portal-mapping.html`. Loaded-extension E2E verifies birth country derived from nationality, residence derived from address country, preservation of an existing residence, repeat Autofill, and unchanged cached CRM fields. This does not cover every Manchester tab or replace a sanitized live-form replay.
+- The current complete offline suite passes 50/50 cases across its synthetic journeys. This is not 50 Manchester cases or a live acceptance result.
+- Full sanitized live-form replay and other Manchester tab fixtures: still pending.
 
-### Fill all (draft saves), added 2026-10-19
+### Current popup and live-smoke boundary
 
-`fillAll` in `config/portals/manchester.js` lets the optional, consented Fill all mode fill and save the data-entry tabs (PD, CD, PI, QU, EX, PS, PA) of the single-document jQuery tab UI. `#but_save` and `#but_save_and_cont` are `input[type=button]`, not native submits; a save is counted only after a fresh "saved" acknowledgement observed after the click (plus the expected tab being active for Save and continue; a stale success message or tab switch alone is not enough), and the Submission tab (SU, `#but_submit`) is never entered. Synthetic E2E only; unverified live: the save request, its acknowledgement markup, the selected-tab and hidden-SU classes. The host `evision.bolton.ac.uk` (formerly Bolton) is confirmed as the University of Greater Manchester origin in repo config and history.
+The current popup offers page-by-page Autofill, not a Fill all mode. The current config has no `fillAll` property. Older draft-save descriptions are not current operating instructions. Staff navigate tabs, answer conditional questions, and save or submit themselves. Portal autosave on input remains possible.
+
+`npm run test:e2e:live` can target `greater-manchester` with its own credentials and an existing draft. It opens only PD, CD, QU, and EX, waits for each pane's controls, checks existing and blocked fields, repeats Autofill, and clears the cache. After login, non-GET/HEAD requests are blocked, including tab-loading POSTs. A blocked request or unavailable draft is reported as blocked, not passed. This traffic restriction belongs to the test runner, not the deployed extension. See [the live smoke instructions](../../e2e/README.md#live-random-sample-smoke-test). No new live Manchester result is claimed here.

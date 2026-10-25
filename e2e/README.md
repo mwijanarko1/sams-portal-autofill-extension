@@ -15,18 +15,27 @@ CRM reader, and portal engine. It selects the actual active browser tab, rather
 than mocking Chrome APIs. The popup runs as an extension tab, not the native
 toolbar popover.
 
-Synthetic HTTPS pages reproduce the confirmed CRM agent route, mapped Bangor
-and Greenwich control IDs, and an unmapped university origin that has no
+Synthetic HTTPS pages reproduce the confirmed CRM agent route, mapped Bangor,
+Greenwich, and Manchester Personal Details control IDs, and an unmapped university origin that has no
 allowlist entry, mapping, or host permission. Browser routing supplies fixture HTML and blocks all
 other HTTP requests. No live credentials or applicant data are used.
 
 Coverage:
 
-- CRM Copy and portal Autofill on both portals.
+- CRM Copy and portal Autofill on Bangor and Greenwich, plus targeted Manchester
+  Personal Details mapping checks. This is not a complete Manchester tab journey.
 - Greenwich split DOB on Statistical Information at a previous address-save URL,
   and employment dates on both display and previous-save URLs, via form actions.
 - Greenwich country of birth uses nationality when the CRM has no birth country,
   preserves an existing portal selection, and leaves cached student data unchanged.
+- Greenwich funding maps self-funded variants to private finance and leaves
+  unsupported funding values manual, including inherited-property-name inputs.
+- Greenwich intake derives from CRM start month and year when no explicit intake
+  exists. Explicit intake wins. Job title fills the job description, not Full-time
+  or Part-time. Referee fields never receive applicant contact details.
+- Greenwich and Manchester derive missing residence from the CRM address country.
+  Manchester Personal Details also derives birth country from nationality and
+  preserves an existing residence. Derived values do not change the copied cache.
 - Existing values preserved and repeated Autofill does not duplicate values.
 - Blocked DOB controls, referee fields, signatures, authentication fields,
   finance-name controls, chat, uploads, and secondary qualification rows.
@@ -143,3 +152,18 @@ require saving Personal first; with the no-save policy it remains unverified unl
 already unlocked. Greenwich live testing requires its own credentials and an
 existing draft. Inspect the report's blocked and failure entries before claiming
 completion.
+
+## Security evidence boundary
+
+The current automated baseline at source revision `dbb76d8` is 126/126 supporting
+tests (`npm test`) and 50/50 loaded-extension E2E cases (`npm run test:e2e`).
+Regenerate these counts by running the commands rather than treating them as
+permanent totals. The document cases prove metadata-only Copy, explicit selected-file
+fetch, exact PDF and JPEG transfer, occupied-input protection, failure handling,
+Clear, and expiry on synthetic pages.
+
+They do not prove that CRM media links require login, that employee revocation
+invalidates existing sessions, or that devices, clipboards, and university uploads
+are securely erased. No offboarding simulation or live upload was performed for
+the handover update. Those controls require approved checks by the system owners.
+See [the technical handover](../docs/TECHNICAL-HANDOVER.md#employee-offboarding-and-device-loss).
