@@ -72,12 +72,19 @@ BANGOR_USERNAME
 BANGOR_PASSWORD
 GREENWICH_LOGINID
 GREENWICH_PIN
+GREATER_MANCHESTER_USERNAME
+GREATER_MANCHESTER_PASSWORD
 ```
 
 Greater Manchester credentials are not reused for Greenwich. Missing portal keys
 are reported as blocked, not passed. Existing sessions are reused when possible;
 otherwise a login is attempted once. CAPTCHA or human verification requires a
 human handoff, not a bypass.
+
+The default portal list is Bangor, Greenwich, and Greater Manchester. Each portal
+runs only when both of its credential keys exist; missing keys produce a blocked
+entry. Set `SAMS_E2E_PORTALS=greater-manchester` to select Manchester alone, or use
+a comma-separated list of `bangor`, `greenwich`, and `greater-manchester`.
 
 ```sh
 SAMS_E2E_PROFILE='/absolute/path/to/approved/.pinchtab/profiles/profile-directory' \
@@ -91,18 +98,41 @@ It does not claim coverage of the entire lead database or every portal section.
 
 For each sample, it copies the current visible CRM profile, fills an existing
 portal form, checks that existing and blocked fields are unchanged, repeats
-Autofill, and clears the student cache. Only Bangor Personal and Greenwich Name
-are targeted. An unavailable existing draft is a blocker. No draft or lead is
-created, no documents uploaded, and no application submitted or saved.
+Autofill, and clears the student cache. Bangor's configured data-entry forms and
+Greenwich's configured sections, including Statistical and Programme Information,
+are targeted. Greater Manchester uses the existing application hub at
+`https://evision.bolton.ac.uk` and clicks only the PD, CD, QU, and EX tab links.
+Each asynchronously loaded `#TAB-MAIN-<code>` pane gets up to 30 seconds to expose
+its controls before the same Autofill checks run. Samples reload the hub to discard
+unsaved values. The runner never clicks Manchester Save, Save and Continue, Submit,
+or the Submission tab. An unavailable existing draft is a blocker. No draft or
+lead is created, no documents uploaded, and no application submitted or saved in
+the default no-save mode.
 
 After login, non-GET/HEAD requests are blocked. Only the current login form's POST
 is allowed while authenticating. If a portal attempts an autosave or another
-write, the request is blocked and the test stops. Unsaved form values are discarded
-by reloading or closing the test browser. The overall deadline is 120 seconds.
+write, the request is blocked and the test stops. Manchester tab loading gets no
+POST exception: if it requires a non-GET/HEAD request, the portal is marked blocked
+with `blockedTabLoad`, and `blockedWriteStages` records `tabLoadBlocked: true`, the
+tab code, method, and redacted SITS routine path (without query strings or record
+ids). Unknown paths remain `[redacted]`. The lead must inspect this evidence and
+ask for approval of a single confirmed read-only request before any allowlist
+change. No such request is allowed by this runner.
+
+Unsaved form values are discarded by reloading or closing the test browser. The
+overall deadline is 10 minutes, paused for a human CAPTCHA handoff. The existing
+`--save-bangor-personal-once` exception requires separate explicit approval and
+does not permit any Manchester saves or tab-loading POSTs.
 
 The runner never prints credentials or applicant field values. Its redacted report
 is `tmp/extension-e2e/live-report.json`: sample numbers, CRM field keys, counts,
-and preservation/cache-clear results. This report must remain ignored.
+and preservation/cache-clear results. Each completed form includes `filledControls`,
+an array of control ids or names changed by the first Autofill, never their values,
+alongside `changedFields`, `emptyBefore`, `emptyAfter`, and `repeatFilled`.
+`emptyAfter` contains control identifiers, not values. A listed identifier proves
+that control changed, not that the CRM-derived value is correct. Existing values
+are preserved, so an already populated mapped control need not appear. This report
+must remain ignored.
 
 ## Verification boundaries
 

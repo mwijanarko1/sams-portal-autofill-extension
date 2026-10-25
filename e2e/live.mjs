@@ -26,6 +26,7 @@ const require = createRequire(import.meta.url);
 const crmSource = require(join(root, "config/crm-source.js"));
 require(join(root, "config/portals/bangor.js"));
 require(join(root, "config/portals/greenwich.js"));
+require(join(root, "config/portals/manchester.js"));
 const portals = [
   { id: "bangor", origin: "https://apps.bangor.ac.uk", login: "https://apps.bangor.ac.uk/apply/account/login/?next=/apply/personal/",
     forms: [
@@ -49,6 +50,14 @@ const portals = [
       ["previous-education", "bwskapcl.P_DispAppPrvCollege?appno=1&wsct=PRVCOLLEGE"],
       ["programme-information", "bwskapln.P_DispAppPlan?appno=1&wsct=PLAN"],
     ].map(([name, path]) => ({ name, url: `https://nelson.gre.ac.uk/pls/prod/${path}` })), username: "GREENWICH_LOGINID", password: "GREENWICH_PIN", submit: "Login" },
+  { id: "greater-manchester", origin: "https://evision.bolton.ac.uk",
+    login: "https://evision.bolton.ac.uk/urd/sits.urd/run/siw_ipp_lgn.login?process=siw_ipp_app&code1=0994-D&code2=0010",
+    forms: [
+      { name: "personal-details", kind: "tab", tab: "PD", control: "#IPR_FNM1" },
+      { name: "contact-details", kind: "tab", tab: "CD", control: "#IPR_CODC" },
+      { name: "qualifications", kind: "tab", tab: "QU", control: "#IPQ_OA_QUINS1" },
+      { name: "experience", kind: "tab", tab: "EX", control: "#IPQ_OA_CREMP" },
+    ], username: "GREATER_MANCHESTER_USERNAME", password: "GREATER_MANCHESTER_PASSWORD", submit: /^log\s*in$/i },
 ];
 const report = { mode: "live-no-save", requestedSamples: sampleCount, crm: {},
   portals: portals.filter((portal) => !process.env[portal.username] || !process.env[portal.password])
@@ -70,6 +79,7 @@ let context;
 let stage = "launch";
 let loginOrigin = null;
 let loginPath = null;
+let tabLoad = null;
 let deadline;
 function armDeadline() {
   clearTimeout(deadline);
@@ -104,7 +114,12 @@ try {
     if (["GET", "HEAD"].includes(request.method()) || authPost || captchaPost || personalSave) await route.continue();
     else {
       report.blockedWriteAttempts++;
-      report.blockedWriteStages.push({ stage, method: request.method(), path: stage.endsWith("-login") ? url.pathname : "[redacted]" });
+      const blockedTabLoad = tabLoad && url.origin === tabLoad.origin;
+      // Keep only the SITS routine path, never query parameters or record-specific suffixes.
+      const sitsPath = blockedTabLoad && url.pathname.match(/^(\/urd\/sits\.urd\/run\/siw_[a-z_.]+)(\/.*)?$/i);
+      report.blockedWriteStages.push({ stage, method: request.method(),
+        path: stage.endsWith("-login") ? url.pathname : sitsPath ? sitsPath[1] + (sitsPath[2] ? "/[redacted]" : "") : "[redacted]",
+        ...(blockedTabLoad ? { tabLoadBlocked: true, tab: tabLoad.tab } : {}) });
       await route.abort();
     }
   });
@@ -117,7 +132,7 @@ try {
     assert.equal(new URL(page.url()).origin, origin);
     if (!(await page.locator("input[type='password']").count())) return;
     assert.ok(process.env[userKey] && process.env[passwordKey], "Credential keys are missing");
-    const username = page.locator("input[type='email'], input[name='in_id'], #login_id").first();
+    const username = page.locator("input[type='email'], input[name='in_id'], #login_id, #MUA_CODE, input[name='MUA_CODE.DUMMY.MENSYS.1']").first();
     const password = page.locator("input[type='password']").first();
     const formAction = await username.evaluate((element) => element.form?.action);
     assert.ok(formAction, "The login form must declare an action");
@@ -232,6 +247,7 @@ try {
   async function snapshot(page, selectors, splitDateSelectors = []) {
     return page.locator("input, select, textarea").evaluateAll((elements, [blocked, allowed]) => elements.map((element, index) => ({
       index, value: element.value, checked: element.checked, field: element.id || element.name || element.type,
+      control: element.id || element.name || null,
       choice: ["radio", "checkbox"].includes(element.type),
       firstOption: element.tagName === "SELECT" && element.selectedIndex === 0 &&
         /^(month|year|day|select\b.*|choose\b.*|-+|)$/i.test(element.options[0]?.textContent.trim() || ""),
@@ -301,17 +317,37 @@ try {
       const cache = await copy(crm);
       assert.equal(cache.sourceOrigin, "https://app.samscrm.co.uk");
       assert.ok(cache.copiedAt >= copiedAfter, "Stale student cache");
+      // Discard the previous sample's unsaved tab values before testing a fresh sample.
+      if (portal.forms.some((form) => form.kind === "tab")) await page.reload({ waitUntil: "domcontentloaded" });
       const forms = [];
       for (const form of portal.forms) {
         stage = `${portal.id}-sample-${index + 1}-${form.name}`;
-        await page.goto(form.url, { waitUntil: "domcontentloaded" });
         try {
-          await page.locator("form input:not([type='hidden']):not([type='submit']), form select, form textarea").first().waitFor({ state: "visible" });
+          assert.equal(report.blockedWriteAttempts, 0, "A request attempted a write; no further filling is allowed");
+          if (form.kind === "tab") {
+            assert.equal(new URL(page.url()).origin, portal.origin, "Unexpected application hub origin");
+            assert.ok(["PD", "CD", "QU", "EX"].includes(form.tab), "Only approved data-entry tabs may be opened");
+            tabLoad = { origin: portal.origin, tab: form.tab };
+            const tabCall = `ul_click_tab('${form.tab}')`;
+            await page.locator(`a[onclick*="${tabCall}"], a[href*="${tabCall}"]`).first().click();
+            await page.locator(`#TAB-MAIN-${form.tab}`).locator(form.control).waitFor({ state: "visible", timeout: 30000 });
+            assert.equal(report.blockedWriteAttempts, 0, "A tab-load request was blocked; no Autofill is allowed");
+          } else {
+            await page.goto(form.url, { waitUntil: "domcontentloaded" });
+            await page.locator("form input:not([type='hidden']):not([type='submit']), form select, form textarea").first().waitFor({ state: "visible" });
+          }
         } catch (error) {
+          if (report.blockedWriteStages.some((attempt) => attempt.stage === stage && attempt.tabLoadBlocked)) {
+            result.status = "blocked";
+            result.blockedTabLoad = { form: form.name, tab: form.tab, reason: "non-get-tab-load-request-blocked" };
+          }
           result.formDiagnostics = { form: form.name, title: await page.title(), path: new URL(page.url()).pathname,
             passwordFormPresent: !!(await page.locator("input[type='password']").count()) };
           throw error;
+        } finally {
+          tabLoad = null;
         }
+        assert.equal(report.blockedWriteAttempts, 0, "A request attempted a write; no further filling is allowed");
         assert.ok(await page.locator("input:not([type='hidden']):not([type='password']):not([type='submit']), select, textarea").count(), "Existing portal form unavailable; no new application will be created");
         const here = new URL(page.url());
         const splitDates = (portalConfig.splitDates || []).filter((spec) => new RegExp(spec.page).test(here.pathname + here.search))
@@ -323,12 +359,15 @@ try {
         const after = await snapshot(page, blocked, splitDates);
         assert.equal(after.length, before.length, "Unexpected form structure change");
         let changed = 0;
+        const filledControls = [];
         for (let field = 0; field < before.length; field++) {
           const previous = before[field];
           const current = after[field];
           if (current.value !== previous.value || current.checked !== previous.checked) {
             assert.equal(previous.protected, false, "A blocked control changed");
             assert.ok(previous.value === "" || previous.firstOption, `An existing field was overwritten: ${previous.field}`);
+            assert.ok(previous.control, "A changed control has no id or name for the redacted report");
+            filledControls.push(previous.control);
             changed++;
           }
         }
@@ -341,7 +380,7 @@ try {
         assert.equal(filled, 0, "Repeat Autofill must fill zero fields");
         assert.equal(report.blockedWriteAttempts, 0, "A portal attempted a write; it was blocked and no further filling is allowed");
         const emptyAfter = after.filter((field) => !field.protected && !field.choice && field.value === "").map((field) => field.field);
-        forms.push({ form: form.name, emptyBefore: before.filter((field) => !field.protected && !field.choice && field.value === "").length, changedFields: changed, repeatFilled: filled, emptyAfter });
+        forms.push({ form: form.name, emptyBefore: before.filter((field) => !field.protected && !field.choice && field.value === "").length, changedFields: changed, filledControls, repeatFilled: filled, emptyAfter });
         if (saveBangorPersonal && portal.id === "bangor" && form.name === "personal" && !result.personalSave) {
           stage = `${portal.id}-sample-${index + 1}-personal-save`;
           const save = page.locator("form button[type='submit'], form input[type='submit']").filter({ hasText: /save/i })
@@ -363,7 +402,8 @@ try {
       result.samples.push({ sample: index + 1, crmFieldCount: Object.keys(cache.fields).length, forms, existingValuesPreserved: true, blockedControlsPreserved: true, cacheCleared: true });
     }
     result.status = "passed";
-    await page.goto(portal.forms[0].url, { waitUntil: "domcontentloaded" });
+    if (portal.forms[0].kind === "tab") await page.reload({ waitUntil: "domcontentloaded" });
+    else await page.goto(portal.forms[0].url, { waitUntil: "domcontentloaded" });
   }
 } catch (error) {
   let message = error.message;
