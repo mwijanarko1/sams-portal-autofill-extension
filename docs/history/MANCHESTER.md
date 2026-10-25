@@ -56,7 +56,7 @@ control is in `blockedControls` and is never written, even when it matches a syn
 | `#IPQ_OA_PRVSURN` | Previous surname | text | `previousName` | Mapped |
 | `#IPR_GEND` | Gender | select | `gender` | Mapped |
 | `#IPQ_OA_COB` | Country of birth | select (273) | `countryOfBirth` | Mapped |
-| `#IPQ_OA_COD` | Country of residence | select (257) | `currentDomicile` | Mapped |
+| `#IPQ_OA_COD` | Country of residence | select (257) | `currentDomicile` | Mapped; derived from the CRM address country (`countryName`) |
 | `#IPQ_OA_ETH` | Ethnic Background | select (20) | `ethnicity` | Mapped |
 | `#IPQ_OA_ALUM` | Previously applied to or studied with us? | select (3) | `previouslyApplied` | Mapped |
 | `#IPQ_OA_STUN` | UoB Student Number | text | — | Blocked: CRM internal id is not a UoB student number |

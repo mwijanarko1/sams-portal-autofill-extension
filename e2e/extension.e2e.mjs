@@ -17,6 +17,12 @@ const statisticalAfterSaveUrl = "https://nelson.gre.ac.uk/pls/prod/bwskaadr.P_Pr
 const statisticalUrl = "https://nelson.gre.ac.uk/pls/prod/bwskaper.P_DispAppPersonal";
 const employmentUrl = "https://nelson.gre.ac.uk/pls/prod/bwskaess.P_DispAppEssay";
 const employmentAfterSaveUrl = "https://nelson.gre.ac.uk/pls/prod/bwskanam.P_ProcAppName";
+const mappingCrmUrl = "https://app.samscrm.co.uk/agent/leads/full-profile/e2e-portal-mapping/";
+const mappingStatisticalUrl = `${statisticalUrl}?e2e=mapping`;
+const mappingEmploymentUrl = `${employmentUrl}?e2e=mapping`;
+const mappingProgrammeUrl = "https://nelson.gre.ac.uk/pls/prod/bwskapln.P_DispAppPlan?e2e=mapping";
+const mappingRefereeUrl = "https://nelson.gre.ac.uk/pls/prod/bwskaudf.P_DispAppUserDef?e2e=mapping";
+const mappingManchesterUrl = "https://evision.bolton.ac.uk/urd/sits.urd/run/SIW_IPP_USR.start_url?e2e=mapping";
 const documentCrmUrl = "https://app.samscrm.co.uk/agent/leads/full-profile/424242/";
 const documentsPortalUrl = "https://apps.bangor.ac.uk/apply/documents/";
 const documentsFrameUrl = "https://apps.bangor.ac.uk/apply/documents-frame/";
@@ -154,7 +160,8 @@ before(async () => {
   }
   // Test staging is not a production package and never replaces dist or a login profile.
   const manifest = JSON.parse(await readFile(join(root, "manifest.json"), "utf8"));
-  manifest.host_permissions = ["https://app.samscrm.co.uk/*", "https://apps.bangor.ac.uk/*", "https://nelson.gre.ac.uk/*"];
+  manifest.host_permissions = ["https://app.samscrm.co.uk/*", "https://apps.bangor.ac.uk/*", "https://nelson.gre.ac.uk/*",
+    "https://evision.bolton.ac.uk/*"];
   await writeFile(join(extensionPath, "manifest.json"), JSON.stringify(manifest));
   await writeFile(join(extensionPath, "config/build-mode.js"), 'globalThis.SAMS_BUILD_MODE = "prod";\n');
   context = await chromium.launchPersistentContext(join(run, "profile"), {
@@ -177,6 +184,12 @@ before(async () => {
     [greenwichCrmUrl, "crm-greenwich-regression.html"],
     [statisticalAfterSaveUrl, "greenwich-personal.html"], [statisticalUrl, "greenwich-personal.html"],
     [employmentUrl, "greenwich-employment.html"], [employmentAfterSaveUrl, "greenwich-employment.html"],
+    [mappingCrmUrl, "crm-portal-mapping.html"],
+    [mappingStatisticalUrl, "greenwich-statistical-mapping.html"],
+    [mappingEmploymentUrl, "greenwich-job-mapping.html"],
+    [mappingProgrammeUrl, "greenwich-programme-mapping.html"],
+    [mappingRefereeUrl, "greenwich-referee-mapping.html"],
+    [mappingManchesterUrl, "manchester-personal-mapping.html"],
     [documentsPortalUrl, "portal-documents.html"], [documentsFrameUrl, "portal-documents-frame.html"],
     [noDocumentsUrl, "portal-no-documents.html"],
     ...portalCases.map((portal) => [portal.url, portal.fixture]),
@@ -302,8 +315,9 @@ async function clear() {
   assert.equal(await popup.locator("#btnAutofill").isDisabled(), true);
 }
 
-async function copyStudent(url = crmUrl) {
+async function copyStudent(url = crmUrl, prepare) {
   const crm = await openPage(url);
+  if (prepare) await prepare(crm);
   await activate(crm);
   await popup.locator("#btnCopy").click();
   await popup.locator("#statusArea .success").waitFor();
@@ -314,6 +328,133 @@ async function copyStudent(url = crmUrl) {
   assert.ok(student.expiresAt > Date.now());
   return crm;
 }
+
+async function copyMappingStudent(fields) {
+  await copyStudent(mappingCrmUrl, (crm) => crm.evaluate((values) => {
+    const labels = {
+      nationality: "Nationality", countryName: "Country", funding: "Funding",
+      preferredStartMonth: "Start Month", preferredStartYear: "Start Year", preferredIntake: "Intake",
+      cvCurrentEmployer: "Company Name", cvCurrentJobTitle: "Designation", phone: "Phone Number",
+    };
+    for (const [key, value] of Object.entries(values)) {
+      if (!labels[key]) throw new Error(`Unknown synthetic CRM field: ${key}`);
+      const label = document.createElement("label");
+      label.append(`${labels[key]} `);
+      const input = document.createElement("input");
+      input.value = value;
+      label.append(input);
+      document.querySelector(key.startsWith("preferredStart") ? "#admission-preference" : "#mapping-fields").append(label);
+    }
+  }, fields));
+  const profile = await copiedProfile();
+  for (const [key, value] of Object.entries(fields)) {
+    assert.equal(profile.fields[key], value, `Real CRM Copy supplies ${key}`);
+  }
+  return profile;
+}
+
+async function autofillMappingPage(page) {
+  await activate(page);
+  await popup.locator("#btnAutofill").click();
+  await popup.locator("#statusArea .success").waitFor();
+  const { clicks, submissions } = await page.evaluate(() => activity);
+  assert.deepEqual({ clicks, submissions }, { clicks: 0, submissions: 0 }, "Autofill must not click or submit the portal");
+}
+
+const selectedText = (page, selector) => page.locator(`${selector} option:checked`).textContent();
+
+for (const [funding, expected] of [
+  ["Self Funded", "Entire cost of tuition fees is paid by private finance."],
+  ["Self-Funded", "Entire cost of tuition fees is paid by private finance."],
+  ["Self funding", "Entire cost of tuition fees is paid by private finance."],
+  ["Scholarship", ""], ["Study Loan", ""], ["Govt. Sponsored", ""],
+  ["Financial Support", ""], ["Other Funding", ""],
+  ["constructor", ""], ["toString", ""], ["__proto__", ""],
+]) {
+  test(`Portal mapping A: Greenwich Statistical Information with ${funding}`, { timeout: 20000 }, async () => {
+    const page = await openPage(mappingStatisticalUrl);
+    const beforeCache = await copyMappingStudent({ nationality: "Bangladesh", countryName: "Bangladesh", funding });
+    assert.equal(Object.hasOwn(beforeCache.fields, "countryOfBirth"), false);
+    assert.equal(Object.hasOwn(beforeCache.fields, "currentDomicile"), false);
+    await autofillMappingPage(page);
+    assert.equal(await selectedText(page, "#ud35"), expected, `Greenwich #ud35 for CRM funding ${funding}`);
+    if (!expected) assert.equal(await page.locator("#ud35").inputValue(), "", "Unsupported funding keeps the placeholder");
+    for (const selector of ["#ud65", "#ud60", "#ud70"]) {
+      assert.equal(await selectedText(page, selector), "Bangladesh", `Greenwich ${selector} for CRM funding ${funding}`);
+    }
+    const firstActivity = await page.evaluate(() => activity);
+    await autofillMappingPage(page);
+    assert.deepEqual(await page.evaluate(() => activity), firstActivity, "Repeat Autofill must not change existing selections");
+    assert.deepEqual(await copiedProfile(), beforeCache, "Portal derivations must not rewrite copied CRM fields");
+  });
+}
+
+for (const [intake, month, year] of [[undefined, "September", "2027"], ["March 2028", "March", "2028"]]) {
+  test(`Portal mapping B: Greenwich Programme ${intake ? "explicit intake wins" : "derives intake from CRM month and year"}`, { timeout: 20000 }, async () => {
+    const page = await openPage(mappingProgrammeUrl);
+    assert.equal(await page.locator("#p_program_code").count(), 0, "Intake filling must not require a programme select");
+    const fields = { preferredStartMonth: "September", preferredStartYear: "2027" };
+    if (intake) fields.preferredIntake = intake;
+    const beforeCache = await copyMappingStudent(fields);
+    if (!intake) assert.equal(Object.hasOwn(beforeCache.fields, "preferredIntake"), false);
+    await autofillMappingPage(page);
+    assert.deepEqual([await selectedText(page, "#p_month"), await selectedText(page, "#p_year")],
+      [month, year], "Greenwich #p_month and #p_year select the CRM intake");
+    const firstActivity = await page.evaluate(() => activity);
+    await autofillMappingPage(page);
+    assert.deepEqual(await page.evaluate(() => activity), firstActivity);
+    assert.deepEqual(await copiedProfile(), beforeCache);
+  });
+}
+
+test("Portal mapping C: Greenwich Employment fills job title, never full/part-time", { timeout: 20000 }, async () => {
+  const page = await openPage(mappingEmploymentUrl);
+  await copyMappingStudent({ cvCurrentEmployer: "Acme Ltd", cvCurrentJobTitle: "Marketing Manager" });
+  await autofillMappingPage(page);
+  assert.equal(await page.locator("#ud11").inputValue(), "Acme Ltd", "Employer remains mapped");
+  assert.deepEqual(await page.locator("input[name='ud12']").evaluateAll((radios) => radios.map((radio) => radio.checked)),
+    [false, false], "Full/Part Time radios must stay unfilled");
+  assert.equal(await page.locator("#ud16").inputValue(), "Marketing Manager", "Greenwich #ud16 receives the CRM job title");
+  const firstActivity = await page.evaluate(() => activity);
+  await autofillMappingPage(page);
+  assert.deepEqual(await page.evaluate(() => activity), firstActivity);
+});
+
+for (const existing of ["", "Canada"]) {
+  test(`Portal mapping D: Manchester Personal Details ${existing ? "preserves existing residence" : "derives birth and residence countries"}`, { timeout: 20000 }, async () => {
+    const page = await openPage(mappingManchesterUrl);
+    if (existing) await page.locator("#IPQ_OA_COD").selectOption({ label: existing });
+    const beforeCache = await copyMappingStudent({ nationality: "Bangladesh", countryName: "Bangladesh" });
+    assert.equal(Object.hasOwn(beforeCache.fields, "countryOfBirth"), false);
+    assert.equal(Object.hasOwn(beforeCache.fields, "currentDomicile"), false);
+    await autofillMappingPage(page);
+    assert.equal(await selectedText(page, "#IPQ_OA_COB"), "Bangladesh", "Manchester #IPQ_OA_COB derives from nationality");
+    assert.equal(await selectedText(page, "#IPQ_OA_COD"), existing || "Bangladesh",
+      existing ? "Manchester #IPQ_OA_COD preserves Canada" : "Manchester #IPQ_OA_COD derives from countryName");
+    const firstActivity = await page.evaluate(() => activity);
+    await autofillMappingPage(page);
+    assert.deepEqual(await page.evaluate(() => activity), firstActivity);
+    assert.deepEqual(await copiedProfile(), beforeCache);
+  });
+}
+
+test("Portal mapping E: Greenwich Referee fields never receive applicant contact details", { timeout: 20000 }, async () => {
+  const page = await openPage(mappingRefereeUrl);
+  const beforeCache = await copyMappingStudent({ phone: "+44 7700 900123", cvCurrentJobTitle: "Marketing Manager" });
+  assert.equal(beforeCache.fields.givenName, "Aisha");
+  assert.equal(beforeCache.fields.email, "aisha.rahman@example.com");
+  // A positive applicant-page fill proves that the same CRM profile reaches the real engine.
+  const applicant = await openPage(portalCases[1].url);
+  await autofillMappingPage(applicant);
+  assert.equal(await applicant.locator("#fname").inputValue(), "Aisha");
+  assert.equal(await applicant.locator("#email").inputValue(), "aisha.rahman@example.com");
+  assert.equal(await applicant.locator("#mobiletelno").inputValue(), "07700900123");
+  await autofillMappingPage(page);
+  assert.deepEqual(await page.locator("#ud17, #ud18, #ud25").evaluateAll((inputs) => inputs.map((input) => input.value)),
+    ["", "", ""], "Referee #ud17, #ud18 and #ud25 must stay empty");
+  assert.deepEqual(await page.evaluate(() => activity), { clicks: 0, submissions: 0, changes: [] });
+  assert.deepEqual(await copiedProfile(), beforeCache);
+});
 
 test("Greenwich regression: Statistical Information fills DOB at the previous address-save URL", { timeout: 20000 }, async () => {
   const page = await openPage(statisticalAfterSaveUrl);

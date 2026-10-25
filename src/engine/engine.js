@@ -1849,7 +1849,7 @@ function setRadioGroupValue(el, value, crmKey) {
   if (!radios.length) radios = [el];
 
   var candidates = expandComboboxCandidates(crmKey || "", value);
-  candidates.unshift(value);
+  if (!portalValueMap(crmKey || "", value)) candidates.unshift(value);
   var best = null;
   var bestScore = 0;
   for (var i = 0; i < radios.length; i++) {
@@ -1902,6 +1902,10 @@ async function setElementValue(el, value, meta) {
   var crmKey = (meta && meta.crmKey) || "";
   value = formatValueForField(el, value, meta || {});
 
+  // A portal value map is authoritative: a CRM value it omits writes nothing to any control.
+  var mappedOptions = portalValueMap(crmKey, value);
+  if (mappedOptions && !mappedOptions.length) return false;
+
   // National phone digits only when filling Ulster Phone/Mobile (country code separate)
   if ((!ACTIVE_PORTAL || ACTIVE_PORTAL.phoneKeepsDialPrefix) &&
     (crmKey === "phone" || crmKey === "emergencyPhone") && (type === "tel" || type === "text")) {
@@ -1943,7 +1947,7 @@ async function setElementValue(el, value, meta) {
 
     var options = Array.from(el.options);
     var candidates = expandComboboxCandidates(crmKey, value);
-    if (candidates.indexOf(value.trim()) === -1) candidates.unshift(value.trim());
+    if (!portalValueMap(crmKey, value) && candidates.indexOf(value.trim()) === -1) candidates.unshift(value.trim());
 
     var bestOpt = null;
     var bestSc = 0;
@@ -2045,6 +2049,22 @@ async function setElementValue(el, value, meta) {
 }
 
 /**
+ * Option text the active portal declares for a CRM value (`valueMaps`), or null when the
+ * portal has no map for the key. A mapped key offers only these options; a CRM value
+ * the map omits offers none, so the control stays for staff.
+ * @param {string} crmKey
+ * @param {string} value
+ * @returns {string[]|null}
+ */
+function portalValueMap(crmKey, value) {
+  var maps = ACTIVE_PORTAL && ACTIVE_PORTAL.valueMaps;
+  if (!maps || !maps[crmKey]) return null;
+  var byValue = maps[crmKey];
+  var wanted = normalize(value);
+  return Object.prototype.hasOwnProperty.call(byValue, wanted) ? byValue[wanted].slice() : [];
+}
+
+/**
  * Expand a CRM value into portal combobox candidates (UK HE / Sunderland).
  * Tried in order; first that matches a live option wins.
  * @param {string} crmKey
@@ -2053,6 +2073,8 @@ async function setElementValue(el, value, meta) {
  */
 function expandComboboxCandidates(crmKey, value) {
   var v = (value || "").trim();
+  var portalOptions = portalValueMap(crmKey, v);
+  if (portalOptions) return portalOptions;
   var out = [];
   function add(x) {
     if (!x || typeof x !== "string") return;
@@ -2776,6 +2798,35 @@ async function pickLightningComboboxOption(inputEl, value, crmKey) {
 
 // ─── Autofill logic ─────────────────────────────────────────────────────
 
+// CRM keys the CRM never sends, built from the ones it does. Staff chose these pairings:
+// birth country follows nationality, country of residence follows the address country,
+// and the programme intake is the CRM's start month and year.
+var DERIVED_KEYS = {
+  countryOfBirth: function (map) { return map.nationality; },
+  currentDomicile: function (map) { return map.countryName; },
+  preferredIntake: function (map) {
+    return map.preferredStartMonth && map.preferredStartYear
+      ? String(map.preferredStartMonth).trim() + " " + String(map.preferredStartYear).trim()
+      : "";
+  },
+};
+
+/**
+ * Add each derived key the CRM lacks, but only when the active portal maps it, so a key
+ * never reaches label matching on a portal that has no control for it.
+ */
+function withDerivedKeys(fieldMap) {
+  var mapped = Object.keys(ACTIVE_PORTAL.selectorOverrides || {})
+    .concat((ACTIVE_PORTAL.splitDates || []).map(function (spec) { return spec.key; }));
+  var derived = {};
+  Object.keys(DERIVED_KEYS).forEach(function (key) {
+    if (mapped.indexOf(key) === -1 || String(fieldMap[key] || "").trim()) return;
+    var value = String(DERIVED_KEYS[key](fieldMap) || "").trim();
+    if (value) derived[key] = value;
+  });
+  return Object.keys(derived).length ? Object.assign({}, fieldMap, derived) : fieldMap;
+}
+
 /**
  * Match CRM keys to form fields using heuristic scoring, then fill them.
  * Precomputes field match meta once; tries next empty candidate if best is filled.
@@ -2786,10 +2837,7 @@ async function pickLightningComboboxOption(inputEl, value, crmKey) {
  */
 async function autofillPage(fieldMap, fields) {
   if (!ACTIVE_PORTAL) return autofillGeneric(fieldMap, fields);
-  // The CRM has no country of birth; staff chose to fill it with the student's nationality.
-  if (!String(fieldMap.countryOfBirth || "").trim() && String(fieldMap.nationality || "").trim()) {
-    fieldMap = Object.assign({}, fieldMap, { countryOfBirth: fieldMap.nationality });
-  }
+  fieldMap = withDerivedKeys(fieldMap);
 
   /** @type {Array<{name:string,value:string,fieldName:string,fieldLabel:string,score:number,matchReason:string}>} */
   var filled = [];

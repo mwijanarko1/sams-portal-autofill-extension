@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Synthetic Greenwich Referee Details</title></head>
+<body>
+  <h1>Referee Details</h1>
+  <form action="/pls/prod/bwskaudf.P_ProcAppUserDef" method="post">
+    <fieldset><legend>Referee Details</legend>
+      <label for="ud17">First Name</label><input id="ud17" name="ud17" type="text">
+      <label for="ud18">Email</label><input id="ud18" name="ud18" type="email">
+      <label for="ud25">Phone</label><input id="ud25" name="ud25" type="tel">
+    </fieldset>
+    <button type="submit">Continue</button>
+  </form>
+  <script>
+    window.activity = { submissions: 0, clicks: 0, changes: [] };
+    document.addEventListener("submit", (event) => { event.preventDefault(); activity.submissions++; });
+    document.addEventListener("click", (event) => { if (event.target.closest("button, a")) activity.clicks++; });
+    document.addEventListener("change", (event) => { activity.changes.push(event.target.id); });
+  </script>
+</body>
+</html>

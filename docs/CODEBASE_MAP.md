@@ -101,6 +101,12 @@ Production packaging rejects empty Campora origins or fewer than three portal or
 4. Sanitized fixture under `e2e/fixtures/` or future `fixtures/<portal>/`, plus a regression test.
 5. Record journey results in `PORTALS.md`. Bump version and rebuild to ship.
 
+### Derived keys
+
+The CRM never sends a birth country, a country of residence or a programme intake. `DERIVED_KEYS` in `src/engine/engine.js` builds them: `countryOfBirth` from `nationality`, `currentDomicile` from `countryName`, `preferredIntake` from `preferredStartMonth` + `preferredStartYear`. A derived key is added only when the active portal maps it. A portal can also declare `valueMaps` (CRM value to option text) when its option list has no clean match for the shared aliases; values the map omits stay unfilled.
+
+Mapped but never filled from a real CRM profile, because the CRM reader does not send the key: `ethnicity` (all three portals), `previousName` (all three), `personalStatement` (Greenwich, Greater Manchester), and Greater Manchester `previouslyApplied`, `englishFirstLanguage` and `state` (County `#IPR_HAD4`). They fill only if the CRM later exposes the label. The Applications tab nationality format (country or demonym) is unverified; the Profile tab sends a country name and wins on that key.
+
 ### Chrome development loop
 
 ```sh

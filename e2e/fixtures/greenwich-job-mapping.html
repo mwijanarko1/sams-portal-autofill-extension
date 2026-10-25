@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Synthetic Greenwich Employment</title></head>
+<body>
+  <h1>Employment and supporting information</h1>
+  <form action="/pls/prod/bwskaess.P_ProcAppEssay" method="post">
+    <label for="ud11">Name and Address of Employer</label><textarea id="ud11" name="ud11"></textarea>
+    <label for="ud16">Description of Job / Nature of Employment</label><input id="ud16" name="ud16" type="text">
+    <fieldset><legend>Full or Part Time?</legend>
+      <label><input id="ud12" name="ud12" type="radio" value="F">Full Time</label>
+      <label><input id="ud12-part" name="ud12" type="radio" value="P">Part Time</label>
+    </fieldset>
+    <button type="submit">Continue</button>
+  </form>
+  <script>
+    window.activity = { submissions: 0, clicks: 0, changes: [] };
+    document.addEventListener("submit", (event) => { event.preventDefault(); activity.submissions++; });
+    document.addEventListener("click", (event) => { if (event.target.closest("button, a")) activity.clicks++; });
+    document.addEventListener("change", (event) => { activity.changes.push(event.target.id); });
+  </script>
+</body>
+</html>

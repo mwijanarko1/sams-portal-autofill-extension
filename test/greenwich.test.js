@@ -111,7 +111,7 @@ test("greenwich keeps split DOB and scopes applicant address overrides", () => {
   sameJson(cfg.selectorOverrides.city, ["#city"]);
   sameJson(cfg.selectorOverrides.postcode, ["#zip"]);
   sameJson(cfg.selectorOverrides.countryName, ["#natn"]);
-  sameJson(cfg.selectorOverrides.state, ["#ud70"]);
+  sameJson(cfg.selectorOverrides.currentDomicile, ["#ud70"]);
   const flat = Object.values(cfg.selectorOverrides).flat();
   assert.equal(flat.includes("#bday_dd"), false);
 });

@@ -43,7 +43,8 @@ const config = {
     city: ["#city"],
     postcode: ["#zip"],
     countryName: ["#natn"],
-    state: ["#ud70"],
+    // Area of Permanent Residence: country names are among its options (country of residence)
+    currentDomicile: ["#ud70"],
     institutionName: ["#col_name"],
     // CRM reader emits "degree" for Qualification / Academic Level
     degree: ["#ud91qualtype"],
@@ -52,6 +53,8 @@ const config = {
     preferredCourse: ["#p_program_code"],
     preferredRoute: ["#p_mode_poe"],
     cvCurrentEmployer: ["#ud11"],
+    // Description of Job / Nature of Employment
+    cvCurrentJobTitle: ["#ud16"],
     personalStatement: ["#p_sarstmt_desc"],
     funding: ["#ud35"],
   },
@@ -81,6 +84,14 @@ const config = {
     cvCurrentEmployer: ["name and address of employer"],
     personalStatement: ["personal statement (max 3950 characters)"],
     funding: ["who do you expect to pay your fees?"],
+  },
+  // Option text for CRM values. The fee-payer list has no clean equivalent for the other CRM
+  // funding values, so only self-funded fills and the rest stay for staff.
+  valueMaps: {
+    funding: {
+      "self funded": ["Entire cost of tuition fees is paid by private finance."],
+      "self funding": ["Entire cost of tuition fees is paid by private finance."],
+    },
   },
   // #bday_* is date of birth on Statistical Information but employment start on Employment.
   splitDates: [
@@ -149,8 +160,7 @@ const config = {
     "#ud2",
     "#ud3",
     "input[name='ud1']",
-    // Employment: job description and full/part-time have no CRM key
-    "#ud16",
+    // Employment: full/part-time has no CRM key
     "#ud12",
     // Statistical Information: sensitive or application-specific answers
     "#medi",

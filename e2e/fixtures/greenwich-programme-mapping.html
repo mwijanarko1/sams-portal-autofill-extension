@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Synthetic Greenwich Programme</title></head>
+<body>
+  <h1>Programme</h1>
+  <form action="/pls/prod/bwskapln.P_ProcAppPlan" method="post">
+    <fieldset><legend>Month/Year of Entry</legend>
+      <label for="p_month">Month</label>
+      <select id="p_month" name="p_month">
+        <option value=""></option>
+        <option value="01">January</option><option value="02">February</option>
+        <option value="03">March</option><option value="04">April</option>
+        <option value="05">May</option><option value="06">June</option>
+        <option value="07">July</option><option value="08">August</option>
+        <option value="09">September</option><option value="10">October</option>
+        <option value="11">November</option><option value="12">December</option>
+      </select>
+      <label for="p_year">Year</label>
+      <select id="p_year" name="p_year"><option value=""></option>
+        <option value="2026">2026</option><option value="2027">2027</option><option value="2028">2028</option>
+      </select>
+    </fieldset>
+    <button type="submit">Continue</button>
+  </form>
+  <script>
+    window.activity = { submissions: 0, clicks: 0, changes: [] };
+    document.addEventListener("submit", (event) => { event.preventDefault(); activity.submissions++; });
+    document.addEventListener("click", (event) => { if (event.target.closest("button, a")) activity.clicks++; });
+    document.addEventListener("change", (event) => { activity.changes.push(event.target.id); });
+  </script>
+</body>
+</html>

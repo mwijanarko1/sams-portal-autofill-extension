@@ -58,7 +58,7 @@ control is in `blockedControls` and is never written, even when a synonym matche
 | Control | Label | Type | CRM key | Status |
 |---|---|---|---|---|
 | `#ud11` | Name and Address of Employer | textarea | `cvCurrentEmployer` | Mapped |
-| `#ud16` | Description of Job / Nature of Employment | text | — | Blocked: no CRM key |
+| `#ud16` | Description of Job / Nature of Employment | text | `cvCurrentJobTitle` | Mapped |
 | `#ud12` | Full or Part Time? | radio (Y/N) | — | Blocked: application answer |
 | `#bday_dd` | Employment Start Date | select | `cvWorkStartDate` | Split date |
 | `#bday_mm` | Employment Start Date | select | `cvWorkStartDate` | Split date |
@@ -149,8 +149,8 @@ Twenty identical rows. Each row has five controls:
 | `#euk_yyyy` | Date of First Entry to the UK | select | — | Blocked |
 | `#ud60` | Country of Birth | select (256) | `countryOfBirth` | Mapped |
 | `#ud65` | Nationality | select (253) | `nationality` | Mapped |
-| `#ud70` | Area of Permanent Residence | select (513) | `state` | Mapped; fills only when the CRM county/country matches a live option |
-| `#ud35` | Who do you expect to pay your fees? | select (13) | `funding` | Mapped |
+| `#ud70` | Area of Permanent Residence | select (513) | `currentDomicile` | Mapped; derived from the CRM address country, fills only when a live option matches |
+| `#ud35` | Who do you expect to pay your fees? | select (13) | `funding` | Mapped through `valueMaps`: only self-funded fills ("Entire cost of tuition fees is paid by private finance."); other CRM funding values stay for staff |
 | `#ud8` | Dates unavailable for interview | text | — | Blocked: contains "State" in its label |
 | `#ud40` | Confidential Contact Name | text | — | Blocked: nominated access |
 | `#ud45` | Confidential Contact Password | text | — | Blocked: nominated access |
@@ -180,11 +180,13 @@ fill; the day select stays manual because the CRM has no day.
 
 | Control | Label | Type | CRM key | Status |
 |---|---|---|---|---|
-| `#p_month` | Month/Year of Entry (month) | select (12) | `preferredIntake` | Split date |
+| `#p_month` | Month/Year of Entry (month) | select (12) | `preferredIntake` | Split date; intake is derived from the CRM start month and year |
 | `#p_year` | Month/Year of Entry (year) | select (2026-2028) | `preferredIntake` | Split date |
 | `#p_program_code` | Programme of Study | select (237 after intake) | `preferredCourse` | Mapped |
 | `#p_mode_poe` | Mode/Point of Entry | select (14 after programme) | `preferredRoute` | Mapped |
 | `#ud138` | Teacher-training subject(s) | text | — | Blocked: no CRM key |
+
+The CRM sends a start month and a start year, never an intake. The engine joins them (`September 2027`) when the portal maps `preferredIntake`.
 
 Programme is a three-step cascade and fills over successive Autofill passes:
 
@@ -223,7 +225,7 @@ Employment / Supporting Info. The page and form patterns keep the two uses apart
 |---|---|
 | Full Legal Name, previous student number, agent ID | No CRM keys |
 | Address Line 2/3 | No CRM keys |
-| Job description, Full/Part Time | No CRM key / application answer |
+| Full/Part Time | Application answer |
 | Referee block | Different person |
 | Disability, care status, parents' HE, UK entry dates | Sensitive or application-specific |
 | Confidential contact name/password | Nominated access |
