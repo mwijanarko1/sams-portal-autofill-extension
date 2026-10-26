@@ -3,7 +3,7 @@
 const SAMS_ALLOWLIST_CONFIG = {
   sessionMinutes: 30,
   crmOrigins: ["https://app.samscrm.co.uk"],
-  camporaOrigins: [],
+  camporaOrigins: ["https://v-sams-backend.samsapply.co.uk"],
   // Mapped portals declare required site access. Other university pages use toolbar activeTab
   // access, or an optional exact-site grant staff choose in the popup.
   portalOrigins: [

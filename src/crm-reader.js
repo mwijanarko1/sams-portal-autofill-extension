@@ -105,13 +105,21 @@ if (!globalThis.__SAMS_CRM_READER_LOADED__) {
     setField(fields, key, value);
   }
 
+  function isCamporaProfile() {
+    return Boolean((SAMS_CRM_SOURCE.camporaProfilePathPatterns || [])
+      .some((pattern) => pattern.test(location.pathname)));
+  }
+
   function profileGuard() {
     if (!SAMS_ALLOWLIST.isCrmOrigin(location.origin)) {
       throw new Error("Copy is only available on an approved CRM origin.");
     }
-    const pathMatches = SAMS_CRM_SOURCE.profilePathPatterns.some((pattern) => pattern.test(location.pathname));
+    const campora = isCamporaProfile();
+    const patterns = campora ? SAMS_CRM_SOURCE.camporaProfilePathPatterns : SAMS_CRM_SOURCE.profilePathPatterns;
+    const markers = campora ? SAMS_CRM_SOURCE.camporaProfileMarkers : SAMS_CRM_SOURCE.profileMarkers;
+    const pathMatches = (patterns || []).some((pattern) => pattern.test(location.pathname));
     const pageText = normalizeLabel(document.body.innerText.slice(0, 12000));
-    const markerMatches = SAMS_CRM_SOURCE.profileMarkers.some((marker) => pageText.includes(marker));
+    const markerMatches = (markers || []).some((marker) => pageText.includes(marker));
     if (!pathMatches || !markerMatches) {
       throw new Error("Open an individual student profile page before copying.");
     }
@@ -771,8 +779,335 @@ if (!globalThis.__SAMS_CRM_READER_LOADED__) {
   // The CRM stores gender but no salutation; unknown genders deliberately map to nothing.
   const TITLE_BY_GENDER = new Map([["male", "Mr"], ["m", "Mr"], ["female", "Ms"], ["f", "Ms"]]);
 
+  function finalizeProfile(fields, fallbackId) {
+    if (fields.emergencyName) {
+      const names = fields.emergencyName.split(/\s+/).filter(Boolean);
+      fields.emergencyFirstName ||= names[0] || "";
+      fields.emergencyLastName ||= names.slice(1).join(" ");
+    }
+    for (const [source, target] of [["startDate", "studyStartYear"], ["endDate", "studyEndYear"]]) {
+      const year = fields[source] && fields[source].match(/\b\d{4}\b/);
+      if (year) fields[target] = year[0];
+    }
+
+    const derivedTitle = TITLE_BY_GENDER.get(normalizeLabel(fields.gender));
+    if (!fields.title && derivedTitle) fields.title = derivedTitle;
+
+    // The worker rejects any value over 4000 characters. Free-text lead summaries
+    // can exceed that, so keep the profile cacheable instead of failing Copy.
+    for (const [key, value] of Object.entries(fields)) {
+      if (value.length > 4000) fields[key] = value.slice(0, 4000);
+    }
+
+    const studentName = [fields.givenName, fields.familyName].filter(Boolean).join(" ").slice(0, 4000);
+    if (!studentName || Object.keys(fields).length < 2) {
+      throw new Error("No mapped student fields were found on this CRM profile.");
+    }
+    return {
+      studentId: fields.studentId || fallbackId || location.pathname.split("/").filter(Boolean).pop(),
+      studentName,
+      sourceOrigin: location.origin,
+      copiedAt: Date.now(),
+      fields,
+    };
+  }
+
+  // ─── Campora APPLY: read-only profile ────────────────────────────────
+  // Campora puts the application shell on /applyuser/show/<id>/profile and
+  // loads the read-only profile into #crm_profile_div only after the Profile
+  // tab is clicked. Its summary uses label/value tables, while education,
+  // work, references, passport and visa records are column-headed tables.
+  // Only canonical keys the fill engine or a portal map consumes are read.
+
+  // Keys with an actual synonym, portal mapping, derivation consumer or profile
+  // metadata use. Campora exposes more, but unknown keys still enter the
+  // engine's heuristic matching, so the output is filtered to this list.
+  const CAMPORA_OUTPUT_KEYS = new Set([
+    "studentId",
+    "givenName",
+    "familyName",
+    "gender",
+    "dateOfBirth",
+    "nationality",
+    "maritalStatus",
+    "funding",
+    "visaType",
+    "phone",
+    "email",
+    "emergencyName",
+    "emergencyPhone",
+    "emergencyEmail",
+    "emergencyRelationship",
+    "location",
+    "institutionName",
+    "degree",
+    "major",
+    "grade",
+    "studyDates",
+    "startDate",
+    "endDate",
+    "englishTestName",
+    "testDate",
+    "overallScore",
+    "listeningScore",
+    "readingScore",
+    "writingScore",
+    "speakingScore",
+    "cvCurrentEmployer",
+    "cvCurrentJobTitle",
+    "cvWorkStartDate",
+    "cvWorkEndDate",
+    "passportNumber",
+    "passportIssueDate",
+    "passportExpiryDate",
+    "preferredUniversity",
+    "preferredCourse",
+    "preferredIntake",
+    "preferredStartMonth",
+    "preferredStartYear",
+  ]);
+
+  function filterCamporaFields(fields) {
+    for (const key of Object.keys(fields)) {
+      if (!CAMPORA_OUTPUT_KEYS.has(key)) delete fields[key];
+    }
+    return fields;
+  }
+
+  // The summary fragment renders before its education, work, passport and visa
+  // sub-sections finish loading into these placeholders.
+  const CAMPORA_SECTION_IDS = [
+    "sub_lead_education_history_div",
+    "sub_lead_education_gap_div",
+    "sub_lead_prev_stuty_abroad",
+    "sub_lead_english_requirement",
+    "sub_lead_work_experience",
+    "sub_lead_reference",
+    "sub_lead_passport_details",
+    "sub_lead_visa_history_div",
+    "sub_lead_visa_refusal_div",
+  ];
+
+  function camporaSectionsReady(root) {
+    return CAMPORA_SECTION_IDS.every((id) => {
+      const section = root.querySelector(`#${id}`);
+      // The live fragment inserts all nine placeholders, then each endpoint
+      // replaces its "Please! Wait ..." loader. Missing or still-loading
+      // placeholders are not ready; a loaded empty state has its own text.
+      if (!section || /please!\s*wait/i.test(section.textContent)) return false;
+      return Boolean(section.textContent.trim() || section.querySelector("table"));
+    });
+  }
+
+  function camporaRows(block) {
+    return Array.from(block?.querySelectorAll("tr") || []);
+  }
+
+  function camporaPairFields(block, fields, mapping) {
+    camporaRows(block).forEach((row) => {
+      const cells = Array.from(row.querySelectorAll(":scope > td"));
+      if (cells.length < 2 || !visible(row)) return;
+      const key = mapping[normalizeLabel(cells[0].innerText)];
+      if (key) setField(fields, key, cells[1].innerText);
+    });
+  }
+
+  function readCamporaSummary(root, fields) {
+    camporaRows(root.querySelector(".single_part_primary_info")).forEach((row) => {
+      const cells = Array.from(row.querySelectorAll(":scope > td"));
+      if (cells.length < 2 || !visible(row)) return;
+      const label = normalizeLabel(cells[0].innerText);
+      const value = clean(cells[1].innerText);
+      if (label === "name") {
+        // Campora shows one combined name; the split given_name/family_name
+        // fields live only in its edit form, so split on the final token.
+        const parts = value.split(/\s+/).filter(Boolean);
+        if (parts.length > 1) {
+          fields.givenName = parts.slice(0, -1).join(" ");
+          fields.familyName = parts[parts.length - 1];
+        } else if (parts.length === 1) {
+          fields.givenName = parts[0];
+        }
+        return;
+      }
+      const key = {
+        gender: "gender",
+        "date of birth": "dateOfBirth",
+        nationality: "nationality",
+        "marital status": "maritalStatus",
+      }[label];
+      setField(fields, key, value);
+    });
+
+    // Funding "Status" is ambiguous between sponsor and self-funded state, so it
+    // is left manual; the relative "Passport Expiry" summary is not a date.
+    camporaPairFields(root.querySelector(".single_part_funding_info"), fields, {
+      funding: "funding",
+    });
+    camporaPairFields(root.querySelector(".single_part_visa_info"), fields, {
+      "visa type": "visaType",
+    });
+    camporaPairFields(root.querySelector(".single_part_contact_info"), fields, {
+      "contact no": "phone",
+      email: "email",
+    });
+    camporaPairFields(root.querySelector(".single_part_emr_contact_info"), fields, {
+      name: "emergencyName",
+      contact: "emergencyPhone",
+      email: "emergencyEmail",
+      relation: "emergencyRelationship",
+    });
+
+    // The address block renders a label row and puts the value in the next row.
+    // Home Address has no portal consumer; Present Address maps to location.
+    const addressRows = camporaRows(root.querySelector(".single_part_address_info"));
+    addressRows.forEach((row, index) => {
+      if (!visible(row)) return;
+      const label = normalizeLabel(row.querySelector(":scope > td")?.innerText);
+      if (label !== "present address") return;
+      const value = addressRows[index + 1]?.querySelector(":scope > td")?.innerText;
+      if (value) setField(fields, "location", value);
+    });
+  }
+
+  function readCamporaTable(table, section, fields) {
+    if (section === "test score") {
+      // The first saved test only, matching the shared test-score reader.
+      readTestScoreTable(table, fields);
+      return;
+    }
+    // Reference records, passport comments and prior-visa tables have no
+    // consumer in the portal maps; do not read them into the cache under an
+    // assumed meaning. The summary supplies the current visaType.
+    const keys = SECTION_TABLE_KEYS[section];
+    if (!keys || section === "references" || section === "visa history" || section === "visa refusal") return;
+    const headers = Array.from(table.querySelectorAll("thead th")).map((cell) => normalizeLabel(cell.textContent));
+    const rows = Array.from(table.querySelectorAll("tbody tr"))
+      .filter((row) => visible(row) && row.querySelectorAll(":scope > td").length);
+    if (!headers.length) {
+      rows.forEach((row) => {
+        const cells = Array.from(row.querySelectorAll(":scope > td"));
+        if (cells.length < 2) return;
+        addSectionField(fields, keys, cells[0].innerText, cells[1].innerText, section);
+      });
+      return;
+    }
+    const row = rows[0];
+    if (!row) return;
+    const cells = Array.from(row.querySelectorAll(":scope > td"));
+    headers.forEach((header, index) => {
+      if (section === "passport details" && header === "comments") return;
+      const key = keys[header];
+      const cell = cells[index];
+      if (!key || !cell || !visible(cell)) return;
+      if (section === "education history" && header === "institution") {
+        const institution = Array.from(cell.querySelectorAll("strong")).find(visible);
+        const badge = Array.from(cell.querySelectorAll(".label_badge_light, .label_badge_radius")).find(visible);
+        setField(fields, "institutionName", institution?.innerText || cell.innerText);
+        setField(fields, "degree", badge?.innerText);
+      } else {
+        setField(fields, key, clean(cell.innerText));
+      }
+      if (header === "duration") {
+        setDateRange(fields, section, cell.innerText);
+        // Campora saves an open-ended work record as "01 Jul 2024 - N/A".
+        const open = String(cell.innerText).match(/^(\d{1,2} [A-Za-z]{3} \d{4})\s*-\s*N\/A$/i);
+        const rangeKeys = RANGE_KEYS[section];
+        if (open && rangeKeys) setField(fields, rangeKeys[0], open[1]);
+      }
+    });
+  }
+
+  // The section title is the nearest .main_title that precedes the table in
+  // document order; its wrapper differs between Campora sections.
+  function camporaSectionFor(table) {
+    let title = "";
+    table.ownerDocument.querySelectorAll(".main_title").forEach((candidate) => {
+      if (candidate.compareDocumentPosition(table) & Node.DOCUMENT_POSITION_FOLLOWING) {
+        title = candidate.textContent;
+      }
+    });
+    return normalizeLabel(title);
+  }
+
+  function readCamporaSections(root, fields) {
+    root.querySelectorAll("table.list_table").forEach((table) => {
+      if (!visible(table)) return;
+      const section = camporaSectionFor(table);
+      if (section) readCamporaTable(table, section, fields);
+    });
+  }
+
+  function readCamporaApplication(fields) {
+    const app = document.getElementById("tabsApplication");
+    if (!app) return;
+    // The Application pane is server-rendered and may be hidden after staff open
+    // the Profile tab, so read its cells from the DOM rather than by visibility.
+    // Course Title sits in a second header row outside .enrollment_header, so
+    // scan every cell in the pane and ignore labels the extension does not use.
+    const cells = Array.from(app.querySelectorAll(".tbl-cell"));
+    cells.forEach((cell) => {
+      const label = normalizeLabel(cell.querySelector("small.text-muted")?.textContent);
+      const value = clean(cell.querySelector("strong, b")?.textContent);
+      if (!label || !value) return;
+      if (label.startsWith("course title")) setField(fields, "preferredCourse", value);
+      if (label === "start date") {
+        setField(fields, "preferredIntake", value);
+        const month = value.match(/^([A-Za-z]{3,9})\s+(\d{4})$/);
+        if (month) {
+          setField(fields, "preferredStartMonth", month[1]);
+          setField(fields, "preferredStartYear", month[2]);
+        }
+      }
+    });
+    const university = cells.map((cell) => cell.querySelector(":scope > b")).find(Boolean);
+    if (university) setField(fields, "preferredUniversity", university.textContent);
+    const refLabel = Array.from(app.querySelectorAll("label"))
+      .find((label) => normalizeLabel(label.textContent) === "campora ref");
+    const refValue = clean(refLabel?.nextElementSibling?.textContent);
+    if (refValue) setField(fields, "studentId", refValue);
+  }
+
+  async function readCamporaProfile() {
+    const root = document.getElementById("crm_profile_div");
+    if (!root) throw new Error("Open the Campora Profile tab, then try Copy again.");
+    const loaded = () => Boolean(root.querySelector(".per_info_block"));
+    // Re-clicking the tab is required even when the profile was loaded before:
+    // the previous Copy restores the Application tab and leaves the populated
+    // Profile pane hidden, where the visibility checks cannot read it.
+    const ready = () => loaded() && visible(root);
+    const fields = {};
+    let previousTab = null;
+    try {
+      if (!ready()) {
+        const trigger = document.querySelector(".load_profile_all_data");
+        if (!trigger) throw new Error("Open the Campora Profile tab, then try Copy again.");
+        previousTab = Array.from(document.querySelectorAll(".tabClick.active"))[0] || null;
+        trigger.click();
+        if (!await waitFor(ready, 12000)) {
+          throw new Error("The Campora profile is still loading. Try Copy again.");
+        }
+      }
+      if (!await waitFor(() => camporaSectionsReady(root), 12000)) {
+        throw new Error("The Campora profile sections are still loading. Try Copy again.");
+      }
+      if (!await waitForDomSettled(root, 5000, 500, 0)) {
+        throw new Error("The Campora profile is still loading. Try Copy again.");
+      }
+      readCamporaSummary(root, fields);
+      readCamporaSections(root, fields);
+      readCamporaApplication(fields);
+      filterCamporaFields(fields);
+    } finally {
+      if (previousTab) previousTab.click();
+    }
+    const id = (location.pathname.match(/\/show\/([^/?#]+)/) || [])[1] || "";
+    return finalizeProfile(fields, id);
+  }
+
   async function readProfile() {
     profileGuard();
+    if (isCamporaProfile()) return readCamporaProfile();
     const fields = {};
     const applicationFields = {};
     const originalTab = activeTabName();
@@ -883,36 +1218,7 @@ if (!globalThis.__SAMS_CRM_READER_LOADED__) {
       if (originalTab && originalTab !== activeTabName()) await ensureTab(originalTab);
     }
 
-    if (fields.emergencyName) {
-      const names = fields.emergencyName.split(/\s+/).filter(Boolean);
-      fields.emergencyFirstName ||= names[0] || "";
-      fields.emergencyLastName ||= names.slice(1).join(" ");
-    }
-    for (const [source, target] of [["startDate", "studyStartYear"], ["endDate", "studyEndYear"]]) {
-      const year = fields[source] && fields[source].match(/\b\d{4}\b/);
-      if (year) fields[target] = year[0];
-    }
-
-    const derivedTitle = TITLE_BY_GENDER.get(normalizeLabel(fields.gender));
-    if (!fields.title && derivedTitle) fields.title = derivedTitle;
-
-    // The worker rejects any value over 4000 characters. Free-text lead summaries
-    // can exceed that, so keep the profile cacheable instead of failing Copy.
-    for (const [key, value] of Object.entries(fields)) {
-      if (value.length > 4000) fields[key] = value.slice(0, 4000);
-    }
-
-    const studentName = [fields.givenName, fields.familyName].filter(Boolean).join(" ").slice(0, 4000);
-    if (!studentName || Object.keys(fields).length < 2) {
-      throw new Error("No mapped student fields were found on this CRM profile.");
-    }
-    return {
-      studentId: fields.studentId || location.pathname.split("/").filter(Boolean).pop(),
-      studentName,
-      sourceOrigin: location.origin,
-      copiedAt: Date.now(),
-      fields,
-    };
+    return finalizeProfile(fields);
   }
 
   globalThis.SAMS_CRM_READER = { readProfile, labelFor, contextFor, addField };

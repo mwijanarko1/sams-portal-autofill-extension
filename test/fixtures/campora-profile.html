@@ -1,0 +1,295 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Campora profile fixture</title>
+  <style>
+    body { font-family: sans-serif; }
+    [hidden] { display: none; }
+    td, th { padding: 4px; }
+    .tbl-cell { display: inline-block; vertical-align: top; margin-right: 8px; }
+    .per_info_block { margin: 8px 0; }
+  </style>
+</head>
+<body>
+  <div class="tabs">
+    <a class="nav-link color_blue tabClick active" data-target="#tabsApplication"><span class="nav-link-in"><small>Application</small></span></a>
+    <a class="nav-link color_blue tabClick" data-target="#tabsProfile"><span class="nav-link-in load_profile_all_data"><small>Profile</small></span></a>
+  </div>
+
+  <div id="tabsApplication">
+    <div class="enrollment_header">
+      <div class="tbl-cell"><b>Synthetic University</b>
+        <span><br><label class="label">Campora Ref</label><label class="label">999999</label></span>
+        <span class="label_badge_radius">Synthetic Agent</span>
+        <span class="label_badge_radius">Masters</span>
+      </div>
+      <div class="tbl-cell"><small class="text-muted">Start Date</small><b>Sep 2026</b></div>
+      <div class="tbl-cell"><small class="text-muted">Application Status</small><strong>Need To Apply</strong></div>
+    </div>
+    <!-- The live page puts Course Title in a second header row outside .enrollment_header. -->
+    <div class="box-typical-header border_2">
+      <div class="d-flex">
+        <div class="tbl-cell"><small class="text-muted">Course Title <span class="label_badge_radius">Verified</span></small><strong>MSc Synthetic Data</strong></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="crm_profile_div" hidden></div>
+
+  <pre id="result"></pre>
+
+  <template id="camporaProfile">
+    <div class="row">
+      <div class="col-lg-12"><div class="content_header"><div class="right"><span class="main_title">Personal Information</span></div></div></div>
+      <div class="col-lg-4">
+        <div class="single_part_primary_info info_line per_info_block">
+          <table><tbody>
+            <tr><td>Name</td><td><strong>Test Student</strong></td></tr>
+            <tr><td>Gender</td><td>Female</td></tr>
+            <tr><td>Date of Birth</td><td>15 Apr 2001 <span>(25 years.)</span></td></tr>
+            <tr><td>Nationality</td><td>Bangladeshi</td></tr>
+            <tr><td>Marital Status</td><td>Single</td></tr>
+          </tbody></table>
+        </div>
+        <div class="single_part_funding_info funding_info per_info_block">
+          <table><tbody>
+            <tr><td>Funding</td><td>Self Funded</td></tr>
+            <tr><td>Status</td><td>N/A</td></tr>
+            <tr><td>Student Quality</td><td>Best</td></tr>
+          </tbody></table>
+        </div>
+        <div class="single_part_visa_info per_info_block">
+          <table><tbody>
+            <tr><td>Visa Needed</td><td>Yes</td></tr>
+            <tr><td>Visa Type</td><td>Student Visa</td></tr>
+            <tr><td>Country of App</td><td>Bangladesh</td></tr>
+            <tr><td>Visa History</td><td>No</td></tr>
+            <tr><td>Prev Visa Refusal</td><td>No</td></tr>
+            <tr><td>Passport Expiry</td><td>11 months 1 day Left</td></tr>
+          </tbody></table>
+        </div>
+        <div class="single_part_contact_info contact_info per_info_block">
+          <table><tbody>
+            <tr><td>Contact No</td><td>+880 1712345678</td></tr>
+            <tr><td>Email</td><td>test.student@example.com</td></tr>
+          </tbody></table>
+        </div>
+        <div class="single_part_emr_contact_info emr_contact_info per_info_block">
+          <table><tbody>
+            <tr><td>Emergency contact</td><td></td></tr>
+            <tr><td>Name</td><td>Test Guardian</td></tr>
+            <tr><td>Contact</td><td>+880 1711111111</td></tr>
+            <tr><td>Email</td><td>guardian@example.com</td></tr>
+            <tr><td>Relation</td><td>Parent</td></tr>
+          </tbody></table>
+        </div>
+        <div class="single_part_address_info address_info per_info_block">
+          <table><tbody>
+            <tr><td>Home Address</td></tr>
+            <tr><td>1 Test Street, Test City</td></tr>
+            <tr><td>Present Address</td></tr>
+            <tr><td>2 Present Street, Test City</td></tr>
+          </tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="col-lg-12"><div class="content_header"><div class="right"><span class="main_title">Education History</span></div></div></div>
+      <div id="sub_lead_education_history_div">
+        <table class="table table-bordered list_table">
+          <thead><tr><th>Institution</th><th>Subject</th><th>Result</th><th>Duration</th><th>Transcript</th><th>Certificate</th><th>Action</th></tr></thead>
+          <tbody><tr>
+            <td><div class="institute_info"><div class="right"><strong>Synthetic College</strong><br><span class="label_badge_light">Bachelor Degree</span></div></div></td>
+            <td>BSc Synthetic Science</td>
+            <td>3.50</td>
+            <td>Sep 2019 - Jun 2023</td>
+            <td></td><td></td><td></td>
+          </tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="col-lg-12"><div class="content_header"><div class="right"><span class="main_title">Study Gap</span></div></div></div>
+      <label><input type="radio" name="s_gap" value="yes" checked> Yes</label>
+      <label><input type="radio" name="s_gap" value="no"> No</label>
+    </div>
+
+    <div class="row">
+      <div class="col-lg-12"><div class="content_header"><div class="right"><span class="main_title">Test Score</span></div></div></div>
+      <table class="table table-bordered list_table">
+        <tbody><tr>
+          <td><div class="institute_info" id="testScoreInstitute"><div class="right"><strong>IELTS</strong><br><span class="label_badge_light test_score_level">IELTS</span></div></div></td>
+          <td class="text-center"><strong>7.5</strong><br><strong>Overall</strong></td>
+          <td class="text-center" id="testListening"></td>
+          <td class="text-center" id="testReading"></td>
+          <td class="text-center" id="testWriting"></td>
+          <td class="text-center" id="testSpeaking"></td>
+          <td></td>
+        </tr></tbody>
+      </table>
+    </div>
+
+    <div class="row">
+      <div class="col-lg-12"><div class="content_header"><div class="right"><span class="main_title">Work Experience</span></div></div></div>
+      <label><input type="radio" name="work_ex" value="yes" checked> Yes</label>
+      <label><input type="radio" name="work_ex" value="no"> No</label>
+      <table class="table table-bordered list_table">
+        <thead><tr><th>Company Name</th><th>Designation</th><th>Duration</th><th>Upload</th><th>Action</th></tr></thead>
+        <tbody><tr><td>Synthetic Ltd</td><td>Analyst</td><td id="workDuration">01 Jul 2023 - N/A</td><td></td><td></td></tr></tbody>
+      </table>
+    </div>
+
+    <div class="row">
+      <div class="col-lg-12"><div class="content_header"><div class="right"><span class="main_title">References</span></div></div></div>
+      <label><input type="radio" name="radio_ref" value="yes" checked> Yes</label>
+      <label><input type="radio" name="radio_ref" value="no"> No</label>
+      <table class="table table-bordered list_table">
+        <thead><tr><th>Name</th><th>Reference Source</th><th>Phone</th><th>Email</th><th>Upload</th><th>Action</th></tr></thead>
+        <tbody><tr><td>Dr Ref</td><td>University</td><td>+44 7700 900000</td><td>ref@example.com</td><td></td><td></td></tr></tbody>
+      </table>
+    </div>
+
+    <div class="row">
+      <div class="col-lg-12"><div class="content_header"><div class="right"><span class="main_title">Passport Details</span></div></div></div>
+      <label><input type="radio" name="paSS" value="yes" checked> Yes</label>
+      <label><input type="radio" name="paSS" value="no"> No</label>
+      <table class="table table-bordered list_table">
+        <thead><tr><th>Passport Number</th><th>Duration</th><th>Comments</th><th>Status</th><th>Upload</th><th>Action</th></tr></thead>
+        <tbody><tr><td>TEST1234567</td><td>10 Jan 2022 - 09 Jan 2032</td><td>London</td><td></td><td></td><td></td></tr></tbody>
+      </table>
+    </div>
+
+    <div class="row">
+      <div class="col-lg-12"><div class="content_header"><div class="right"><span class="main_title">Visa History</span></div></div></div>
+      <label><input type="radio" name="vH" value="yes"> Yes</label>
+      <label><input type="radio" name="vH" value="no" checked> No</label>
+      <p>No Visa History available.</p>
+      <table class="table table-bordered list_table" id="visaHistoryTable" hidden>
+        <thead><tr><th>Visa Type</th><th>Country</th><th>Purpose</th><th>Duration</th></tr></thead>
+        <tbody><tr><td>Visitor Visa</td><td>United States</td><td>Tourism</td><td>01 Jan 2020 - 01 Jun 2020</td></tr></tbody>
+      </table>
+    </div>
+
+    <div class="row">
+      <div class="col-lg-12"><div class="content_header"><div class="right"><span class="main_title">Visa Refusal</span></div></div></div>
+      <label><input type="radio" name="Vref" value="yes"> Yes</label>
+      <label><input type="radio" name="Vref" value="no" checked> No</label>
+      <p>No Visa Refusal available.</p>
+    </div>
+
+    <!-- The live fragment inserts these loader placeholders around its sections. -->
+    <div id="sub_lead_education_gap_div">Study Gap</div>
+    <div id="sub_lead_prev_stuty_abroad">No Previous Study available.</div>
+    <div id="sub_lead_english_requirement">Test Score</div>
+    <div id="sub_lead_work_experience">Work Experience</div>
+    <div id="sub_lead_reference">No Reference available.</div>
+    <div id="sub_lead_passport_details">Passport Details</div>
+    <div id="sub_lead_visa_history_div">No Visa History available.</div>
+    <div id="sub_lead_visa_refusal_div">No Visa Refusal available.</div>
+  </template>
+
+  <script>
+    globalThis.SAMS_ALLOWLIST = { isCrmOrigin: () => true };
+    globalThis.chrome = { runtime: { onMessage: { addListener() {} } } };
+  </script>
+  <script src="../../config/crm-source.js"></script>
+  <script>
+    SAMS_CRM_SOURCE.camporaProfilePathPatterns = [/.*/];
+  </script>
+  <script src="../../src/crm-reader.js"></script>
+  <script>
+    // Campora paints the application shell first; the profile data arrives after
+    // the Profile tab click. Reproduce that load in the fixture.
+    const applicationPane = document.getElementById("tabsApplication");
+    const profilePane = document.getElementById("crm_profile_div");
+    const applicationTab = document.querySelector('[data-target="#tabsApplication"]');
+    const profileTab = document.querySelector('[data-target="#tabsProfile"]');
+    const activate = (tab) => {
+      applicationTab.classList.toggle("active", tab === applicationTab);
+      profileTab.classList.toggle("active", tab === profileTab);
+    };
+    let slowEducation = null;
+    applicationTab.addEventListener("click", () => {
+      applicationPane.hidden = false;
+      profilePane.hidden = true;
+      activate(applicationTab);
+    });
+    document.querySelector(".load_profile_all_data").addEventListener("click", () => {
+      applicationPane.hidden = true;
+      profilePane.hidden = false;
+      activate(profileTab);
+      if (profilePane.querySelector(".per_info_block")) return;
+      setTimeout(() => {
+        profilePane.replaceChildren(document.getElementById("camporaProfile").content.cloneNode(true));
+        if (slowEducation) {
+          const target = profilePane.querySelector("#sub_lead_education_history_div");
+          setTimeout(() => { if (target) target.appendChild(slowEducation.cloneNode(true)); }, 800);
+        }
+      }, 50);
+    });
+
+    const params = new URLSearchParams(location.search);
+    if (params.get("guard") === "1") SAMS_CRM_SOURCE.camporaProfilePathPatterns = [/^\/not-a-profile$/];
+    if (params.get("workEnd") === "1") {
+      const workDuration = document.getElementById("camporaProfile").content.querySelector("#workDuration");
+      if (workDuration) workDuration.textContent = "01 Jul 2023 - 30 Jun 2024";
+    }
+    if (params.get("scores") === "1") {
+      const content = document.getElementById("camporaProfile").content;
+      const scoreCell = (id, score, label) => {
+        const cell = content.querySelector("#" + id);
+        if (cell) cell.innerHTML = "<strong>" + score + "</strong><br><strong>" + label + "</strong>";
+      };
+      scoreCell("testListening", "7", "Listening");
+      scoreCell("testReading", "7.5", "Reading");
+      scoreCell("testWriting", "6.5", "Writing");
+      scoreCell("testSpeaking", "6.5", "Speaking");
+      const institute = content.querySelector("#testScoreInstitute");
+      if (institute) institute.insertAdjacentHTML("beforeend", '<span class="test_date">Test Date: 01 Mar 2025</span>');
+    }
+    if (params.get("priorVisa") === "1") {
+      const table = document.getElementById("camporaProfile").content.querySelector("#visaHistoryTable");
+      if (table) table.hidden = false;
+    }
+    if (params.get("slowSections") === "1") {
+      const content = document.getElementById("camporaProfile").content;
+      const holder = content.querySelector("#sub_lead_education_history_div");
+      const table = holder?.querySelector("table");
+      if (table) {
+        slowEducation = table.cloneNode(true);
+        table.remove();
+      }
+    }
+    if (params.get("preopened") === "1") {
+      applicationPane.hidden = true;
+      profilePane.hidden = false;
+      activate(profileTab);
+      profilePane.replaceChildren(document.getElementById("camporaProfile").content.cloneNode(true));
+    }
+    if (params.get("twice") === "1") {
+      const attempt = () => SAMS_CRM_READER.readProfile().then(
+        (profile) => ({
+          ok: true,
+          keys: Object.keys(profile.fields).sort(),
+          studentName: profile.studentName,
+          active: document.querySelector(".tabClick.active")?.textContent.trim() || "",
+        }),
+        (error) => ({ ok: false, error: error.message }),
+      );
+      (async () => {
+        const first = await attempt();
+        const second = await attempt();
+        document.getElementById("result").textContent = JSON.stringify({ first, second });
+      })();
+    } else {
+      SAMS_CRM_READER.readProfile().then(
+        (profile) => { document.getElementById("result").textContent = JSON.stringify(profile); },
+        (error) => { document.getElementById("result").textContent = JSON.stringify({ error: error.message }); },
+      );
+    }
+  </script>
+</body>
+</html>

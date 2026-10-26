@@ -27,6 +27,22 @@ test("CRM profile guard accepts agent and original profiles, not lists or dashbo
   }
 });
 
+test("Campora profile guard accepts only the application profile route", () => {
+  const allowed = (path) => crmSource.camporaProfilePathPatterns.some((pattern) => pattern.test(path));
+  for (const path of ["/applyuser/show/33621/profile", "/applyuser/show/33621/profile/"]) {
+    assert.equal(allowed(path), true, path);
+  }
+  for (const path of [
+    "/applyuser/dashboard",
+    "/applyuser/gateway",
+    "/applyuser/applicationfrom/list",
+    "/applyuser/show/33621",
+    "/applyuser/show/33621/profile/edit",
+  ]) {
+    assert.equal(allowed(path), false, path);
+  }
+});
+
 test("manifest has no blanket host permission or local persistence path", () => {
   assert.ok(!manifest.host_permissions.includes("<all_urls>"));
   assert.ok(manifest.permissions.includes("alarms"));

@@ -46,6 +46,7 @@ test("Safari dev build generates exact hosts and byte-identical shared resources
   const manifest = JSON.parse(fs.readFileSync(path.join(out, "manifest.json"), "utf8"));
   assert.deepEqual(manifest.host_permissions, [
     "https://app.samscrm.co.uk/*",
+    "https://v-sams-backend.samsapply.co.uk/*",
     "https://nelson.gre.ac.uk/*",
     "https://apps.bangor.ac.uk/*",
     "https://evision.bolton.ac.uk/*",
@@ -86,6 +87,15 @@ test("production builds for both targets keep the incomplete-allowlist guard and
   const dir = stage();
   assert.equal(build(dir, "dev", "safari").status, 0);
   assert.equal(build(dir, "dev").status, 0);
+  const allowlist = path.join(dir, "config/allowlist.js");
+  // The real Campora origin is configured; stage an empty list so the guard itself stays covered.
+  fs.writeFileSync(
+    allowlist,
+    fs.readFileSync(allowlist, "utf8").replace(
+      'camporaOrigins: ["https://v-sams-backend.samsapply.co.uk"],',
+      "camporaOrigins: [],",
+    ),
+  );
   const before = files(path.join(dir, "dist"));
   for (const args of [["prod"], ["prod", "safari"]]) {
     const result = build(dir, ...args);
@@ -102,7 +112,7 @@ test("a production Safari build excludes development hosts once the allowlist is
   fs.writeFileSync(
     allowlist,
     fs.readFileSync(allowlist, "utf8").replace(
-      "camporaOrigins: [],",
+      'camporaOrigins: ["https://v-sams-backend.samsapply.co.uk"],',
       'camporaOrigins: ["https://campora.example"],'
     )
   );

@@ -456,3 +456,155 @@ test("CRM reader keeps an explicit title when gender comes from a radio group", 
   assert.equal(profile.fields.gender, "Female");
   assert.equal(profile.fields.title, "Dr");
 });
+
+test("CRM reader maps the Campora profile without unrelated Campora fields", () => {
+  const profile = readFixture("campora-profile.html");
+  assert.equal(profile.error, undefined);
+  assert.equal(profile.studentId, "999999");
+  assert.equal(profile.studentName, "Test Student");
+  assert.deepEqual(
+    profile.fields,
+    {
+      givenName: "Test",
+      familyName: "Student",
+      title: "Ms",
+      gender: "Female",
+      dateOfBirth: "2001-04-15",
+      nationality: "Bangladeshi",
+      maritalStatus: "Single",
+      funding: "Self Funded",
+      visaType: "Student Visa",
+      phone: "+880 1712345678",
+      email: "test.student@example.com",
+      emergencyName: "Test Guardian",
+      emergencyFirstName: "Test",
+      emergencyLastName: "Guardian",
+      emergencyPhone: "+880 1711111111",
+      emergencyEmail: "guardian@example.com",
+      emergencyRelationship: "Parent",
+      location: "2 Present Street, Test City",
+      institutionName: "Synthetic College",
+      degree: "Bachelor Degree",
+      major: "BSc Synthetic Science",
+      grade: "3.50",
+      studyDates: "Sep 2019 - Jun 2023",
+      startDate: "Sep 2019",
+      endDate: "Jun 2023",
+      studyStartYear: "2019",
+      studyEndYear: "2023",
+      englishTestName: "IELTS",
+      overallScore: "7.5",
+      cvCurrentEmployer: "Synthetic Ltd",
+      cvCurrentJobTitle: "Analyst",
+      cvWorkStartDate: "2023-07-01",
+      passportNumber: "TEST1234567",
+      passportIssueDate: "2022-01-10",
+      passportExpiryDate: "2032-01-09",
+      preferredUniversity: "Synthetic University",
+      preferredCourse: "MSc Synthetic Data",
+      preferredIntake: "Sep 2026",
+      preferredStartMonth: "Sep",
+      preferredStartYear: "2026",
+      studentId: "999999",
+    },
+  );
+  // Exact permitted-key assertion: Campora's unconsumed fields must not enter the
+  // cache, even though the reader sees them in the profile DOM.
+  assert.deepEqual(Object.keys(profile.fields).sort(), [
+    "cvCurrentEmployer",
+    "cvCurrentJobTitle",
+    "cvWorkStartDate",
+    "dateOfBirth",
+    "degree",
+    "email",
+    "emergencyEmail",
+    "emergencyFirstName",
+    "emergencyLastName",
+    "emergencyName",
+    "emergencyPhone",
+    "emergencyRelationship",
+    "endDate",
+    "englishTestName",
+    "familyName",
+    "funding",
+    "gender",
+    "givenName",
+    "grade",
+    "institutionName",
+    "location",
+    "major",
+    "maritalStatus",
+    "nationality",
+    "overallScore",
+    "passportExpiryDate",
+    "passportIssueDate",
+    "passportNumber",
+    "phone",
+    "preferredCourse",
+    "preferredIntake",
+    "preferredStartMonth",
+    "preferredStartYear",
+    "preferredUniversity",
+    "startDate",
+    "studentId",
+    "studyDates",
+    "studyEndYear",
+    "studyStartYear",
+    "title",
+    "visaType",
+  ]);
+  assert.equal(profile.fields.passportExpiryDate, "2032-01-09", "The relative summary must not replace the table date");
+});
+
+test("CRM reader reopens Campora's hidden, cached Profile pane on a second Copy", () => {
+  const result = readFixture("campora-profile.html", "?twice=1");
+  assert.equal(result.first.ok, true, result.first.error);
+  assert.equal(result.second.ok, true, result.second.error);
+  assert.equal(result.first.studentName, "Test Student");
+  assert.equal(result.second.studentName, "Test Student");
+  assert.equal(result.first.active, "Application", "Copy must restore the original tab");
+  assert.equal(result.second.active, "Application", "Copy must restore the original tab");
+  assert.deepEqual(result.second.keys, result.first.keys);
+});
+
+test("CRM reader rejects a non-profile Campora path", () => {
+  const profile = readFixture("campora-profile.html", "?guard=1");
+  assert.match(profile.error || "", /Open an individual student profile page before copying/);
+});
+
+test("Campora reader keeps both dates from a closed work range", () => {
+  const { fields } = readFixture("campora-profile.html", "?workEnd=1");
+  assert.equal(fields.cvWorkStartDate, "2023-07-01");
+  assert.equal(fields.cvWorkEndDate, "2024-06-30");
+});
+
+test("Campora reader keeps the first test's full score breakdown", () => {
+  const { fields } = readFixture("campora-profile.html", "?scores=1");
+  assert.equal(fields.englishTestName, "IELTS");
+  assert.equal(fields.testDate, "2025-03-01");
+  assert.equal(fields.overallScore, "7.5");
+  assert.equal(fields.listeningScore, "7");
+  assert.equal(fields.readingScore, "7.5");
+  assert.equal(fields.writingScore, "6.5");
+  assert.equal(fields.speakingScore, "6.5");
+});
+
+test("Campora reader reads an already-open Profile pane", () => {
+  const profile = readFixture("campora-profile.html", "?preopened=1");
+  assert.equal(profile.error, undefined);
+  assert.equal(profile.fields.givenName, "Test");
+  assert.equal(profile.fields.institutionName, "Synthetic College");
+});
+
+test("Campora reader does not borrow a prior visa record", () => {
+  const { fields } = readFixture("campora-profile.html", "?priorVisa=1");
+  assert.equal(fields.visaType, "Student Visa");
+  assert.equal("visaCountry" in fields, false);
+  assert.equal("visaPurpose" in fields, false);
+});
+
+test("Campora reader waits for a delayed profile section", () => {
+  const { fields } = readFixture("campora-profile.html", "?slowSections=1");
+  assert.equal(fields.institutionName, "Synthetic College");
+  assert.equal(fields.major, "BSc Synthetic Science");
+});

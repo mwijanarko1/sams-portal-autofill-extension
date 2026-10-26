@@ -2,6 +2,12 @@
 const SAMS_CRM_SOURCE = {
   profilePathPatterns: [/^\/(?:agent\/)?leads\/full-profile\/[^/?#]+\/?$/i],
   profileMarkers: ["student profile", "personal information", "profile at a glance", "given name"],
+  // Campora APPLY shows the application shell first and loads the read-only profile into
+  // #crm_profile_div only when staff open the Profile tab. The path guard keeps dashboard,
+  // gateway, list and login pages out; the markers accept either the loaded profile or the
+  // application shell that must be present before the reader opens that tab itself.
+  camporaProfilePathPatterns: [/^\/applyuser\/show\/[^/?#]+\/profile\/?$/i],
+  camporaProfileMarkers: ["campora ref", "application status", "personal information"],
   labels: {
     "student id": "studentId",
     "lead id": "studentId",
@@ -49,6 +55,8 @@ const SAMS_CRM_SOURCE = {
     email: "email",
     "phone number": "phone",
     phone: "phone",
+    "contact no": "phone",
+    "campora ref": "studentId",
     mobile: "phone",
     "mobile no": "phone",
     "primary mobile": "phone",
