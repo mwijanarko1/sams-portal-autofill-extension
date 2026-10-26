@@ -27,6 +27,29 @@ const crmSource = require(join(root, "config/crm-source.js"));
 require(join(root, "config/portals/bangor.js"));
 require(join(root, "config/portals/greenwich.js"));
 require(join(root, "config/portals/manchester.js"));
+const crmMode = process.env.SAMS_E2E_CRM || "sams";
+assert.ok(["sams", "campora"].includes(crmMode), "SAMS_E2E_CRM must be sams or campora");
+const crmConfig = crmMode === "campora" ? {
+  id: "campora",
+  origin: "https://v-sams-backend.samsapply.co.uk",
+  loginUrl: "https://v-sams-backend.samsapply.co.uk/",
+  username: "CAMPORA_USERNAME",
+  password: "CAMPORA_PASSWORD",
+  submit: "Sign in",
+  markers: crmSource.camporaProfileMarkers,
+  pathPatterns: crmSource.camporaProfilePathPatterns,
+  sourceOrigin: "https://v-sams-backend.samsapply.co.uk",
+} : {
+  id: "sams",
+  origin: "https://app.samscrm.co.uk",
+  loginUrl: "https://app.samscrm.co.uk/",
+  username: "SAMS_CRM_USERNAME",
+  password: "SAMS_CRM_PASSWORD",
+  submit: "Sign in",
+  markers: crmSource.profileMarkers,
+  pathPatterns: crmSource.profilePathPatterns,
+  sourceOrigin: "https://app.samscrm.co.uk",
+};
 const portals = [
   { id: "bangor", origin: "https://apps.bangor.ac.uk", login: "https://apps.bangor.ac.uk/apply/account/login/?next=/apply/personal/",
     forms: [
@@ -72,7 +95,7 @@ for (const path of ["config", "src", "popup.html", "popup.js", "sams-logo.svg", 
   await cp(join(root, path), join(extension, path), { recursive: true });
 }
 const manifest = JSON.parse(await readFile(join(root, "manifest.json"), "utf8"));
-manifest.host_permissions = ["https://app.samscrm.co.uk/*", ...portals.map((portal) => `${portal.origin}/*`)];
+manifest.host_permissions = [`${crmConfig.origin}/*`, ...portals.map((portal) => `${portal.origin}/*`)];
 await writeFile(join(extension, "manifest.json"), JSON.stringify(manifest));
 await writeFile(join(extension, "config/build-mode.js"), 'globalThis.SAMS_BUILD_MODE = "prod";\n');
 let context;
@@ -132,7 +155,7 @@ try {
     assert.equal(new URL(page.url()).origin, origin);
     if (!(await page.locator("input[type='password']").count())) return;
     assert.ok(process.env[userKey] && process.env[passwordKey], "Credential keys are missing");
-    const username = page.locator("input[type='email'], input[name='in_id'], #login_id, #MUA_CODE, input[name='MUA_CODE.DUMMY.MENSYS.1']").first();
+    const username = page.locator("input[type='email'], input[name='in_id'], #login_id, #floatingInput, input[placeholder='name@example.com'], #MUA_CODE, input[name='MUA_CODE.DUMMY.MENSYS.1']").first();
     const password = page.locator("input[type='password']").first();
     const formAction = await username.evaluate((element) => element.form?.action);
     assert.ok(formAction, "The login form must declare an action");
@@ -191,7 +214,8 @@ try {
   async function profileDiagnostics(page) {
     return page.evaluate(({ markers, labels }) => {
       const normalize = (text) => text.toLowerCase().replace(/[\s_*:]+/g, " ").trim();
-      const text = normalize(document.body.innerText);
+      const body = document.body;
+      const text = normalize(body ? body.innerText : "");
       const headings = Array.from(document.querySelectorAll("h1, h2, h3")).map((heading) => normalize(heading.innerText));
       const knownHeadings = ["profile", "lead profile", "student profile", "profile details", "personal details",
         "personal information", "basic information", "contact information", "academic information",
@@ -204,11 +228,18 @@ try {
         mappedLabels: knownLabels.filter((label) => labelText.includes(label)),
         mainPresent: !!document.querySelector("main, [role='main']"),
         passwordFormPresent: !!document.querySelector("input[type='password']") };
-    }, { markers: crmSource.profileMarkers, labels: crmSource.labels });
+    }, { markers: crmConfig.markers, labels: crmSource.labels });
   }
 
   async function openProfile(page, selectedUrl) {
-    await page.goto(selectedUrl, { waitUntil: "domcontentloaded" });
+    // Campora reuses the same profile URL during a run. Clear the old document
+    // first so the marker wait cannot match the previous profile's DOM while the
+    // fresh navigation is still committing.
+    if (crmConfig.id === "campora") await page.goto("about:blank");
+    await page.goto(selectedUrl, {
+      waitUntil: crmConfig.id === "campora" ? "commit" : "domcontentloaded",
+      timeout: crmConfig.id === "campora" ? 60000 : 30000,
+    });
     const expected = new URL(selectedUrl);
     const destination = new URL(page.url());
     const sameRecordPath = destination.pathname.replace(/\/$/, "") === expected.pathname.replace(/\/$/, "");
@@ -218,9 +249,11 @@ try {
         sameRecordPath,
         sameQuery: destination.search === expected.search,
         fragmentChanged: destination.hash !== expected.hash,
-        path: /^\/agent\/leads\/full-profile\/[^/]+\/?$/.test(destination.pathname)
-          ? destination.pathname.replace(/(\/full-profile\/)[^/]+/, "$1[record]")
-          : ["/", "/error", "/agent/dashboard", "/agent/new-direct-leads"].includes(destination.pathname)
+        path: crmConfig.pathPatterns.some((pattern) => pattern.test(destination.pathname))
+          ? destination.pathname
+            .replace(/(\/full-profile\/)[^/]+/, "$1[record]")
+            .replace(/(\/show\/)[^/]+\/profile/, "$1[record]/profile")
+          : ["/", "/error", "/agent/dashboard", "/agent/new-direct-leads", "/applyuser/dashboard", "/applyuser/applicationfrom/list"].includes(destination.pathname)
             ? destination.pathname : "[unrecognized-path]",
       };
     }
@@ -228,9 +261,11 @@ try {
       "Unexpected profile redirect; see redacted CRM redirect diagnostics");
     try {
       await page.waitForFunction((markers) => {
-        const text = document.body.innerText.slice(0, 12000).toLowerCase().replace(/[\s_*:]+/g, " ").trim();
+        const body = document.body;
+        if (!body) return false;
+        const text = body.innerText.slice(0, 12000).toLowerCase().replace(/[\s_*:]+/g, " ").trim();
         return markers.some((marker) => text.includes(marker));
-      }, crmSource.profileMarkers, { timeout: 30000 });
+      }, crmConfig.markers, { timeout: 30000 });
     } catch (error) {
       report.crm.profileDiagnostics = await profileDiagnostics(page);
       throw error;
@@ -258,20 +293,23 @@ try {
 
   stage = "crm-login";
   const crm = await context.newPage();
-  await crm.goto("https://app.samscrm.co.uk/", { waitUntil: "domcontentloaded" });
-  await login(crm, "https://app.samscrm.co.uk", "SAMS_CRM_USERNAME", "SAMS_CRM_PASSWORD", "Sign in");
-  assert.ok(crm.url().startsWith("https://app.samscrm.co.uk/agent/"), "CRM did not reach an authenticated agent page");
+  await crm.goto(crmConfig.loginUrl, { waitUntil: "domcontentloaded" });
+  await login(crm, crmConfig.origin, crmConfig.username, crmConfig.password, crmConfig.submit);
+  assert.ok(crm.url().startsWith(crmConfig.origin + "/"), "CRM did not reach an authenticated page");
   stage = "lead-sampling";
   const isProfileUrl = (url) => {
     const parsed = new URL(url);
-    return parsed.origin === "https://app.samscrm.co.uk" && /^\/agent\/leads\/full-profile\/[^/?#]+\/?$/.test(parsed.pathname);
+    return parsed.origin === crmConfig.origin && crmConfig.pathPatterns.some((pattern) => pattern.test(parsed.pathname));
   };
   const selected = [];
   if (leadsFile) {
     const fixed = JSON.parse(await readFile(leadsFile, "utf8"));
-    assert.ok(Array.isArray(fixed) && fixed.length && fixed.every(isProfileUrl), "SAMS_E2E_LEADS_FILE must list CRM full-profile URLs");
+    assert.ok(Array.isArray(fixed) && fixed.length && fixed.every(isProfileUrl), "SAMS_E2E_LEADS_FILE must list CRM profile URLs");
     selected.push(...fixed.slice(0, sampleCount));
   } else {
+    if (crmConfig.id === "campora") {
+      throw new Error("Campora live testing requires SAMS_E2E_LEADS_FILE with applyuser/show/<id>/profile URLs; random selection is not implemented");
+    }
     await crm.goto("https://app.samscrm.co.uk/agent/new-direct-leads", { waitUntil: "domcontentloaded" });
     assert.equal(new URL(crm.url()).pathname, "/agent/new-direct-leads", "CRM lead list redirected away from the authenticated route");
     await crm.locator("a[href*='/agent/leads/full-profile/']").first().waitFor({ state: "attached", timeout: 15000 });
@@ -280,7 +318,7 @@ try {
     assert.ok(candidates.length, "No visible individual student links found; do not create a lead");
     while (candidates.length && selected.length < sampleCount) selected.push(candidates.splice(randomInt(candidates.length), 1)[0]);
   }
-  report.crm = { status: "authenticated", selectedSamples: selected.length, copiedSamples: [] };
+  report.crm = { source: crmConfig.id, status: "authenticated", selectedSamples: selected.length, copiedSamples: [] };
 
   for (let index = 0; index < selected.length; index++) {
     stage = `crm-copy-sample-${index + 1}`;
@@ -315,7 +353,7 @@ try {
       await openProfile(crm, selected[index]);
       const copiedAfter = Date.now();
       const cache = await copy(crm);
-      assert.equal(cache.sourceOrigin, "https://app.samscrm.co.uk");
+      assert.equal(cache.sourceOrigin, crmConfig.sourceOrigin);
       assert.ok(cache.copiedAt >= copiedAfter, "Stale student cache");
       // Discard the previous sample's unsaved tab values before testing a fresh sample.
       if (portal.forms.some((form) => form.kind === "tab")) await page.reload({ waitUntil: "domcontentloaded" });

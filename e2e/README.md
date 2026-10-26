@@ -77,6 +77,8 @@ The ignored extension `.env.local` supplies these keys:
 ```text
 SAMS_CRM_USERNAME
 SAMS_CRM_PASSWORD
+CAMPORA_USERNAME
+CAMPORA_PASSWORD
 BANGOR_USERNAME
 BANGOR_PASSWORD
 GREENWICH_LOGINID
@@ -104,6 +106,31 @@ The runner uses the real loaded extension in visible Helium. It randomly selects
 up to three distinct profiles from the currently visible CRM Lead Management
 page. `SAMS_E2E_SAMPLE_COUNT=1` or `2` reduces that count; the maximum is three.
 It does not claim coverage of the entire lead database or every portal section.
+
+Campora is an alternative Copy source. Set `SAMS_E2E_CRM=campora` and supply
+`SAMS_E2E_LEADS_FILE` with one or more Campora profile URLs, because Campora
+random lead selection is not implemented:
+
+```sh
+SAMS_E2E_CRM=campora \
+SAMS_E2E_PROFILE='/absolute/path/to/approved/.pinchtab/profiles/profile-directory' \
+SAMS_E2E_PORTALS=bangor \
+SAMS_E2E_SAMPLE_COUNT=1 \
+SAMS_E2E_LEADS_FILE='/absolute/path/to/campora-leads.json' \
+  npm run test:e2e:live -- --no-save
+```
+
+The file is a JSON array of
+`https://v-sams-backend.samsapply.co.uk/applyuser/show/<id>/profile` URLs. The
+runner opens the Profile tab, copies the Campora fields, then fills the chosen
+real portal draft. Campora documents remain a manual attachment.
+
+First supervised Campora-to-Bangor no-save sample (2026-10-25): Copy returned 30
+fields; Bangor education, employment and finance filled eight controls; existing
+and blocked values were preserved; there were zero blocked writes; the cache was
+cleared. One sample is not full portal or Campora acceptance, and the runner does
+not verify that the existing draft belongs to the selected applicant; treat it as
+a no-save field-fill smoke test.
 
 For each sample, it copies the current visible CRM profile, fills an existing
 portal form, checks that existing and blocked fields are unchanged, repeats
@@ -155,7 +182,7 @@ completion.
 
 ## Security evidence boundary
 
-The current automated baseline at source revision `dbb76d8` is 126/126 supporting
+The current automated baseline on 2026-10-25 is 135/135 supporting
 tests (`npm test`) and 50/50 loaded-extension E2E cases (`npm run test:e2e`).
 Regenerate these counts by running the commands rather than treating them as
 permanent totals. The document cases prove metadata-only Copy, explicit selected-file
