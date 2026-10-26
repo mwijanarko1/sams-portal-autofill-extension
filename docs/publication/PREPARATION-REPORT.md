@@ -14,7 +14,7 @@ At source revision `dbb76d8`, `npm test` passed 126/126 and `npm run test:e2e` p
 
 The current popup is page-by-page Autofill. There is no Fill all action or `fillAll` portal config, and `package.json` has no `test:e2e:fill-all` or `test:e2e:fill-all:portals` scripts. Original descriptions of those features and their results below must not be read as features or rerunnable commands in the current source. Staff save and submit manually, but portal handlers can autosave or upload on change.
 
-The live smoke runner now supports Bangor, Greenwich, and Greater Manchester. Manchester targets PD, CD, QU, and EX with blocked-write diagnostics. A tab-loading POST remains blocked, not silently permitted. Adding this support does not establish a live pass. Complete live CRM-to-portal acceptance and actual Safari acceptance remain outstanding. The Campora-origin production build gate is unchanged.
+The live smoke runner now supports Bangor, Greenwich, and Greater Manchester, and can copy from Campora APPLY with `SAMS_E2E_CRM=campora` plus a Campora profile URL file. Manchester targets PD, CD, QU, and EX with blocked-write diagnostics. A tab-loading POST remains blocked, not silently permitted. Adding this support does not establish a full live pass. A first supervised Campora-to-Bangor no-save sample passed on 2026-10-25 (Copy 30 fields; eight Bangor controls filled; zero blocked writes). Complete live CRM-to-portal acceptance across portals and actual Safari acceptance remain outstanding.
 
 The [technical handover](../TECHNICAL-HANDOVER.md) documents data locations, rolling expiry, document transfer, account-revocation limits, and an IT offboarding checklist. It does not establish legal compliance or implemented remote wipe. CRM media-server authorisation after logout, account and token revocation, endpoint cleanup, and downstream retention still require operational verification. The [user handover](../USER-HANDOVER.md) explains the corresponding staff steps.
 
@@ -28,11 +28,11 @@ The preferred route is a draft insertion into that page, in [PRIVACY-POLICY-EXTE
 
 ## What the release gate actually is
 
-`scripts/build.mjs` refuses any production build unless `camporaOrigins` is non-empty and `portalOrigins` has at least three entries. `config/allowlist.js` already lists three portal origins (`https://nelson.gre.ac.uk`, `https://apps.bangor.ac.uk`, `https://evision.bolton.ac.uk`) and an empty `camporaOrigins`. The single failing condition is therefore the missing confirmed Campora origin. The error text ("Add the confirmed Campora and three portal origins") is broader than the real condition.
+`scripts/build.mjs` refuses any production build unless `camporaOrigins` is non-empty and `portalOrigins` has at least three entries. `config/allowlist.js` now lists the Campora origin `https://v-sams-backend.samsapply.co.uk` and three portal origins (`https://nelson.gre.ac.uk`, `https://apps.bangor.ac.uk`, `https://evision.bolton.ac.uk`), so the gate passes. The gate proves only that the allowlist is complete; it does not prove live integration.
 
-Both `npm run build:prod` and `npm run build:safari:prod` exit 1 on this gate (result supplied by the lead; not re-run here). That is outside this preparation work and was not changed. Until a confirmed Campora origin is added by whoever owns that decision, no production Chrome zip and no production Safari resources can be generated, so every "production" item below is blocked, not merely unchecked.
+The earlier "empty Campora" blocker is resolved. `npm run build:prod` and `npm run build:safari:prod` can now generate production artifacts. Live Campora acceptance, the remaining portal journeys and Safari runtime acceptance still block release, not packaging.
 
-A production `manifest.json` therefore cannot be produced yet. By the logic in `scripts/build.mjs` its `host_permissions` will be the CRM origin `https://app.samscrm.co.uk`, the confirmed Campora origin (TBD), and the three portal origins, each as `<origin>/*`. All localhost entries are dropped in production. `optional_host_permissions` stays `https://*/*`.
+A production `manifest.json` can now be produced. Its `host_permissions` are the SAMS CRM origin `https://app.samscrm.co.uk`, the Campora origin `https://v-sams-backend.samsapply.co.uk`, and the three portal origins, each as `<origin>/*`. All localhost entries are dropped in production. `optional_host_permissions` stays `https://*/*`.
 
 ## Item 2: Safari acceptance and distribution
 
@@ -110,7 +110,7 @@ Still outstanding: published extension coverage in the public privacy policy (th
 
 ## Open decisions and gaps found
 
-1. **Campora origin** (item 1, excluded). Required before any production build.
+1. **Campora origin** (item 1). Configured on 2026-10-25; live Campora acceptance remains outstanding.
 2. **In-product disclosure.** Chrome's [Disclosure Requirements](https://developer.chrome.com/docs/webstore/program-policies/policies#disclosure_requirements) and [user data FAQ](https://developer.chrome.com/docs/webstore/program-policies/user-data-faq) require prominent disclosure and affirmative consent for user-data handling. The FAQ says this must happen in the product's interface, not only in the policy or store listing. No private-staff-tool exemption was established. The popup has no such agreement step today. This remains a submission gap; a UI and behaviour change needs separate approval and E2E/UI verification, so none was made here.
 3. **Stale E2E assertion resolved** by the lead/test owner, with the full 28-case suite now passing as described above.
 4. **Expanded scope** (item 4, excluded). The code handles CRM documents, opt-in draft saves and staff-chosen website access. The submission text describes them as they are.

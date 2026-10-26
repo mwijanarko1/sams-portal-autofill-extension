@@ -42,7 +42,7 @@ Build produces independent browser outputs from the same shared JS:
 | Safari resources | `npm run build:safari` | `dist/safari-webextension` |
 | Safari macOS app | `npm run build:safari:app` | unsigned app under `dist/safari-app` |
 
-Production packaging rejects empty Campora origins or fewer than three portal origins.
+Production packaging still rejects an empty Campora list or fewer than three portal origins; the configured SAMS APPLY and three portal origins now satisfy both.
 
 ## Directory Guide
 
@@ -52,13 +52,13 @@ Production packaging rejects empty Campora origins or fewer than three portal or
 | `popup.html`, `popup.js` | Toolbar UI: Copy, Autofill, Clear, student card, countdown, result lists. |
 | `config/allowlist.js` | Exact CRM, Campora, portal, and dev origins; 30 minute retention. |
 | `config/build-mode.js` | Placeholder overwritten per build (`dev` / `prod`). |
-| `config/crm-source.js` | CRM profile path/marker guards and label map. |
+| `config/crm-source.js` | SAMS CRM and Campora profile path/marker guards and label map. |
 | `config/synonyms.js` | Shared deterministic field synonyms and autocomplete keys. |
 | `config/portals/greenwich.js` | Greenwich origin, selectors, split dates, blocked controls. |
 | `config/portals/bangor.js` | Bangor origin, selectors, split dates, blocked controls. |
 | `config/portals/manchester.js` | Greater Manchester origin (`evision.bolton.ac.uk`), SITS IPP selector map, split dates, blocked controls. |
 | `src/background.js` | Serialized session cache, expiry alarm, identity-checked messages. |
-| `src/crm-reader.js` | Visible CRM DOM reader; refuses non-profile pages. Reads the Applications stage panels when the tracker is mounted and the read-only Profile tab for any lead type; Profile values win on shared keys. Older layouts without a Profile tab are read in place. |
+| `src/crm-reader.js` | Visible CRM DOM reader; refuses non-profile pages. For SAMS CRM it reads the Applications stage panels when the tracker is mounted and the read-only Profile tab for any lead type; Profile values win on shared keys. Older layouts without a Profile tab are read in place. For Campora APPLY it opens the Profile tab, reads the summary and record tables, reads the application header, and restores the previous tab. |
 | `src/crm-documents.js` | Lists the profile's documents from the nine `fp_*_docs` GET endpoints with the page `api-token`; keeps metadata for `/tmp_aws_media/` files only. Fetches one file on attach inside the CRM tab, because the session cookie is not sent from extension pages. |
 | `src/portal-fill.js` | Page handler on a popup-only port; checks selected origin, sandboxing and top page; runs engine; returns fill report. |
 | `src/engine/engine.js` | Core scan/match/format/fill, split dates, click guard, skip-if-filled. |
@@ -72,7 +72,7 @@ Production packaging rejects empty Campora origins or fewer than three portal or
 | `e2e/safari/` | Safari fixture server and manual acceptance checklist. |
 | `fixtures/` | Empty reserved root for future committed sanitized portal steps. |
 | `docs/` | Staff, deploy, technical, Safari architecture, this map. |
-| `docs/history/` | Historical portal notes (Greenwich inventory, Ulster/Sunderland, etc.). |
+| `docs/history/` | Historical portal notes (Greenwich inventory, Ulster/Sunderland, etc.) and the Campora CRM-source inventory. |
 | `PORTALS.md` | Live portal verification matrix (current status). |
 | `BUILD-PLAN.md` | Original phased plan; partially historical. |
 | `README.md` | Product entry point and commands. |
@@ -128,7 +128,7 @@ Safari runtime acceptance is manual. Playwright WebKit and `npm run test:e2e` do
 
 ### Production gate
 
-`npm run build:prod` and `npm run build:safari:prod` refuse until Campora origin(s) and three portal origins are configured. The three portal origins are present in `config/allowlist.js`; only the empty `camporaOrigins` fails the gate. Live CRM-to-portal journeys and signing/distribution remain open. Current status: [publication/PREPARATION-REPORT.md](publication/PREPARATION-REPORT.md).
+`npm run build:prod` and `npm run build:safari:prod` still refuse an empty Campora list or fewer than three portal origins. The Campora origin and the three portal origins are now configured, so the automated gate passes; live CRM-to-portal journeys, Campora live autofill, Safari runtime acceptance and signing/distribution remain open. Campora's profile map is in [history/CAMPORA.md](history/CAMPORA.md). Current status: [publication/PREPARATION-REPORT.md](publication/PREPARATION-REPORT.md).
 
 ## Navigation: where guidance lives
 
@@ -150,7 +150,7 @@ Safari runtime acceptance is manual. Playwright WebKit and `npm run test:e2e` do
 
 ## Known Risks
 
-- **Incomplete production allowlist:** the Campora origin is missing (Greenwich, Bangor and Greater Manchester origins are present); prod builds intentionally fail.
+- **Production allowlist complete, release acceptance open:** the Campora origin and three portal origins are configured and the prod gate passes; one supervised Campora-to-Bangor no-save sample passed, while full live CRM-to-portal journeys, Campora live acceptance across portals, Safari runtime acceptance and signing remain open.
 - **Safari runtime unverified:** containing app builds and embeds resources; installed Safari behavior still needs operator checklist (ports 3000/3001 may be owned by other projects).
 - **Localhost fixtures use generic matching:** Bangor/Greenwich portal-specific maps apply on production origins only. Safari fixture parity is not portal-origin parity.
 - **Generic matching is conservative:** unmapped universities get shared personal/contact fields only; everything ambiguous or third-party stays manual. Sandboxed same-origin frames are not filled and are reported as not filled.
@@ -162,9 +162,10 @@ Safari runtime acceptance is manual. Playwright WebKit and `npm run test:e2e` do
 - **CRM Copy is flat and first-entry only:** the Profile tab is read in full, but `studentCache.fields` keeps one value per key, so a second education, passport, visa, work or reference entry is not stored. The Applications stage panels, lead lists, remarks, tasks and documents are separate surfaces.
 - **Do not treat `tmp/` or `.pstack/` as product docs.**
 
-## Verification snapshot (refreshed 2026-10-23)
+## Verification snapshot (refreshed 2026-10-25)
 
-- `npm test`: 126/126 pass on 2026-10-23 (unit + Chromium DOM, including the CRM Profile-tab fixture with its asynchronous section load).
-- 2026-10-23 (Helium, synthetic pages): `npm run test:e2e` 33/33. Details: [publication/PREPARATION-REPORT.md](publication/PREPARATION-REPORT.md).
+- `npm test`: 135/135 pass on 2026-10-25 (unit + Chromium DOM, including the CRM Profile-tab fixture with its asynchronous section load and the Campora profile fixture plus its double-Copy/tab-restoration, route-guard, closed-work-range, score-breakdown, pre-opened-pane, prior-visa and delayed-section regressions).
+- 2026-10-25 (Helium, loaded extension, synthetic pages): `npm run test:e2e` 50/50. Details: [publication/PREPARATION-REPORT.md](publication/PREPARATION-REPORT.md).
+- 2026-10-25 (Helium, real Campora to real Bangor, one `--no-save` sample): Copy 30 fields; Bangor education, employment and finance filled 8 controls; existing/blocked values preserved; 0 blocked writes; cache cleared. Not full live acceptance. Details: [history/CAMPORA.md](history/CAMPORA.md).
 - Safari: unsigned app builds (23 embedded resources, ad hoc signature, no team); runtime acceptance still pending operator enablement and a free port 3000.
 - Version: `0.1.0` across `package.json`, `manifest.json`, and Safari `MARKETING_VERSION`.

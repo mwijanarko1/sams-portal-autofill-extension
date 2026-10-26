@@ -78,14 +78,14 @@ All paths in this document are relative to the extension repository.
 | Integration | Exact production origin | Current evidence |
 |---|---|---|
 | SAMS CRM | `https://app.samscrm.co.uk` | Reader, agent/full-profile path guards, fixture tests |
-| Campora | None configured | `camporaOrigins` is empty; no parity promise |
+| Campora APPLY | `https://v-sams-backend.samsapply.co.uk` | Reader mapping and synthetic fixture; no live Safari acceptance |
 | University of Greenwich | `https://nelson.gre.ac.uk` | Portal config, fixtures, regression coverage |
 | Bangor University | `https://apps.bangor.ac.uk` | Portal config, fixtures, regression coverage |
-| University of Greater Manchester | None configured | Empty portal placeholder; access and mapping required |
+| University of Greater Manchester | `https://evision.bolton.ac.uk` | Portal config and fixtures; live Safari acceptance pending |
 
 Development adds `http://localhost:3000` for CRM and `http://localhost:3001` plus `http://127.0.0.1:3001` for portal fixtures. Production must exclude these.
 
-The production build currently rejects an empty Campora list or fewer than three portal origins. This blocks production packaging today. Matching Chrome's two configured portals is not sufficient to bypass that gate. Confirm the missing integrations, or obtain approval for a separately documented scope/gate change. The existing check counts origins; it does not by itself prove three working portal integrations.
+The production build still rejects an empty Campora list or fewer than three portal origins. The Campora origin and the three portal origins are now configured, so the gate passes; that only proves the allowlist is complete, not that the integrations were accepted. Live Campora and Safari runtime acceptance remain open.
 
 ### 2.3 Source versus older documentation
 
@@ -324,7 +324,7 @@ Legend: **Required** means the Safari release must reproduce the current Chrome 
 | Open shadow DOM | Shared scanning capability | Conditional on portal use | Representative fixture in real Safari |
 | Closed shadow DOM | Optional Chrome API helper | Conditional on Safari version/API | No invented workaround; unsupported controls stay manual |
 | Bangor Programme | Selector mapping incomplete; workflow may require saved Personal | Not a release parity claim yet | Confirmed draft/access and a separately approved inventory |
-| Campora/Greater Manchester | Not configured | Not included by pretending Chrome supports them | Access, exact origin, mapping, fixtures, supervised acceptance |
+| Campora / Greater Manchester | Chrome config and fixtures in tree | Not a Safari parity claim | Supervised Safari acceptance of the configured origins and flows |
 | Files/checkboxes/auth/declarations | Manual/blocked | Required safety parity | No writes, clicks, uploads or agreement changes |
 | Submit/save/pay/next/continue | Never clicked by extension | Required safety parity | Negative action/event assertions |
 | Cross-browser transfer | Not implemented | Not requested | Safari starts with an independent empty cache |
@@ -577,7 +577,7 @@ Safari iOS lacks some desktop extension APIs, including `webRequest`, several wi
 
 | Risk/dependency | Consequence | Control |
 |---|---|---|
-| Incomplete Campora/third portal scope | Existing production package cannot be released | Keep gate; obtain origins/access/mappings or explicit scope decision |
+| Campora/third-portal live acceptance | The production package builds but is not release-verified | Complete live CRM-to-portal and Safari acceptance before release |
 | Safari permission grants/revocation | Approved site fails injection or hides tab URL | Native access guidance and tested fail-closed errors |
 | WebKit control/framework differences | Fields appear filled but portal state rejects values | Check DOM value, selected option and validation/events in Safari |
 | Background/popover lifetime | Copy response lost, expiry late, stale UI | Session storage, fresh reads, cancellation/lifecycle tests |

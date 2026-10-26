@@ -15,7 +15,7 @@ Enablement steps and resource ownership are in [safari/README.md](../safari/READ
 
 ## Production package (Chrome)
 
-1. Add the confirmed Campora origin to `config/allowlist.js` (`camporaOrigins`). The Greenwich, Bangor and Greater Manchester origins are already in `portalOrigins`, so the empty Campora list is the only condition that fails the production gate today.
+1. Confirm the Campora origin in `config/allowlist.js` (`camporaOrigins`) is still the intended production host. It is configured together with the Greenwich, Bangor and Greater Manchester origins, so the production allowlist gate passes today; a first Campora-to-Bangor no-save sample passed, but full live Campora acceptance is still required.
 2. Complete and verify all three portal configs and fixtures.
 3. Set the release version in `manifest.json`, `package.json`, and the Safari Xcode `MARKETING_VERSION`.
 4. Run `npm test && npm run build:prod`.

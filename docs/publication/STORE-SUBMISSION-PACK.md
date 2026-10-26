@@ -2,7 +2,7 @@
 
 Status date: 2026-10-22, extension version `0.1.0`. Everything here is draft text prepared locally from the current source. It is not submitted, not legally reviewed and not approved by SAMS. See [the preparation report](PREPARATION-REPORT.md) for what is blocked.
 
-Not provided or invented here: the final app-store publisher identity, an extension support contact, a store account, legal approval, and the production Campora origin. They appear below as `TBD`. The public website privacy policy URL is known (section 1), but the page does not explicitly describe the extension and the draft addendum is not published or approved.
+Not provided or invented here: the final app-store publisher identity, an extension support contact, a store account, and legal approval. They appear below as `TBD`. The public website privacy policy URL is known (section 1), but the page does not explicitly describe the extension and the draft addendum is not published or approved.
 
 Sources used for store requirements (fetched 2026-10-22): Chrome Web Store [privacy tab](https://developer.chrome.com/docs/webstore/cws-dashboard-privacy), [user data FAQ](https://developer.chrome.com/docs/webstore/program-policies/user-data-faq), [program policies](https://developer.chrome.com/docs/webstore/program-policies/policies), [image sizes](https://developer.chrome.com/docs/webstore/images) and [publish guide](https://developer.chrome.com/docs/webstore/publish), and Apple's App Store Connect [app privacy page](https://developer.apple.com/help/app-store-connect/manage-app-information/manage-app-privacy/). The lead verified Apple's [Safari distribution guide](https://developer.apple.com/documentation/safariservices/distributing-your-safari-web-extension) using its [DocC JSON](https://developer.apple.com/tutorials/data/documentation/safariservices/distributing-your-safari-web-extension.json) after the ordinary pages returned no useful text.
 
@@ -10,7 +10,7 @@ Sources used for store requirements (fetched 2026-10-22): Chrome Web Store [priv
 
 ### Single purpose
 
-Transfer one student's details and staff-selected CRM documents from the signed-in SAMS CRM profile to university application forms chosen by authorised staff. Campora support remains subject to confirmed configuration and acceptance.
+Transfer one student's details and staff-selected CRM documents from the signed-in SAMS CRM or Campora APPLY profile to university application forms chosen by authorised staff. Campora is configured as a second Copy source; live acceptance remains pending.
 
 ### Remote code
 
@@ -26,11 +26,11 @@ Transfer one student's details and staff-selected CRM documents from the signed-
 | `scripting` | Injects the CRM page reader into the CRM profile tab, and the fill engine into the tab and frames staff chose. | `popup.js` |
 | `webNavigation` | Lists the frames of the selected tab so that only the top frame and same-origin frames are filled. URLs are read transiently and not stored. | `popup.js` |
 | Host `https://app.samscrm.co.uk/*` | Reads the open student profile and the profile's document list, and fetches a document when staff attach it. | `config/allowlist.js` |
-| Host Campora origin | `TBD`. The Campora origin is not yet confirmed or in `config/allowlist.js`, so a production host permission for it cannot be justified or generated yet. | `config/allowlist.js` |
+| Host `https://v-sams-backend.samsapply.co.uk/*` | Reads the open Campora APPLY student profile and application header when staff select Copy. Campora documents are not listed or fetched; staff attach them manually. | `config/allowlist.js` |
 | Hosts `https://nelson.gre.ac.uk/*`, `https://apps.bangor.ac.uk/*`, `https://evision.bolton.ac.uk/*` | Greenwich, Bangor and Greater Manchester application forms, which have saved field mappings. | `config/allowlist.js` |
 | Optional hosts `https://*/*` | Declared so staff can choose to allow one other university site. The extension requests only that exact origin through `permissions.request` after staff select **Allow this website**. It does not request all sites, and staff can revoke each grant in browser settings. | `manifest.json`, `popup.js` |
 
-The development build also lists `http://localhost:3000`, `http://localhost:3001` and `http://127.0.0.1:3001`. The production build removes them. Confirm this against the generated `dist/chrome/manifest.json` once a production build is possible.
+The development build also lists `http://localhost:3000`, `http://localhost:3001` and `http://127.0.0.1:3001`. The production build removes them. Confirm this against the generated `dist/chrome/manifest.json`; the Campora allowlist gate now passes.
 
 ### Data usage disclosures (proposed, for legal review)
 
@@ -136,7 +136,7 @@ Choices that belong to SAMS:
 - Safari distribution route and Apple team (section 5).
 - Who approves each update, since end users cannot edit the approved origins.
 
-Prerequisites for a first upload that cannot be met locally: confirmed Campora origin and a successful `npm run build:prod`, published extension coverage in the public privacy policy (the URL is known), publisher review of the draft store images, and the account.
+Local packaging prerequisite: a successful `npm run build:prod` (the allowlist gate now passes). Publisher-owned prerequisites that cannot be met locally: published extension coverage in the public privacy policy (the URL is known), publisher review of the draft store images, and the account.
 
 ## 7. Facts the pack depends on
 

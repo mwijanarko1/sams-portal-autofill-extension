@@ -78,9 +78,9 @@ These are public website facts. They are not proof of the final extension contro
 
 ### Technical provenance (repository)
 
-- `manifest.json`: Manifest V3; permissions `storage`, `activeTab`, `scripting`, `alarms`, `webNavigation`; host permissions for the SAMS CRM origin and development localhost entries; optional host permission `https://*/*`; no remote code.
+- `manifest.json`: Manifest V3; permissions `storage`, `activeTab`, `scripting`, `alarms`, `webNavigation`; the built manifest receives the SAMS CRM and Campora APPLY host permissions plus development localhost entries from `config/allowlist.js` (the root template does not list them); optional host permission `https://*/*`; no remote code.
 - `src/background.js`: the student cache is written to `chrome.storage.session`, with `expiresAt` from `sessionMinutes` and an expiry alarm; Clear removes the cache and alarm.
-- `config/allowlist.js`: `sessionMinutes: 30`; CRM origin `https://app.samscrm.co.uk`; configured portal origins; empty `camporaOrigins`; document file URLs restricted to the plain `/tmp_aws_media/` path on the CRM origin.
+- `config/allowlist.js`: `sessionMinutes: 30`; CRM origins `https://app.samscrm.co.uk` and `https://v-sams-backend.samsapply.co.uk`; configured portal origins; document file URLs restricted to the plain `/tmp_aws_media/` path on the SAMS CRM origin.
 - `src/crm-documents.js`: read-only document-listing requests send the page's `api-token` as a Bearer header with `credentials: "same-origin"`; file fetches use the same-origin session.
 - `popup.js`: optional exact-site access is requested with `chrome.permissions.request` for the selected origin.
 - A source search for `storage.local`, `storage.sync`, `localStorage` and `indexedDB` in the extension source and popup found none.

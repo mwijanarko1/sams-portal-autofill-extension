@@ -31,7 +31,7 @@ The demo-era `content.js` / localhost API path has been replaced. Current shared
 - Chrome + Safari packaging via `scripts/build.mjs` and `scripts/package-safari.mjs`
 - Tests: `npm test` (108 on 2026-10-22), `npm run test:e2e`, Safari manual checklist under `e2e/safari/`
 
-Still open relative to the original gates (current detail: `docs/publication/PREPARATION-REPORT.md`): the Campora origin (Greater Manchester's is in tree), live CRM-to-portal journeys, committed `fixtures/<portal>/` warranty HTML, production packaging, Safari runtime acceptance and signing.
+Still open relative to the original gates (current detail: `docs/publication/PREPARATION-REPORT.md`): live CRM-to-portal journeys (including Campora), committed `fixtures/<portal>/` warranty HTML, release acceptance, Safari runtime acceptance and signing. Production packaging itself is no longer blocked by the allowlist gate.
 
 Historical demo problems below are **done** (kept for audit trail):
 

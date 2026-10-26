@@ -44,7 +44,7 @@ While copying, the extension makes read-only requests to the SAMS CRM site that 
 
 ### Website access
 
-The extension can act on SAMS CRM, the Greenwich, Bangor and Greater Manchester application sites, and Campora [TBD: confirm origin]. For any other university site, access is given only when staff open the extension on that page or select **Allow this website**, and covers that exact website only. Staff can remove it in the browser's extension settings.
+The extension can act on SAMS CRM, Campora APPLY, and the Greenwich, Bangor and Greater Manchester application sites. For any other university site, access is given only when staff open the extension on that page or select **Allow this website**, and covers that exact website only. Staff can remove it in the browser's extension settings.
 
 ### Limited use
 

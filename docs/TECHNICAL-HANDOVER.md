@@ -336,13 +336,13 @@ Use a current Node.js environment and npm. Run `npm ci` in the repository to ins
 | `npm run test:e2e` | Loaded-extension Chromium E2E |
 | `npm run test:e2e:live` | Opt-in live smoke |
 | `npm run build` | Chrome **dev** package to `dist/chrome` |
-| `npm run build:prod` | Chrome **prod** package (currently refused; see below) |
+| `npm run build:prod` | Chrome **prod** package (allowlist gate passes; release acceptance pending) |
 | `npm run build:safari` | Safari web-extension resources |
 | `npm run build:safari:prod` | Safari prod resources (same allowlist gate) |
 | `npm run build:safari:app` | Unsigned Safari app packaging |
 | `npm run safari:fixtures` | Local fixture server for Safari checklist |
 
-**Current release blocker.** `camporaOrigins` in `config/allowlist.js` is empty. `scripts/build.mjs` refuses production builds until Campora origins are present and at least three portal origins are configured. Do not bypass that gate. Root `manifest.json` is a template; the built manifest under `dist/` receives generated `host_permissions`. Never edit `dist/` by hand as source of truth. Reload the extension and the tested page after a rebuild. Version bumps and distribution follow the approved release process in [INSTALL-AND-DEPLOY.md](INSTALL-AND-DEPLOY.md).
+**Production packaging is enabled; release acceptance is not complete.** `config/allowlist.js` now lists the Campora origin and three portal origins, so `scripts/build.mjs` produces production packages. Live Campora-to-portal acceptance, the remaining portal journeys and Safari runtime acceptance still block release. If the allowlist becomes incomplete again, the build refuses; do not bypass that gate. Root `manifest.json` is a template; the built manifest under `dist/` receives generated `host_permissions`. Never edit `dist/` by hand as source of truth. Reload the extension and the tested page after a rebuild. Version bumps and distribution follow the approved release process in [INSTALL-AND-DEPLOY.md](INSTALL-AND-DEPLOY.md).
 
 The current Chromium E2E runner uses the installed Helium browser by default. Check [the E2E browser setup](../e2e/README.md) before running it on another machine. Live checks require approved test access. Do not put credentials in this guide or in fixtures.
 
@@ -359,7 +359,7 @@ Safari packaging of shared JS is not proof that Autofill, document binding, or e
 - Exact-document Autofill requires `documentId` from `webNavigation.getAllFrames`. Browsers without that fail closed for Autofill and Attach flows that use `selectedPageFrames`.
 - Top document and same-origin frames only.
 - No automatic Save / Next / Submit / pay / declaration. Portal handlers may still react to filled values or attached files.
-- Production packaging blocked while Campora origins are empty.
+- The production allowlist is configured (Campora APPLY and three portal origins); one Campora-to-Bangor no-save sample passed, while full Campora and Safari runtime acceptance remain open.
 - Unit tests for new coverage are prohibited by project policy. Prefer E2E with sanitized fixtures.
 
 ---
