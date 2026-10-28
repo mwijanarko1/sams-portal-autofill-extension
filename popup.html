@@ -65,6 +65,9 @@
     .upload-choice-menu { position: absolute; z-index: 10; top: calc(100% + 4px); left: 0; right: 0; max-height: 176px; overflow-y: auto; padding: 4px; border: 1px solid #e0e7ff; border-radius: 8px; background: white; box-shadow: 0 12px 28px rgba(38, 34, 97, .18); }
     .upload-choice-menu[hidden] { display: none; }
     .upload-choice-option { padding: 6px 8px; border-radius: 6px; color: #312e81; font-size: 12px; cursor: pointer; overflow-wrap: anywhere; }
+    .upload-choice-option + .upload-choice-option { margin-top: 4px; border-top: 1px solid #e0e7ff; border-top-left-radius: 0; border-top-right-radius: 0; padding-top: 10px; }
+    .upload-choice-badge { display: block; margin-top: 2px; color: #166534; font-size: 11px; font-weight: 700; }
+    .upload-choice-badge[hidden] { display: none; }
     .upload-choice-option[data-highlighted="true"] { background: #eef2ff; }
     .upload-choice-option[aria-selected="true"] { background: #eef2ff; font-weight: 700; }
     button.attach { width: auto; margin: 0; padding: 5px 10px; }

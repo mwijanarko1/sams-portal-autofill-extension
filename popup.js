@@ -676,9 +676,11 @@ async function attachToUpload(frame, upload, row) {
     const response = await frame.request({ action: "attachDocument", key: upload.key, file });
     if (!response || response.error) throw new Error((response && response.error) || FRAME_NO_RESPONSE);
     row.attached = true;
-    const touched = await runtimeMessage({ action: "touchStudentCache" });
-    cache = touched.cache || null;
+    // The worker keeps which fields each document went to, so the badges survive closing the popup.
+    const recorded = await runtimeMessage({ action: "recordAttachedDocument", key: crmDocument.key, label: upload.label });
+    cache = recorded.cache || null;
     renderCache();
+    uploadPickers.forEach((item) => item.refreshBadges());
     setUploadStatus(status, "done", `Attached ${response.name}. Check the portal accepted it.`);
   } catch (error) {
     const message = error.message || String(error);
@@ -695,6 +697,12 @@ async function attachToUpload(frame, upload, row) {
 
 // shadcn-style listbox: a button that opens a panel of options, with keyboard support. It replaces
 // the native select so the popup matches the design system while keeping the same data flow.
+function attachedBadge(key) {
+  const fields = cache && cache.attached && cache.attached[key];
+  if (!fields || !fields.length) return "";
+  return `✓ Attached to ${fields[0]}${fields.length > 1 ? ` +${fields.length - 1} more` : ""}`;
+}
+
 function createPicker({ label, options, placeholder }) {
   const root = document.createElement("div");
   root.className = "upload-choice-wrap";
@@ -723,7 +731,12 @@ function createPicker({ label, options, placeholder }) {
     node.setAttribute("role", "option");
     node.setAttribute("data-value", option.value);
     node.setAttribute("aria-selected", "false");
-    node.textContent = option.text;
+    const text = document.createElement("span");
+    text.textContent = option.text;
+    const badge = document.createElement("span");
+    badge.className = "upload-choice-badge";
+    badge.hidden = true;
+    node.append(text, badge);
     node.addEventListener("click", () => selectOption(index, true));
     return node;
   });
@@ -795,6 +808,13 @@ function createPicker({ label, options, placeholder }) {
     },
     onChange(handler) { notify = handler; },
     setPlaceholder(text) { if (!selected) valueText.textContent = text; },
+    refreshBadges() {
+      optionNodes.forEach((node, position) => {
+        const badge = node.lastElementChild;
+        badge.textContent = attachedBadge(options[position].value);
+        badge.hidden = !badge.textContent;
+      });
+    },
     destroy() { document.removeEventListener("click", onDocumentClick); },
   };
 }
@@ -866,6 +886,7 @@ function renderUploadRow({ frame, upload }) {
     status.textContent = "No CRM document matches this field's file types.";
   }
   picker.onChange(state.sync);
+  picker.refreshBadges();
   show.addEventListener("click", () => showUpload(frame, upload, state));
   button.addEventListener("click", () => attachToUpload(frame, upload, state));
   controls.append(picker.root, button);
@@ -912,6 +933,7 @@ async function scanUploads() {
       placeholder: "Choose a document for any field",
       options: cache.documents.map((item) => ({ value: item.key, text: `${item.groupLabel} · ${documentFileName(item)}` })),
     });
+    generalPicker.refreshBadges();
     uploadPickers.push(generalPicker);
     generalPicker.onChange(() => uploadRows.forEach((row) => row.sync()));
     uploadGeneral.replaceChildren(generalPicker.root);

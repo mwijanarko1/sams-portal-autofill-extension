@@ -2,7 +2,7 @@ importScripts("../config/build-mode.js", "../config/allowlist.js");
 
 const CACHE_KEY = "studentCache";
 const ALARM_NAME = "expire-student-cache";
-const CACHE_ACTIONS = ["cacheStudent", "getStudentCache", "touchStudentCache", "clearStudentCache"];
+const CACHE_ACTIONS = ["cacheStudent", "getStudentCache", "touchStudentCache", "recordAttachedDocument", "clearStudentCache"];
 const MAX_FIELDS = 200;
 const MAX_TEXT_LENGTH = 4000;
 const MAX_DOCUMENTS = 100;
@@ -43,6 +43,19 @@ async function storeCache(profile) {
 async function touchCache() {
   const cache = await readCache();
   return cache ? storeCache(cache) : null;
+}
+
+// Which portal fields each CRM document was attached to, kept with the copied student so the
+// popup can show it again after it closes. A new Copy or Clear drops it.
+async function recordAttachment(key, label) {
+  const cache = await readCache();
+  if (!cache || typeof key !== "string" || typeof label !== "string") return cache;
+  if (!cache.documents.some((document) => document.key === key)) return cache;
+  const attached = { ...(cache.attached || {}) };
+  const labels = attached[key] || [];
+  const text = label.slice(0, MAX_TEXT_LENGTH);
+  if (!labels.includes(text)) attached[key] = labels.concat(text);
+  return storeCache({ ...cache, attached });
 }
 
 function validProfile(profile) {
@@ -92,6 +105,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     operation = async () => ({ cache: await storeCache(profile) });
   } else if (message.action === "getStudentCache") operation = async () => ({ cache: await readCache() });
   else if (message.action === "touchStudentCache") operation = async () => ({ cache: await touchCache() });
+  else if (message.action === "recordAttachedDocument") operation = async () => ({ cache: await recordAttachment(message.key, message.label) });
   else {
     operation = async () => {
       await clearCache();
