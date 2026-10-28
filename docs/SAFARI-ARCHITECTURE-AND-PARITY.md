@@ -267,7 +267,7 @@ The root `manifest.json` has no Greenwich or Bangor host permissions. The build 
 - `npm run build:safari:app` runs `scripts/package-safari.mjs`. It makes an unsigned Debug app with `xcodebuild` and checks that the embedded resources match `dist/safari-webextension`.
 - Both targets share the resource copy, the version check, the exact-host generation, and the rejection of incomplete production origins.
 - Nobody edits `dist/` by hand.
-- The app and extension `MARKETING_VERSION` match `package.json` and `manifest.json` (`0.2.0`). Apple build numbers can change on their own when signing starts.
+- The app and extension `MARKETING_VERSION` match `package.json` and `manifest.json` (`0.3.0`). Apple build numbers can change on their own when signing starts.
 
 The native project is created once and kept in Git. Its web resources come from the generated Safari output through stable project-relative references to `dist/safari-webextension`. A build system must create that folder before Xcode builds. Check the resource membership of every target and the contents of the archive. [A1]
 

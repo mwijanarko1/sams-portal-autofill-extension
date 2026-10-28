@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "SAMS Portal Autofill",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Copy visible student data from SAMS CRM and fill approved university portal drafts.",
   "permissions": ["storage", "activeTab", "scripting", "alarms", "webNavigation"],
   "host_permissions": [

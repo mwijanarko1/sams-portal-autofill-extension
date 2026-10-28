@@ -24,7 +24,7 @@ xcrun safari-web-extension-packager dist/safari-webextension \
 After that, the project was edited by hand. Do not regenerate it with `--force` or `--copy-resources`. The hand edits are:
 
 - **Bundle identifiers.** The app is `com.example.dev.SAMSPortalAutofill`. The extension is `com.example.dev.SAMSPortalAutofill.Extension`. The packager had made an app identifier that the extension identifier was not nested under. Both are development placeholders under the reserved `example.com` domain. Nobody registered them. They are not SAMS release identifiers.
-- **Version.** `MARKETING_VERSION` is `0.2.0`. It matches `package.json` and `manifest.json`.
+- **Version.** `MARKETING_VERSION` is `0.3.0`. It matches `package.json` and `manifest.json`.
 - **Entitlements.** The generated App Groups registration and the outgoing-network and user-selected-file entitlements are removed. The app and the extension keep only App Sandbox and Hardened Runtime.
 - **Native handler.** `SafariWebExtensionHandler.swift` refuses every native request. It does not read, log, or echo the request. The manifest does not request `nativeMessaging`.
 - **Help page.** The help page of the app explains enablement and website access. It states that the app never receives student data.
