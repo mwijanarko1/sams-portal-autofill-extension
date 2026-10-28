@@ -221,19 +221,19 @@ Only one saved entry per section is copied because `studentCache.fields` is a fl
 - Anything below the first saved entry in a list section.
 - Hidden edit forms that the CRM has not rendered. The reader never opens an edit dialog or Add form.
 
-## Verification
+## Tests and live checks
 
-Live check on 2026-10-23, with a browser session signed in using the credentials in the ignored `.env.local`:
+A live check on 2026-10-23 used a browser session that was signed in with the credentials in the ignored `.env.local`. It read three leads:
 
-| Lead | Type | Fields copied | Notes |
-|---|---|---:|---|
-| `398723` | Seeded direct lead | 66 | Every Profile section populated; no missing education, passport, visa, work or test fields |
-| `401630` | Sub-agent lead | 21 | Sparse Profile plus the mounted Applications form (`preferredStartYear=2026`) |
-| `404892` | Seeded lead / converted Profile tab | 58 | Profile sections plus the visible Applications form; admission preference was empty in CRM |
+| Lead type | Fields copied | Notes |
+|---|---:|---|
+| Seeded direct lead | 66 | Every Profile section had data. No education, passport, visa, work, or test fields were missing. |
+| Sub-agent lead | 21 | Sparse Profile plus the mounted Applications form (`preferredStartYear=2026`). |
+| Seeded lead with a converted Profile tab | 58 | Profile sections plus the visible Applications form. The admission preference was empty in the CRM. |
 
-`npm test` passes **126/126**, including the `crm-profile-tab.html` browser fixture that reproduces the Profile tab's asynchronous section load. `npm run test:e2e` passes **33/33** on the synthetic pages (the Greenwich fixture now matches the live qualification year select).
+The browser fixture `test/fixtures/crm-profile-tab.html` reproduces the asynchronous section load of the Profile tab. It runs in `npm test`.
 
-Manual re-check commands (the injected bundle is the same file set `popup.js` injects):
+To check by hand, open a lead in the signed-in browser and run the injected bundle (the same files as `popup.js` injects):
 
 ```sh
 # open https://app.samscrm.co.uk/agent/leads/full-profile/<id> in the signed-in browser
@@ -242,4 +242,4 @@ Manual re-check commands (the injected bundle is the same file set `popup.js` in
 SAMS_CRM_READER.readProfile().then((p) => console.log(p.fields))
 ```
 
-Credentials live in `.env.local` (`SAMS_CRM_USERNAME`, `SAMS_CRM_PASSWORD`, `SAMS_CRM_WEBSITE_LINK`). Do not commit them or paste real lead data into fixtures.
+The credentials are in `.env.local` (`SAMS_CRM_USERNAME`, `SAMS_CRM_PASSWORD`, `SAMS_CRM_WEBSITE_LINK`). Never commit them. Never paste real lead data into fixtures.

@@ -250,16 +250,9 @@ accepts that, ISO dates and `YYYY-MM`. Live CRM values are what matter here.
 - No separate previous-name date or alias fields.
 - No qualification level/grade type select, only free-text title and grades.
 
-## Verification
+## Tests and live checks
 
-- Full live inventory: 2026-10-23 on an authenticated agent application across all nine sections.
-- Independent second pass (2026-10-23): swept all 25 restricted-admissions pages, the other four
-  lookup forms and the extra hub pages. Found four restricted controls and the research-title
-  false positive; all are now blocked. Documented sections: 128 controls, 0 gaps.
-- Live engine run with a synthetic CRM map on 2026-10-23: Personal, Contact, Education,
-  Employment, Finance and Programme filled the mapped controls and preserved existing values;
-  International filled `visaType` and both visa date ranges; no wrong-section matches remained
-  after the blocked-control updates.
-- Automated config tests: `test/bangor.test.js` (part of `npm test`).
-- Live CRM Copy → Autofill on a fresh draft: still pending.
-- Sanitized HTML fixtures in repo: pending.
+- **Live inventory.** An authenticated agent application, all nine sections, on 2026-10-23. A second pass covered all 25 restricted-admissions pages, the other four lookup forms, and the extra hub pages. It found four restricted controls and one false positive (the research title). The config now blocks all of them. The documented sections hold 128 controls and have 0 gaps.
+- **Live engine run (synthetic CRM map, 2026-10-23).** Personal, Contact, Education, Employment, Finance, and Programme filled the mapped controls and kept existing values. International filled `visaType` and both visa date ranges. No wrong-section matches remained after the blocked-control updates.
+- **Automated tests.** `test/bangor.test.js`, and the Bangor cases in `npm run test:e2e`.
+- **Not done.** A live CRM Copy to Autofill run on a fresh draft. Sanitized HTML fixtures of the real pages.

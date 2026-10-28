@@ -1,79 +1,66 @@
-# Extension E2E
+# End-to-end tests
 
-Repository layout and related docs: [docs/CODEBASE_MAP.md](../docs/CODEBASE_MAP.md). Safari has a separate manual checklist under [e2e/safari/README.md](safari/README.md).
+For the file layout, see [docs/CODEBASE_MAP.md](../docs/CODEBASE_MAP.md). Safari has its own manual checklist: [safari/README.md](safari/README.md).
 
-## Offline regression
+## Offline tests (synthetic pages)
 
 ```sh
 npm ci
 npm run test:e2e
 ```
 
-The runner loads the real MV3 extension from current source into an isolated
-temporary Helium profile. It uses the real popup page, background session cache,
-CRM reader, and portal engine. It selects the actual active browser tab, rather
-than mocking Chrome APIs. The popup runs as an extension tab, not the native
-toolbar popover.
+The runner loads the extension from the current source into a temporary Helium profile. It uses the real popup page, the real background session cache, the real CRM reader, and the real portal engine. It selects the active browser tab. It does not mock the Chrome APIs. The popup runs as an extension tab, not as the native toolbar popover.
 
-Synthetic HTTPS pages reproduce the confirmed CRM agent route, mapped Bangor,
-Greenwich, and Manchester Personal Details control IDs, and an unmapped university origin that has no
-allowlist entry, mapping, or host permission. Browser routing supplies fixture HTML and blocks all
-other HTTP requests. No live credentials or applicant data are used.
+Synthetic HTTPS pages stand in for the CRM and the portals:
 
-Coverage:
+- the confirmed CRM agent route,
+- the control IDs of the mapped Bangor, Greenwich, and Manchester Personal Details pages,
+- an unmapped university origin that has no allowlist entry, no mapping, and no host permission.
 
-- CRM Copy and portal Autofill on Bangor and Greenwich, plus targeted Manchester
-  Personal Details mapping checks. This is not a complete Manchester tab journey.
-- Greenwich split DOB on Statistical Information at a previous address-save URL,
-  and employment dates on both display and previous-save URLs, via form actions.
-- Greenwich country of birth uses nationality when the CRM has no birth country,
-  preserves an existing portal selection, and leaves cached student data unchanged.
-- Greenwich funding maps self-funded variants to private finance and leaves
-  unsupported funding values manual, including inherited-property-name inputs.
-- Greenwich intake derives from CRM start month and year when no explicit intake
-  exists. Explicit intake wins. Job title fills the job description, not Full-time
-  or Part-time. Referee fields never receive applicant contact details.
-- Greenwich and Manchester derive missing residence from the CRM address country.
-  Manchester Personal Details also derives birth country from nationality and
-  preserves an existing residence. Derived values do not change the copied cache.
-- Existing values preserved and repeated Autofill does not duplicate values.
-- Blocked DOB controls, referee fields, signatures, authentication fields,
-  finance-name controls, chat, uploads, and secondary qualification rows.
-- No portal submit, pay, or save clicks.
-- Clear removes the session cache and visibly hides the student card.
+Browser routing supplies the fixture HTML and blocks all other HTTP requests. The tests use no live credentials and no applicant data.
+
+### What the tests cover
+
+- CRM Copy and portal Autofill on Bangor and Greenwich. Targeted checks of the Manchester Personal Details mapping. These are not a complete Manchester tab journey.
+- Greenwich split date of birth on Statistical Information, including a previous address-save URL. Employment dates on the display URL and the previous-save URL, using form actions.
+- Greenwich country of birth. It uses nationality when the CRM has no birth country. It keeps an existing portal selection. It leaves the cached student data unchanged.
+- Greenwich funding. Self-funded variants map to private finance. Unsupported funding values stay manual, including inputs with inherited property names.
+- Greenwich intake. It comes from the CRM start month and year when no explicit intake exists. An explicit intake wins. Job title fills the job description, not Full-time or Part-time. Referee fields never receive the applicant's contact details.
+- Residence on Greenwich and Manchester. It comes from the CRM address country when missing. Manchester Personal Details also derives birth country from nationality and keeps an existing residence. Derived values do not change the copied cache.
+- Existing values stay. A repeated Autofill adds no duplicates.
+- Blocked controls stay empty: date-of-birth controls, referee fields, signatures, authentication fields, finance-name controls, chat, uploads, and secondary qualification rows.
+- The tests never select a portal submit, pay, or save control.
+- Clear removes the session cache and hides the student card.
 - Session expiry disables Autofill and clears the cache.
-- Unapproved origins rejected; no local or sync storage of student data.
-- Unmapped university through the real toolbar popup: the tab-popup page cannot
-  reach it and shows website-access guidance; after the browser's toolbar action
-  trigger grants `activeTab`, shared fields fill in the top page and a same-origin
-  child frame only. Login, emergency, referee, agent, education, payment, and
-  declaration fields, a sandboxed same-URL frame, a `srcdoc` frame, and an
-  embedded Greenwich portal stay unchanged. Repeat Autofill changes nothing.
+- The extension rejects unapproved origins. It does not use local or sync storage for student data.
+- An unmapped university through the real toolbar popup:
+  - The tab-popup page cannot reach it. It shows website-access guidance.
+  - After the toolbar action grants `activeTab`, shared fields fill in the top page and in a same-origin child frame only.
+  - These stay unchanged: login, emergency, referee, agent, education, payment, and declaration fields, a sandboxed same-URL frame, a `srcdoc` frame, and an embedded Greenwich portal.
+  - A repeated Autofill changes nothing.
+- CRM documents. Copy keeps only valid metadata from the nine listings. Missing token, unauthorized, and network failures leave field Copy working. Accept-filtered choices attach exact PDF and JPEG bytes to the chosen frame input only. An occupied file input is disabled. HTML, redirect, non-OK, and oversized responses fail without attaching. Clear in another popup wins over a scanned selection. Ordinary Autofill never fills file inputs.
 
-The toolbar popup is opened with the CDP `Extensions.triggerAction` command,
-which the test-only `--enable-unsafe-extension-debugging` flag enables. Playwright
-does not expose that popup, so the test drives it through its own CDP target
-session. Screenshots are written to `tmp/general-portal-evidence/`.
+### How the tests open the toolbar popup
 
-The runner opens a visible browser. It defaults to Helium at
-`/Applications/Helium.app/Contents/MacOS/Helium` on macOS. Set `SAMS_E2E_BROWSER` to
-the path of any compatible Chromium executable to use another browser.
-`SAMS_E2E_HEADLESS=1` is diagnostic only: the installed Helium aborted fixture
-navigation in headless mode. It is not the verified test mode.
+The tests open the popup with the CDP command `Extensions.triggerAction`. The test-only flag `--enable-unsafe-extension-debugging` enables this command. Playwright does not expose the toolbar popup. The test drives it through its own CDP target session. Screenshots go to `tmp/general-portal-evidence/`.
 
-Temporary profiles and staging files remain under ignored `tmp/e2e-*`. Existing
-`dist` files and authenticated profiles are never replaced by offline tests.
-Test staging is not a release package and does not bypass the production build's
-incomplete-origin release gate.
+### Browser choice
+
+The runner opens a visible browser. On macOS it uses Helium at `/Applications/Helium.app/Contents/MacOS/Helium` by default. Set `SAMS_E2E_BROWSER` to the path of another compatible Chromium to use it.
+
+`SAMS_E2E_HEADLESS=1` is for diagnosis only. Helium stopped fixture navigation in headless mode. Headless mode is not a verified way to run the tests.
+
+### Files the tests create
+
+Temporary profiles and staging files go to the ignored folder `tmp/e2e-*`. The offline tests never replace existing `dist` files or authenticated profiles. The test staging is not a release package. It does not bypass the production build's check for incomplete origins.
 
 ## Live random-sample smoke test
 
-Live testing is an explicit opt-in, not part of `npm test` or the offline suite.
-Use only an approved PinchTab automation profile. The runner refuses a profile
-that is not under `~/.pinchtab/profiles`. Stop that profile's browser instance first
-to avoid a profile lock. Never point this at a normal personal browser profile.
+Live tests are opt-in. `npm test` and the offline suite do not run them.
 
-The ignored extension `.env.local` supplies these keys:
+Use only an approved PinchTab automation profile. The runner refuses a profile that is not under `~/.pinchtab/profiles`. Stop the browser instance of that profile first, to avoid a profile lock. Never point the runner at a normal personal browser profile.
+
+The ignored file `.env.local` supplies these keys:
 
 ```text
 SAMS_CRM_USERNAME
@@ -88,29 +75,20 @@ GREATER_MANCHESTER_USERNAME
 GREATER_MANCHESTER_PASSWORD
 ```
 
-Greater Manchester credentials are not reused for Greenwich. Missing portal keys
-are reported as blocked, not passed. Existing sessions are reused when possible;
-otherwise a login is attempted once. CAPTCHA or human verification requires a
-human handoff, not a bypass.
+Greater Manchester credentials are not used for Greenwich. The runner reports a missing portal key as blocked, not as passed. It reuses an existing session when possible. Otherwise it tries to log in once. A CAPTCHA or other human check needs a person to take over. The runner does not bypass it.
 
-The default portal list is Bangor, Greenwich, and Greater Manchester. Each portal
-runs only when both of its credential keys exist; missing keys produce a blocked
-entry. Set `SAMS_E2E_PORTALS=greater-manchester` to select Manchester alone, or use
-a comma-separated list of `bangor`, `greenwich`, and `greater-manchester`.
+The default portals are Bangor, Greenwich, and Greater Manchester. A portal runs only when both of its credential keys exist. Set `SAMS_E2E_PORTALS=greater-manchester` to run Manchester alone. You can also set a comma-separated list of `bangor`, `greenwich`, and `greater-manchester`.
 
 ```sh
 SAMS_E2E_PROFILE='/absolute/path/to/approved/.pinchtab/profiles/profile-directory' \
   npm run test:e2e:live -- --no-save --random-leads
 ```
 
-The runner uses the real loaded extension in visible Helium. It randomly selects
-up to three distinct profiles from the currently visible CRM Lead Management
-page. `SAMS_E2E_SAMPLE_COUNT=1` or `2` reduces that count; the maximum is three.
-It does not claim coverage of the entire lead database or every portal section.
+The runner uses the real loaded extension in a visible Helium window. It picks up to three different profiles at random from the visible CRM Lead Management page. Set `SAMS_E2E_SAMPLE_COUNT=1` or `2` to reduce the number. The maximum is three. The run does not cover the whole lead database or every portal section.
 
-Campora is an alternative Copy source. Set `SAMS_E2E_CRM=campora` and supply
-`SAMS_E2E_LEADS_FILE` with one or more Campora profile URLs, because Campora
-random lead selection is not implemented:
+### Campora as the Copy source
+
+Set `SAMS_E2E_CRM=campora`. Give `SAMS_E2E_LEADS_FILE` one or more Campora profile URLs. Random lead selection does not work for Campora.
 
 ```sh
 SAMS_E2E_CRM=campora \
@@ -121,84 +99,74 @@ SAMS_E2E_LEADS_FILE='/absolute/path/to/campora-leads.json' \
   npm run test:e2e:live -- --no-save
 ```
 
-The file is a JSON array of
-`https://v-sams-backend.samsapply.co.uk/applyuser/show/<id>/profile` URLs. The
-runner opens the Profile tab, copies the Campora fields, then fills the chosen
-real portal draft. Campora documents remain a manual attachment.
+The file is a JSON array of URLs like `https://v-sams-backend.samsapply.co.uk/applyuser/show/<id>/profile`. The runner opens the Profile tab and copies the Campora fields. Then it fills the chosen real portal draft. Campora documents stay a manual attachment.
 
-First supervised Campora-to-Bangor no-save sample (2026-10-25): Copy returned 30
-fields; Bangor education, employment and finance filled eight controls; existing
-and blocked values were preserved; there were zero blocked writes; the cache was
-cleared. One sample is not full portal or Campora acceptance, and the runner does
-not verify that the existing draft belongs to the selected applicant; treat it as
-a no-save field-fill smoke test.
+The first supervised Campora-to-Bangor run without saving was on 2026-10-25. Copy returned 30 fields. Bangor education, employment, and finance gained eight filled controls. The run kept existing and blocked values. It made no blocked writes. It cleared the cache. This is one sample. It does not prove full portal or Campora acceptance. The runner does not check that the existing draft belongs to the selected applicant. Treat it as a smoke test of field filling without saving.
 
-For each sample, it copies the current visible CRM profile, fills an existing
-portal form, checks that existing and blocked fields are unchanged, repeats
-Autofill, and clears the student cache. Bangor's configured data-entry forms and
-Greenwich's configured sections, including Statistical and Programme Information,
-are targeted. Greater Manchester uses the existing application hub at
-`https://evision.bolton.ac.uk` and clicks only the PD, CD, QU, and EX tab links.
-Each asynchronously loaded `#TAB-MAIN-<code>` pane gets up to 30 seconds to expose
-its controls before the same Autofill checks run. Samples reload the hub to discard
-unsaved values. The runner never clicks Manchester Save, Save and Continue, Submit,
-or the Submission tab. An unavailable existing draft is a blocker. No draft or
-lead is created, no documents uploaded, and no application submitted or saved in
-the default no-save mode.
+### What each sample does
 
-After login, non-GET/HEAD requests are blocked. Only the current login form's POST
-is allowed while authenticating. If a portal attempts an autosave or another
-write, the request is blocked and the test stops. Manchester tab loading gets no
-POST exception: if it requires a non-GET/HEAD request, the portal is marked blocked
-with `blockedTabLoad`, and `blockedWriteStages` records `tabLoadBlocked: true`, the
-tab code, method, and redacted SITS routine path (without query strings or record
-ids). Unknown paths remain `[redacted]`. Inspect this evidence and get approval for
-a single confirmed read-only request before any allowlist change. No such request is allowed by this runner.
+For each sample, the runner:
 
-Unsaved form values are discarded by reloading or closing the test browser. The
-overall deadline is 10 minutes, paused for a human CAPTCHA handoff. The existing
-`--save-bangor-personal-once` exception requires separate explicit approval and
-does not permit any Manchester saves or tab-loading POSTs.
+1. copies the visible CRM profile,
+2. fills an existing portal form,
+3. checks that existing and blocked fields did not change,
+4. repeats Autofill,
+5. clears the student cache.
 
-The runner never prints credentials or applicant field values. Its redacted report
-is `tmp/extension-e2e/live-report.json`: sample numbers, CRM field keys, counts,
-and preservation/cache-clear results. Each completed form includes `filledControls`,
-an array of control ids or names changed by the first Autofill, never their values,
-alongside `changedFields`, `emptyBefore`, `emptyAfter`, and `repeatFilled`.
-`emptyAfter` contains control identifiers, not values. A listed identifier proves
-that control changed, not that the CRM-derived value is correct. Existing values
-are preserved, so an already populated mapped control need not appear. This report
-must remain ignored.
+Per portal:
 
-## Verification boundaries
+- **Bangor.** It targets the configured data-entry forms.
+- **Greenwich.** It targets the configured sections, including Statistical and Programme Information.
+- **Greater Manchester.** It uses the existing application hub at `https://evision.bolton.ac.uk`. It selects only the PD, CD, QU, and EX tab links. Each pane loads asynchronously (`#TAB-MAIN-<code>`). The runner waits up to 30 seconds for the controls, then runs the same Autofill checks. Each sample reloads the hub to discard unsaved values. The runner never selects Manchester Save, Save and Continue, Submit, or the Submission tab.
 
-Offline success verifies the loaded extension on representative synthetic DOMs,
-not current portal layouts, native toolbar behavior, or every live CRM layout.
-Live authentication alone is not a CRM-to-portal E2E pass. Bangor Programme can
-require saving Personal first; with the no-save policy it remains unverified unless
-already unlocked. Greenwich live testing requires its own credentials and an
-existing draft. Inspect the report's blocked and failure entries before claiming
-completion.
+An unavailable existing draft is a blocker. In the default no-save mode, the runner creates no draft and no lead, uploads no documents, and does not submit or save an application.
 
-## Security evidence boundary
+### Write protection
 
-The automated baseline on 2026-10-28 is 135/135 supporting
-tests (`npm test`) and 50/50 loaded-extension E2E cases (`npm run test:e2e`).
-Regenerate these counts by running the commands rather than treating them as
-permanent totals. The document cases prove metadata-only Copy, explicit selected-file
-fetch, exact PDF and JPEG transfer, occupied-input protection, failure handling,
-Clear, and expiry on synthetic pages.
+After login, the runner blocks all requests except GET and HEAD. During login it allows only the POST of the current login form. If a portal tries to autosave or write in another way, the runner blocks the request and stops the test.
 
-They do not prove that CRM media links require login, that employee revocation
-invalidates existing sessions, or that devices, clipboards, and university uploads
-are securely erased. No offboarding simulation or live upload is part of these
-suites. Those controls require approved checks by the system owners.
-See [the technical handover](../docs/TECHNICAL-HANDOVER.md#employee-offboarding-and-device-loss).
+Manchester tab loading has no POST exception. If a tab needs a request other than GET or HEAD, the runner marks the portal as blocked with `blockedTabLoad`. `blockedWriteStages` then records `tabLoadBlocked: true`, the tab code, the method, and the redacted SITS routine path (no query string and no record ID). Unknown paths stay `[redacted]`. Inspect this evidence. Get approval for one confirmed read-only request before you change the allowlist. This runner allows no such request.
+
+The runner discards unsaved form values when it reloads or closes the test browser. The total time limit is 10 minutes. The limit pauses for a human CAPTCHA step. The option `--save-bangor-personal-once` is an exception. It needs separate explicit approval. It does not allow any Manchester save or tab-loading POST.
+
+### Report
+
+The runner never prints credentials or applicant field values. The redacted report is `tmp/extension-e2e/live-report.json`. It holds sample numbers, CRM field keys, counts, and the results of the preservation and cache-clear checks. Each completed form lists `filledControls` (the IDs or names of controls that the first Autofill changed, never their values). It also lists `changedFields`, `emptyBefore`, `emptyAfter`, and `repeatFilled`. `emptyAfter` holds control identifiers, not values.
+
+A listed identifier shows that the control changed. It does not show that the CRM-derived value is correct. The runner keeps existing values, so a control that already had a value does not need to appear. Keep this report out of Git.
+
+### Limits of the live test
+
+- The offline tests prove behaviour on representative synthetic pages. They do not prove behaviour on current portal layouts, the native toolbar popover, or every live CRM layout.
+- A live login alone is not a CRM-to-portal pass.
+- Bangor Programme can need a saved Personal section first. With the no-save rule, Programme stays unverified unless the draft is already unlocked.
+- Greenwich live testing needs its own credentials and an existing draft.
+- Read the blocked and failure entries of the report before you call a run complete.
 
 ## Live document attachment
 
-Run `npm run test:e2e:documents:live -- --no-save` with the existing private `.env.local` credentials and installed Helium. This creates its own temporary browser profile, copies actual CRM documents through the extension, and visits real Bangor, Greenwich and Greater Manchester pages. It never fulfills portal responses with fixtures, creates applications or clicks Save/Submit.
+Run this with the private `.env.local` credentials and an installed Helium:
 
-The runner blocks non-login writes, checks Show on page, exact CRM file bytes in the native file input and the occupied-field guard, then clears the session cache and removes its temporary profile. Successful file assignment is not proof of server upload or custom-widget acceptance. Inaccessible forms and authentication challenges are reported as blocked, not passed.
+```sh
+npm run test:e2e:documents:live -- --no-save
+```
 
-Set `SAMS_DOCUMENT_WAIT_CAPTCHA=1` to pause for human Greenwich login. Only the exact login action and Google/reCAPTCHA authentication POST paths are allowed during that login. Do not automate the challenge. Redacted popup screenshots and count-only reports go under ignored `tmp/generic-upload-evidence/` (override with `SAMS_DOCUMENT_EVIDENCE`, still within `tmp/`). `SAMS_DOCUMENT_BASELINE=1` stages the current Git HEAD versions of the three changed UI files into the temporary extension, for a before/after check without changing the worktree.
+The runner creates its own temporary browser profile. It copies real CRM documents through the extension and visits real Bangor, Greenwich, and Greater Manchester pages. It never answers portal requests with fixtures. It does not create applications. It never selects Save or Submit.
+
+The runner blocks writes other than login. It checks **Show on page**, the exact CRM file bytes in the native file input, and the guard for occupied fields. Then it clears the session cache and deletes its temporary profile. A successful file assignment does not prove a server upload or acceptance by a custom upload widget. The runner reports forms that it cannot reach, and authentication challenges, as blocked, not as passed.
+
+Set `SAMS_DOCUMENT_WAIT_CAPTCHA=1` to pause for a person to log in to Greenwich. During that login the runner allows only the exact login action and the Google reCAPTCHA authentication POST paths. Do not automate the challenge.
+
+Redacted popup screenshots and count-only reports go to the ignored folder `tmp/generic-upload-evidence/`. You can change the folder with `SAMS_DOCUMENT_EVIDENCE`. It must stay inside `tmp/`. `SAMS_DOCUMENT_BASELINE=1` puts the Git HEAD versions of the three changed UI files into the temporary extension. This gives a before-and-after check without changing your working tree.
+
+## What these tests do not prove
+
+The offline tests prove these points on synthetic pages: Copy keeps metadata only, Attach fetches the one chosen file, the exact PDF and JPEG bytes transfer, an occupied input stays protected, failures are handled, and Clear and expiry work.
+
+They do not prove any of these points:
+
+- CRM media links need a login.
+- Employee revocation ends existing sessions.
+- Devices, clipboards, and university uploads are securely erased.
+
+No offboarding simulation and no live upload is part of these suites. The system owners must check those controls. See the [offboarding checklist](../docs/TECHNICAL-HANDOVER.md#employee-offboarding-and-device-loss).

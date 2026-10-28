@@ -124,28 +124,21 @@ values are intentionally left alone:
   existing single-value cache contract.
 - A lead with several applications must have the intended application open; the Application
   tab values belong to the current `apply_id`.
-- A first supervised Campora-to-Bangor no-save sample passed on 2026-10-25. That is one
-  application, one portal and one existing draft; Greenwich, Manchester, multiple samples and
-  a full field-by-field acceptance remain.
+- Only one live Campora run is recorded (see "Live result"). It does not cover Greenwich, Manchester, several samples, or a field-by-field value check.
 - The host is the SAMS APPLY deployment. Confirm it is still the intended production origin
   before a release build.
 
 ## Live result (2026-10-25)
 
-One supervised `--no-save` sample with the real loaded extension in a visible Chromium browser:
+One supervised run without saving, with the real loaded extension in a visible Chromium browser:
 
-- Source: Campora APPLY profile route `/applyuser/show/<id>/profile`.
-- Target: the existing Bangor application draft.
-- Copy returned 30 fields: summary, contact, education, work, test score, passport and the
-  application header.
-- Bangor education filled 3 controls, employment 4 and finance 1. Personal, contact and
-  language fields preserved their existing values.
-- Existing and blocked values preserved; zero blocked writes; cache cleared; no save or
-  submit.
-- This is not full acceptance: one application, one portal and one draft. The runner does
-  not verify that the existing draft belongs to the selected Campora applicant, so treat
-  this as a no-save field-fill smoke test. Greenwich, Manchester, multiple samples and a
-  field-by-field value check remain outstanding.
+- **Source.** Campora APPLY profile route `/applyuser/show/<id>/profile`.
+- **Target.** The existing Bangor application draft.
+- **Copy.** It returned 30 fields: summary, contact, education, work, test score, passport, and the application header.
+- **Fill.** Bangor education filled 3 controls, employment 4, and finance 1. Personal, contact, and language fields kept their existing values.
+- **Safety.** Existing and blocked values were kept. There were zero blocked writes. The cache was cleared. Nothing was saved or submitted.
+
+This is one application, one portal, and one draft. The runner does not check that the existing draft belongs to the selected Campora applicant. Treat it as a smoke test of field filling without saving.
 
 ## Read-only section endpoints
 
@@ -169,18 +162,9 @@ sub-content/apply_profile_emergency_contact_info_edit
 sub-content/apply_profile_funding_info_edit
 ```
 
-## Verification
+## Tests
 
-- Synthetic fixture: `test/fixtures/campora-profile.html`
-- Regression tests in `test/crm-reader.browser.test.js`: mapped profile with an exact
-  permitted-key assertion, double Copy with tab-restoration assertions, the
-  non-profile-path guard, a closed work range, a full test-score breakdown, an
-  already-open Profile pane, a prior-visa exclusion, and a delayed section load.
-  `test/config.test.js` also exercises the real Campora route expression.
-- `npm test`: 135/135 on 2026-10-25
-- `npm run test:e2e`: 50/50 on 2026-10-25, loaded extension against synthetic pages. This is
-  not a live portal.
-- `npm run test:e2e:live`: one Campora-to-Bangor no-save sample passed on 2026-10-25 with
-  `SAMS_E2E_CRM=campora`. See the live result above for scope.
-- Live inventory: browser-driven, 2026-10-25. No credentials or applicant values are recorded in
-  this document.
+- Synthetic fixture: `test/fixtures/campora-profile.html`.
+- Regression tests in `test/crm-reader.browser.test.js` cover these cases: a mapped profile with an exact permitted-key check, a double Copy with tab restoration, the non-profile-path guard, a closed work range, a full test-score breakdown, an already-open Profile pane, a prior-visa exclusion, and a delayed section load. `test/config.test.js` tests the real Campora route expression.
+- `npm run test:e2e:live` with `SAMS_E2E_CRM=campora` ran the live result above.
+- Live inventory: browser-driven, 2026-10-25. This document records no credentials and no applicant values.

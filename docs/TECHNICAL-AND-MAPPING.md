@@ -1,38 +1,60 @@
 # Technical and mapping guide
 
-For directory ownership and navigation paths, see [CODEBASE_MAP.md](CODEBASE_MAP.md).
+For the file layout, see [CODEBASE_MAP.md](CODEBASE_MAP.md).
 
 ## Data flow
 
-The popup validates the active origin before injecting a reader or filler. Copy requires an approved CRM origin. Autofill accepts any HTTP(S) page except CRM origins: mapped portals have persistent host access, and other pages are reachable only through the temporary `activeTab` grant the browser gives when staff open the extension from the toolbar there. Denied access is reported, never bypassed. The CRM reader validates the origin again and requires both a profile URL match and a page marker. It maps visible labelled values to canonical keys and sends one profile to the background service worker.
+1. The popup checks the origin of the active tab before it injects a reader or a filler.
+2. **Copy** works only on an approved CRM origin. The CRM reader checks the origin again. It also needs a matching profile URL and a page marker. It maps visible labels to canonical keys and sends one profile to the background service worker.
+3. The service worker stores the profile only in `chrome.storage.session`. Copy and a successful Autofill (at least one frame filled) reset a 30 minute alarm. Clear, expiry, a browser restart, and an extension reload or update delete the data. The worker runs cache changes one at a time. A slow touch or expiry cannot bring back a student that a new Copy replaced.
+4. **Autofill** works on any HTTP(S) page except the CRM origins. Mapped portals have permanent host access. For other pages, the browser gives a temporary `activeTab` grant when staff open the extension from the toolbar on that page. If access is denied, the popup reports it. It does not try to bypass the denial.
+5. `chrome.webNavigation.getAllFrames` gives the URL of each frame. The extension injects only into the top frame and into frames with exactly the same origin. It skips frames from other origins (including a mapped portal embedded in the page) and `about:blank` and `srcdoc` frames.
+6. The popup opens one `tabs.connect` port for each frame. The handler accepts a port only from the extension popup. It answers a `prepare` request only if its document still has the selected origin, is not sandboxed, and is under a top page of that origin. Then the popup reads the worker cache again and sends the field map over the same port.
+7. Navigation closes the port. The popup reports that frame and does not reconnect. Reports are per frame.
 
-The service worker stores that profile only in `chrome.storage.session`. Copy and successful Autofill (at least one frame filled) reset a 30 minute alarm. Clear, expiry, browser restart, and extension reload/update remove the data. Cache mutations are serialized so a slow touch or expiry cannot resurrect a replaced student.
-
-For Autofill, `chrome.webNavigation.getAllFrames` identifies each frame URL. Only the top frame and frames whose own origin exactly matches it are injected; other origins, including mapped portals embedded in the page, and `about:blank` / `srcdoc` frames are skipped. The popup opens one `tabs.connect` port per frame. The handler accepts the port only from the extension popup and answers a `prepare` request only if its document still has the selected origin, is not sandboxed (`self.origin`), and sits under a top page of that origin. The popup then re-reads the worker cache and sends the field map over the same port. Navigation closes the port; the popup reports that frame and never reconnects. Reports are per-frame.
-
-The same JavaScript source is packaged for Chrome (`dist/chrome`) and Safari (`dist/safari-webextension` + `safari/` containing app). Browser-specific packaging lives in `scripts/build.mjs` and `scripts/package-safari.mjs` only.
+The same JavaScript source builds for Chrome (`dist/chrome`) and Safari (`dist/safari-webextension` and the `safari/` containing app). Only `scripts/build.mjs` and `scripts/package-safari.mjs` contain browser-specific packaging.
 
 ## Add or update an origin
 
-Edit `config/allowlist.js`, using exact origins without paths. Never add `<all_urls>` or a parent domain wildcard. Package and publish a new version. Development builds also include `http://localhost:3000` (CRM) and `http://localhost:3001` / `http://127.0.0.1:3001` (portals).
+Edit `config/allowlist.js`. Use exact origins without paths. Never add `<all_urls>` or a parent-domain wildcard. Build and publish a new version.
 
-## CRM fields
+Development builds also include `http://localhost:3000` (CRM) and `http://localhost:3001` and `http://127.0.0.1:3001` (portals).
 
-Edit `config/crm-source.js` to add an exact normalized visible label and canonical key. Profile page guards must remain specific enough to reject login, dashboard, list, and settings pages.
+## Add a CRM field
+
+Edit `config/crm-source.js`. Add the exact normalized visible label and its canonical key. Keep the profile page guards specific. They must reject login, dashboard, list, and settings pages.
 
 ## Portal mappings
 
-Pages without a portal configuration use the generic registry in `config/synonyms.js` (`GENERIC_FIELDS`, `AUTOCOMPLETE_KEY_MAP`, `GENERIC_BLOCKED`). A control is filled only when its own label (exact phrase after removing punctuation and bracketed hints), name/id, and autocomplete token agree on one supported key, its control kind is allowed for that key, no blocked word appears in its own text or in its fieldset legend or nearest heading, its form has no password field, and no other control on the page resolves to the same key. A label that names anything else, or a recognised autocomplete purpose that is not one whole applicant value, keeps the control manual. Readonly, inert, disabled, hidden, and disconnected controls are never filled, and each control is rechecked immediately before writing.
+### Generic matching (no portal file)
 
-Each file in `config/portals/` contains the portal's exact origins, page matchers, selector overrides, extra synonyms, split-date maps, and blocked controls. Core synonyms belong in `config/synonyms.js` only when they are genuinely shared. Portal-specific maps apply on those production origins; localhost fixture pages use the generic registry.
+A page without a portal configuration uses the generic registry in `config/synonyms.js` (`GENERIC_FIELDS`, `AUTOCOMPLETE_KEY_MAP`, `GENERIC_BLOCKED`). The engine fills a control only when all of these are true:
 
-During supervised access:
+- The control's own label, its name or id, and its autocomplete token agree on one supported key. The engine compares the label as an exact phrase, after it removes punctuation and bracketed hints.
+- The control type is allowed for that key.
+- No blocked word appears in the control's own text, in its fieldset legend, or in its nearest heading.
+- The form has no password field.
+- No other control on the page resolves to the same key.
 
-1. Inventory one form step at a time.
-2. Add the smallest config change needed.
+A label that names anything else keeps the control manual. An autocomplete purpose that is not one whole applicant value also keeps it manual. The engine never fills readonly, inert, disabled, hidden, or disconnected controls. It checks each control again immediately before it writes.
+
+### Portal files
+
+Each file in `config/portals/` holds the exact origins of one portal. It also holds page matchers, selector overrides, extra synonyms, split-date maps, and blocked controls. Put a synonym in `config/synonyms.js` only when all portals share it. Portal-specific maps apply on the production origins only. Localhost fixture pages use the generic registry.
+
+### Work on a new portal
+
+Work with supervised access, one form step at a time:
+
+1. Make an inventory of the form step.
+2. Make the smallest config change that you need.
 3. Run Copy and Autofill with a test student.
-4. Record filled, skipped, no-value, and manual fields in `PORTALS.md`.
-5. Save sanitized HTML with no student data, credentials, tokens, or application IDs under `e2e/fixtures/` (or `test/fixtures/` for CRM reader pages).
-6. Add a regression test before moving to the next step.
+4. Record the filled, skipped, no-value, and manual fields in `PORTALS.md`.
+5. Save sanitized HTML under `e2e/fixtures/` (or `test/fixtures/` for CRM reader pages). The HTML must contain no student data, credentials, tokens, or application IDs.
+6. Add a regression test before you start the next step.
 
-The engine fills inputs, selects, textareas, radio inputs, scoped listbox options, and explicit split-date control groups. Checkboxes and file inputs stay manual. Existing values remain untouched. The click guard rejects buttons, links, and controls whose accessible text contains submit, pay, send, delete, confirm, declare, agree, next, save, or continue.
+### What the engine fills
+
+The engine fills inputs, selects, textareas, radio inputs, scoped listbox options, and explicit split-date groups. Checkboxes and file inputs stay manual. The engine does not change an existing value.
+
+The click guard rejects buttons, links, and controls with accessible text that contains submit, pay, send, delete, confirm, declare, agree, next, save, or continue.

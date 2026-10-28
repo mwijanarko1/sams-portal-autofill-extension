@@ -265,25 +265,21 @@ Verified live on 2026-10-23: after choosing those options, a second Autofill fil
 - No programme/course picker (course fixed by the IPP `code1` / `code2` entry URL).
 - Referees, Funding and Research Proposal tabs are hidden (`sv-hidden`) for this course.
 
-## Verification
+## Tests and live checks
 
-- Full live authenticated inventory: 2026-10-23, all tabs loaded through `ul_click_tab`.
-- Live engine run on 2026-10-23 with a synthetic CRM map:
-  - PD filled middle name, previous surname, country of residence, ethnicity and
-    previously-applied; existing name/gender/birth-country values were preserved.
-  - CD filled county; existing address, city, postcode, country and mobile were preserved.
-  - QU filled `englishFirstLanguage`, expected completion month/year, and (after the reveal
-    workflow) qualification name, subject and grade.
-  - EX filled employer, job title and appointment month/year.
-  - PS, PA and SU reported no writable CRM targets.
-- Automated config tests: `test/manchester.test.js` (part of `npm test`).
-- Live CRM Copy → Autofill with a real profile: still pending.
-- Synthetic Personal Details fixture: `e2e/fixtures/manchester-personal-mapping.html`, with CRM Copy through `e2e/fixtures/crm-portal-mapping.html`. Loaded-extension E2E verifies birth country derived from nationality, residence derived from address country, preservation of an existing residence, repeat Autofill, and unchanged cached CRM fields. This does not cover every Manchester tab or replace a sanitized live-form replay.
-- The current complete offline suite passes 50/50 cases across its synthetic journeys. This is not 50 Manchester cases or a live acceptance result.
-- Full sanitized live-form replay and other Manchester tab fixtures: still pending.
+- **Live inventory.** An authenticated session, all tabs loaded through `ul_click_tab`, on 2026-10-23.
+- **Live engine run (synthetic CRM map, 2026-10-23).**
+  - PD filled middle name, previous surname, country of residence, ethnicity, and previously-applied. Existing name, gender, and birth-country values were kept.
+  - CD filled county. Existing address, city, postcode, country, and mobile were kept.
+  - QU filled `englishFirstLanguage`, the expected completion month and year, and (after the reveal workflow) the qualification name, subject, and grade.
+  - EX filled employer, job title, and appointment month and year.
+  - PS, PA, and SU reported no writable CRM targets.
+- **Automated tests.** `test/manchester.test.js`.
+- **Synthetic Personal Details test.** The fixture is `e2e/fixtures/manchester-personal-mapping.html`. CRM Copy uses `e2e/fixtures/crm-portal-mapping.html`. The loaded-extension E2E test checks that birth country comes from nationality, that residence comes from the address country, that an existing residence stays, that a repeat Autofill changes nothing, and that the cached CRM fields stay unchanged. This does not cover every Manchester tab. It does not replace a sanitized replay of the live form.
+- **Not done.** A live CRM Copy to Autofill run with a real profile. A sanitized live-form replay. Fixtures for the other Manchester tabs.
 
-### Current popup and live-smoke boundary
+### Popup and live runner
 
-The popup offers page-by-page Autofill only. Staff navigate tabs, answer conditional questions, and save or submit themselves. Portal autosave on input remains possible.
+The popup offers page-by-page Autofill only. Staff move between tabs, answer conditional questions, and save or submit themselves. The portal can still autosave on input.
 
-`npm run test:e2e:live` can target `greater-manchester` with its own credentials and an existing draft. It opens only PD, CD, QU, and EX, waits for each pane's controls, checks existing and blocked fields, repeats Autofill, and clears the cache. After login, non-GET/HEAD requests are blocked, including tab-loading POSTs. A blocked request or unavailable draft is reported as blocked, not passed. This traffic restriction belongs to the test runner, not the deployed extension. See [the live smoke instructions](../../e2e/README.md#live-random-sample-smoke-test). No new live Manchester result is claimed here.
+`npm run test:e2e:live` can target `greater-manchester` with its own credentials and an existing draft. It opens only PD, CD, QU, and EX. It waits for the controls of each pane, checks existing and blocked fields, repeats Autofill, and clears the cache. After login it blocks all requests except GET and HEAD, including tab-loading POST requests. A blocked request or an unavailable draft is reported as blocked, not passed. This restriction belongs to the test runner. The deployed extension does not have it. See the [live smoke instructions](../../e2e/README.md#live-random-sample-smoke-test). No live Manchester result is recorded.

@@ -1,635 +1,429 @@
-# Safari architecture and Chrome parity plan
+# Safari architecture and Chrome parity
 
-Status: architecture and implementation roadmap for Safari. A macOS development build exists (shared Safari build, containing app, cache, message and frame hardening, regression tests). Installed Safari runtime acceptance has not been run; see the [Safari acceptance checklist](../e2e/safari/README.md) and [safari/README.md](../safari/README.md). Not every proposed improvement in section 8.2 is implemented.
+This guide explains how the extension runs in Safari on macOS, what must match Chrome, and what SAMS must decide before release.
 
-Baseline: Chrome extension `0.1.0`. Test counts and live results are in [CODEBASE_MAP.md](CODEBASE_MAP.md) and [../PORTALS.md](../PORTALS.md).
+Status: a macOS development build exists. It has a shared Safari build, a containing app, hardening of the cache, messages, and frames, and regression tests. Nobody has run the extension in an installed Safari. See the [Safari checklist](../e2e/safari/README.md) and [safari/README.md](../safari/README.md).
+
+Test results and live portal results are in [CODEBASE_MAP.md](CODEBASE_MAP.md) and [../PORTALS.md](../PORTALS.md).
 
 ## Contents
 
-- [Recommendation and decisions](#1-executive-recommendation)
-- [Current Chrome architecture](#2-chrome-baseline-what-actually-exists)
-- [Target Safari architecture](#3-target-architecture)
-- [Data contracts and flows](#4-data-contracts-and-end-to-end-flows)
-- [Manifest and API compatibility](#5-manifest-and-api-compatibility)
-- [Feature-parity matrix](#6-feature-parity-matrix)
-- [Safari UX and website access](#7-safari-specific-ux-and-website-access)
-- [Safety, privacy and existing gaps](#8-safety-and-privacy-release-invariants-and-existing-gaps)
-- [Build and resource ownership](#9-build-and-resource-ownership)
-- [Installation, signing and distribution](#10-installation-signing-and-distribution)
-- [Tests and acceptance](#11-test-and-acceptance-architecture)
-- [Implementation phases](#12-sequenced-implementation-plan-and-gates)
-- [Optional iPhone/iPad support](#13-optional-iphone-and-ipad-delta)
-- [Risks and dependencies](#14-risks-and-dependencies)
-- [Evidence and references](#15-evidence-toolchain-and-references)
+- [1. Recommendation and SAMS decisions](#1-recommendation-and-sams-decisions)
+- [2. Chrome baseline](#2-chrome-baseline)
+- [3. Safari architecture](#3-safari-architecture)
+- [4. Manifest and API compatibility](#4-manifest-and-api-compatibility)
+- [5. Feature parity](#5-feature-parity)
+- [6. Safari website access and popup behaviour](#6-safari-website-access-and-popup-behaviour)
+- [7. Safety rules and known gaps](#7-safety-rules-and-known-gaps)
+- [8. Build and resources](#8-build-and-resources)
+- [9. Install, sign, and distribute](#9-install-sign-and-distribute)
+- [10. Tests and acceptance](#10-tests-and-acceptance)
+- [11. iPhone and iPad](#11-iphone-and-ipad)
+- [12. Risks](#12-risks)
+- [13. References](#13-references)
 
-## 1. Executive recommendation
+## 1. Recommendation and SAMS decisions
 
-Ship a **Safari Web Extension using the existing Manifest V3 JavaScript extension**, packaged in a minimal Apple containing app. Keep the CRM reader, autofill engine, portal configuration, popup, and safety rules shared with Chrome. Do not rewrite the autofill system in Swift or build a Safari App Extension.
+Ship a **Safari Web Extension** that uses the existing Manifest V3 JavaScript. Put it in a minimal Apple containing app. Chrome and Safari share the CRM reader, the fill engine, the portal configuration, the popup, and the safety rules. Do not rewrite the fill engine in Swift. Do not build a Safari App Extension.
 
-Use local Safari and Xcode for the compatibility spike and signed-app verification. Apple's current tool is `safari-web-extension-packager`, formerly `safari-web-extension-converter`. App Store Connect also offers web-based packaging, but that does not replace testing in Safari. [A1, A2]
+Use local Safari and Xcode for the compatibility checks and for the checks of the signed app. Apple's packaging tool is `safari-web-extension-packager` (formerly `safari-web-extension-converter`). App Store Connect also offers web-based packaging. It does not replace tests in Safari. [A1, A2]
 
-Working release assumption: **macOS first**. iPhone and iPad support is a separate scope decision, with its architectural differences documented in section 13. Neither the supported OS floor nor the distribution channel has been approved yet.
+The first release targets **macOS only**. iPhone and iPad are a separate decision (see [section 11](#11-iphone-and-ipad)). SAMS has not yet approved the supported OS versions or the distribution channel.
 
-The essential acceptance condition is behavioral parity: the same synthetic student, portal page, mappings, and prefilled controls must produce the same field values and safety outcomes in Chrome and Safari. Identical browser chrome or installation steps are not required.
+The acceptance rule is **same behaviour**. The same synthetic student, portal page, mappings, and prefilled controls must give the same field values and the same safety results in Chrome and Safari. The browser interface and the install steps can differ.
 
 ### Decisions still owned by SAMS
 
-| Decision | Recommendation | Required before |
+| Decision | Recommendation | Needed before |
 |---|---|---|
-| Apple platforms | macOS first; evaluate iPad separately | Creating release targets |
-| Supported Safari and macOS versions | Agree the staff device inventory; Safari 16.4 is the storage/API floor, not a tested support promise | Deployment targets and test matrix |
-| Distribution | Developer ID signed and notarized macOS app for a controlled staff rollout; App Store if managed updates/store delivery are preferred | Release packaging |
-| Developer account ownership | SAMS-owned Apple Developer team, identifiers, signing access, and distribution account | Signing or external uploads |
-| Portal scope | Preserve the existing production gate unless a narrower release is explicitly approved | Any production package |
-| Private browsing | Recommend refusing Copy/Autofill initially; do not assume profile isolation | Compatibility implementation |
-| Acceptance owner | Named SAMS tester approves the supported workflows and manual exclusions | Release |
+| Apple platforms | macOS first. Evaluate iPad separately. | Creating release targets |
+| Supported Safari and macOS versions | Agree the inventory of staff devices. Safari 16.4 is the storage and API floor. It is not a tested support promise. | Deployment targets and the test matrix |
+| Distribution | A Developer ID signed and notarized macOS app for a controlled staff rollout. Use the App Store if you prefer managed updates. | Release packaging |
+| Developer account | A SAMS-owned Apple Developer team, with identifiers, signing access, and a distribution account. | Signing or external uploads |
+| Portal scope | Keep the production gate, unless SAMS approves a narrower release. | Any production package |
+| Private browsing | Refuse Copy and Autofill at first. Do not assume profile isolation. | Compatibility work |
+| Acceptance owner | A named SAMS tester approves the supported workflows and the manual exclusions. | Release |
 
-These are decision gates, not permission to enroll accounts, change production policy, publish, or start authenticated testing.
+These are decisions to make. They do not give permission to enrol accounts, change production policy, publish, or start authenticated tests.
 
-## 2. Chrome baseline: what actually exists
+## 2. Chrome baseline
 
-### 2.1 Component ownership
+### 2.1 Components
 
-All paths in this document are relative to the extension repository.
+Paths are relative to the repository root.
 
-| Current file | Responsibility | Safari treatment |
+| File | Responsibility | In Safari |
 |---|---|---|
-| `manifest.json` | MV3 identity, toolbar popup, worker, permissions and hosts | Shared base; produce a Safari manifest only where required |
-| `popup.html`, `popup.js` | Copy, Clear, Autofill, cached-student card, countdown, result lists | Reuse; verify native Safari popover and permission errors |
-| `src/background.js` | Session cache, expiry timestamp, activity extension, cleanup alarm | Reuse; verify suspension and restart behavior |
-| `src/crm-reader.js` | Profile guards, expand CRM sections, read labelled DOM data | Reuse; test real WebKit layouts and asynchronous panels |
-| `config/crm-source.js` | Exact labels and canonical field keys, allowed CRM profile paths | Shared, no Safari fork |
-| `config/allowlist.js` | Exact CRM and portal origins, dev/prod distinction, 30-minute retention | Single source for both browsers |
-| `src/portal-fill.js` | Origin-guarded page message handler and result serialization | Reuse; verify targeted frame messaging |
-| `src/engine/engine.js` | Field scanning, matching, safe DOM setters, section context, split dates | Shared engine; isolate any proven browser-specific differences |
-| `config/synonyms.js` | Shared field-name vocabulary | Shared |
-| `config/portals/greenwich.js` | Greenwich selectors, page-specific dates and blocked controls | Shared |
-| `config/portals/bangor.js` | Bangor selectors, page-specific dates and blocked controls | Shared |
-| `config/portals/manchester.js` | Greater Manchester selectors, page-specific dates and blocked controls | Shared |
-| `scripts/build.mjs` | Dev/prod resource copy, host generation, Chrome ZIP | Refactor narrowly to support independent browser outputs |
-| `test/` | Node tests and Chromium DOM tests | Keep; add Safari-specific regression coverage |
-| `e2e/extension.e2e.mjs` | Loaded Chromium extension with synthetic HTTPS fixtures | Retain as Chrome regression; create a separate Safari harness |
-| `e2e/live.mjs` | Explicit opt-in no-save Chromium live smoke | Not a Safari runner |
+| `manifest.json` | MV3 identity, toolbar popup, worker, permissions, hosts | Shared. Make a separate Safari manifest only where required. |
+| `popup.html`, `popup.js` | Copy, Clear, Autofill, student card, countdown, result lists | Reuse. Check the native Safari popover and permission errors. |
+| `src/background.js` | Session cache, expiry time, activity extension, cleanup alarm | Reuse. Check suspension and restart behaviour. |
+| `src/crm-reader.js` | Profile guards, section expansion, reading of labelled data | Reuse. Test real WebKit layouts and asynchronous panels. |
+| `config/crm-source.js` | Exact labels, canonical keys, allowed CRM profile paths | Shared. No Safari fork. |
+| `config/allowlist.js` | Exact CRM and portal origins, dev and prod origins, 30 minute retention | One source for both browsers. |
+| `src/portal-fill.js` | Page message handler that checks the origin, and result serialization | Reuse. Check messages to a chosen frame. |
+| `src/engine/engine.js` | Field scan, matching, DOM setters, section context, split dates | Shared. Isolate any browser difference that you prove. |
+| `config/synonyms.js` | Shared field vocabulary | Shared. |
+| `config/portals/*.js` | Greenwich, Bangor, and Greater Manchester selectors, dates, blocked controls | Shared. |
+| `scripts/build.mjs` | Dev and prod resource copy, host generation, Chrome zip | Builds independent browser outputs. |
+| `test/` | Node tests and Chromium DOM tests | Keep. Add Safari regression tests. |
+| `e2e/extension.e2e.mjs` | Loaded Chromium extension with synthetic HTTPS fixtures | Keep as the Chrome regression. Safari needs its own harness. |
+| `e2e/live.mjs` | Opt-in live smoke test in Chromium | Not a Safari runner. |
 
-### 2.2 Current origins and unavailable integrations
+### 2.2 Origins
 
-| Integration | Exact production origin | Current evidence |
+| Integration | Production origin | Evidence |
 |---|---|---|
-| SAMS CRM | `https://app.samscrm.co.uk` | Reader, agent/full-profile path guards, fixture tests |
-| Campora APPLY | `https://v-sams-backend.samsapply.co.uk` | Reader mapping and synthetic fixture; no live Safari acceptance |
-| University of Greenwich | `https://nelson.gre.ac.uk` | Portal config, fixtures, regression coverage |
-| Bangor University | `https://apps.bangor.ac.uk` | Portal config, fixtures, regression coverage |
-| University of Greater Manchester | `https://evision.bolton.ac.uk` | Portal config and fixtures; live Safari acceptance pending |
+| SAMS CRM | `https://app.samscrm.co.uk` | Reader, agent and full-profile path guards, fixture tests |
+| Campora APPLY | `https://v-sams-backend.samsapply.co.uk` | Reader mapping and synthetic fixture. No live Safari test. |
+| University of Greenwich | `https://nelson.gre.ac.uk` | Portal config, fixtures, regression tests |
+| Bangor University | `https://apps.bangor.ac.uk` | Portal config, fixtures, regression tests |
+| University of Greater Manchester | `https://evision.bolton.ac.uk` | Portal config and fixtures. No live Safari test. |
 
-Development adds `http://localhost:3000` for CRM and `http://localhost:3001` plus `http://127.0.0.1:3001` for portal fixtures. Production must exclude these.
+Development builds add `http://localhost:3000` (CRM) and `http://localhost:3001` and `http://127.0.0.1:3001` (portal fixtures). Production must not include them.
 
-The production build still rejects an empty Campora list or fewer than three portal origins. The Campora origin and the three portal origins are now configured, so the gate passes; that only proves the allowlist is complete, not that the integrations were accepted. Live Campora and Safari runtime acceptance remain open.
+The production build stops if the Campora list is empty or if fewer than three portal origins are set. This proves that the allowlist is complete. It does not prove that the integrations work.
 
-### 2.3 Dates, fixtures and verification
+### 2.3 Dates and fixtures
 
-`splitDates` mappings and `fillSplitDates()` handle explicit split-date controls (Greenwich DOB and employment dates, Bangor education dates, Manchester date of birth and graduation year), and preserve an existing date selection. Generic scanning continues to block split-date controls; the page-scoped path handles them separately.
+`splitDates` mappings and `fillSplitDates()` fill explicit split-date controls. They cover Greenwich date of birth and employment dates, Bangor education dates, and Manchester date of birth and graduation year. They keep an existing date selection. Generic scanning still blocks split-date controls. The page-scoped path fills them separately.
 
-Synthetic fixtures are in `e2e/fixtures/` and CRM HTML is under `test/fixtures/`. Navigation for the whole repo is in [CODEBASE_MAP.md](CODEBASE_MAP.md).
+Synthetic fixtures are in `e2e/fixtures/`. CRM HTML is in `test/fixtures/`.
 
-Do not infer live acceptance from documentation alone. Authenticated CRM-to-portal journeys and installed Safari runtime acceptance are tracked in [../PORTALS.md](../PORTALS.md) and [../e2e/safari/README.md](../e2e/safari/README.md).
-
-## 3. Target architecture
+## 3. Safari architecture
 
 ```text
 One version-controlled JavaScript source
   |
   +-- shared configuration, CRM reader, engine, popup, worker
   |
-  +-- Chrome build --> dist/chrome --> Chrome distribution ZIP
+  +-- Chrome build --> dist/chrome --> Chrome zip
   |
   +-- Safari build --> dist/safari-webextension
                          |
-                         +-- local temporary Safari install, where available
+                         +-- temporary Safari install (where available)
                          |
-                         +-- Xcode packaging project
+                         +-- Xcode project
                                |
                                +-- containing macOS app
                                +-- embedded Safari Web Extension target
                                       |
-                                      +-- popup: operator commands/results
-                                      +-- worker: ephemeral student cache
+                                      +-- popup: staff commands and results
+                                      +-- worker: temporary student cache
                                       +-- CRM content script: profile DOM only
-                                      +-- portal content scripts: selected page's own-origin frames
+                                      +-- portal content scripts: own-origin frames of the selected page
 ```
 
-### 3.1 Runtime boundaries
+### 3.1 Runtime parts
 
-1. **Containing app:** installs/registers the extension and explains enablement, website permissions, support, and privacy. It does not handle student records.
-2. **Safari extension target:** bundles the web resources and Safari extension registration metadata. Generated native handler code is packaging infrastructure, not an autofill backend.
-3. **Popup:** validates the active tab, handles explicit staff actions, injects scripts, displays the currently copied student and outcome lists.
-4. **Background worker:** owns the single student cache and expiry policy. Listeners register synchronously at startup; state lives in `storage.session`, not worker globals.
-5. **CRM content script:** reads the approved profile and returns a serializable profile. It can open profile sections, but cannot save CRM forms.
-6. **Portal content script:** receives data only over a popup port in a frame of the selected page's exact origin, validates its own origin, sandboxing and top page, fills eligible empty fields, returns a serializable report.
+1. **Containing app.** It installs the extension. It explains enablement, website permissions, support, and privacy. It does not handle student records.
+2. **Safari extension target.** It bundles the web resources and the Safari registration data. The generated native handler is packaging code. It is not an autofill backend.
+3. **Popup.** It checks the active tab and handles explicit staff actions. It injects scripts. It shows the copied student and the results.
+4. **Background worker.** It owns the one student cache and the expiry rule. Listeners register at startup. State lives in `storage.session`, not in worker variables.
+5. **CRM content script.** It reads the approved profile and returns a serializable profile. It can open profile sections. It cannot save CRM forms.
+6. **Portal content script.** It receives data only over a popup port, in a frame with exactly the origin of the selected page. It checks its own origin, sandbox, and top page. It fills eligible empty fields and returns a serializable report.
 
-No server, native messaging, App Group, Keychain student cache, database, AI service, clipboard pipeline, or cross-browser synchronization is needed. Chrome and Safari caches are independent. Switching browsers requires Copy again in that browser.
+The design needs no server, no native messaging, no App Group, no Keychain cache, no database, no AI service, no clipboard pipeline, and no sync between browsers. The Chrome and Safari caches are separate. After a browser switch, staff copy again.
 
-Do not route student fields through Swift, logs, analytics, crash attachments, or support uploads. No broad entitlement or native host permission should be added to work around a WebExtension incompatibility.
+Never send student fields through Swift, logs, analytics, crash attachments, or support uploads. Do not add a broad entitlement or a native host permission to work around a WebExtension difference.
 
-### 3.2 Shared code and browser-specific code
+### 3.2 Shared and browser-specific code
 
-Safari supports both `chrome.*` and `browser.*`, including callback and Promise forms. The current `chrome.*` calls therefore do not require an automatic namespace rewrite or a polyfill. Start with the existing source. [A3]
+Safari supports both `chrome.*` and `browser.*`, with callbacks and Promises. The current `chrome.*` calls need no namespace rewrite and no polyfill. [A3]
 
-If the compatibility spike demonstrates a necessary difference, add the smallest shared helper at the relevant boundary. Possible helper responsibilities are API feature detection, host-permission error normalization, and optional closed-shadow-root access. Do not introduce a general browser abstraction framework without evidence that it is needed.
+If a compatibility check proves a needed difference, add the smallest shared helper at that boundary. Possible helpers: API detection, host-permission error normalization, and access to closed shadow roots. Do not add a general browser abstraction without evidence.
 
-Keep selectors and mappings browser-neutral. A browser-specific selector must have a reproducible WebKit DOM difference and a regression fixture. Prefer fixing a shared DOM assumption rather than maintaining two portal configurations.
+Keep selectors and mappings the same for both browsers. A browser-specific selector needs a repeatable WebKit DOM difference and a regression fixture. Prefer to fix a shared DOM assumption. Do not keep two portal configurations.
 
-### 3.3 Proposed additional files
+## 4. Manifest and API compatibility
 
-This is the original proposed layout, not an inventory of current files. See [safari/README.md](../safari/README.md) for the implemented project layout and commands.
+### 4.1 Manifest rules
 
-```text
-scripts/
-  build.mjs                    extend existing build with browser target
-  package-safari.mjs           optional repeatable local packaging helper
-safari/
-  README.md                    signing, resource sync, build/release procedure
-  <generated project>.xcodeproj
-  <containing-app sources>     onboarding and extension enablement only
-  <extension target sources>  generated Safari handler and target metadata
-e2e/
-  safari/                      actual Safari install/permission/runtime checks
-test/
-  safari-build.test.js         manifest/resource and production-host assertions
-  session-lifecycle.test.js    shared expiry, Clear and stale-popup regressions
-dist/
-  chrome/                     generated, ignored
-  safari-webextension/        generated, ignored
-  safari-app/                 generated archives/artifacts, ignored
-```
+- Keep Manifest V3, the toolbar `action.default_popup`, and the classic `background.service_worker` that uses `importScripts`. Safari supports MV3 and background service workers from version 15.4. `storage.session` raises this project's floor to 16.4. [A3, M1, M5]
+- Keep these permissions: `activeTab`, `scripting`, `storage`, `alarms`, `webNavigation`. Generate exact `host_permissions` from the same allowlist for both browsers.
+- Do not add `tabs`, `nativeMessaging`, `unlimitedStorage`, `<all_urls>`, blanket content scripts, or web-accessible resources without a proven need and a review.
+- Do not set `background.type: "module"` while the worker uses `importScripts`.
+- Do not ship an MV2 or persistent-background fallback for older Safari. If session storage is missing, disable Copy and Autofill and show an unsupported-version message. Never switch silently to persistent storage.
+- The packager reports unsupported manifest keys. Record and classify every warning. A package without warnings does not prove the same behaviour at run time.
+- Safari updates come through the chosen Apple channel. They do not come from the Chrome Web Store or a Chrome `update_url`. [A1, A3]
 
-Retain the existing CommonJS Node-test and plain-script conventions. Introducing TypeScript, a bundler, or a framework is not required for this port.
+### 4.2 API inventory
 
-## 4. Data contracts and end-to-end flows
+| API used today | Safari evidence | What to verify |
+|---|---|---|
+| `tabs.query({ active: true, currentWindow: true })` | Safari tabs need host permission. [A3] | Real toolbar popup, several windows, missing URL or ID, revoked permission, `activeTab` grant on an unmapped university |
+| `scripting.executeScript({ target: { tabId, frameIds }, files })` | Safari supports script injection. The call does not use the unsupported `injectImmediately`. [A3, M2] | File order, isolated-world globals, repeated injection, child frames |
+| `tabs.connect(..., { frameId })` and `runtime.onConnect` | Safari supports WebExtension messaging. [A3] Frame-targeted ports and `Port.sender.url` are unverified. | The right frame gets the data. The popup sender is accepted. Navigation closes the port with a useful error. |
+| `runtime.sendMessage` and `runtime.onMessage` | Safari support from version 14. [M6] | Lifetime of async replies, thrown or rejected calls, serializable objects |
+| `storage.session.get/set/remove` | Safari support from 16.4. [A3, M1] | Survives worker suspension. Does not survive a browser restart. Gives no extra access to content scripts. |
+| `alarms.create/clear/onAlarm` | Safari support from 14. [M3] | Cleanup after sleep and wake. Rescheduling. The timestamp stays the authority. |
+| `webNavigation.getAllFrames` | macOS Safari from 14, iOS from 15. [M4] | Frame URLs and IDs under granted hosts. Rejection of cross-origin frames. |
+| `chrome.dom.openOrClosedShadowRoot` | Optional engine helper. Safari support from 26. [M7] | Feature detection, any needed permission, real namespace and DOM access |
+| DOM selectors, events, native value setters | Shared engine. Not only extension API parity. | WebKit dates and selects, reaction of the page framework, shadow roots, popup focus |
 
-### 4.1 Student profile and cache
+The closed-shadow-root helper returns `null` when the API is missing. Below Safari 26, the helper cannot give parity for controls inside closed shadow roots only. The engine can still scan open shadow roots. The approved portals do not need closed shadow roots.
 
-The current reader returns:
+API tables are evidence for a first check. They are not acceptance tests. They do not set the minimum macOS version. Test the approved Safari and OS combinations, including the oldest release that you advertise.
 
-```text
-profile = {
-  studentId: string,
-  studentName: string,
-  sourceOrigin: exact approved CRM origin,
-  copiedAt: epoch milliseconds,
-  fields: record of canonical field keys and string values
-}
+## 5. Feature parity
 
-cache = {
-  ...profile,
-  lastActivityAt: epoch milliseconds,
-  expiresAt: epoch milliseconds
-}
-```
+**Required** means that the Safari release must reproduce the Chrome behaviour. **Conditional** means that parity depends on the CRM data, the portal scope, or a browser capability. All Safari run-time entries are unverified.
 
-`studentId` falls back to the profile path's final segment. `studentName` is built from given/family names. A missing name or fewer than two mapped fields rejects Copy.
-
-Representative canonical groups include identity/contact, education and study dates, course/intake/route/funding, passport, English test scores, visa details, employment, and emergency contacts. `config/crm-source.js` and the reader's contextual mapping remain authoritative. A key supported by the engine or a selector is not proof that the CRM reader supplies it, or that every portal accepts it.
-
-Only one student is cached. Copying another student replaces the previous cache. The popup must visibly identify the new student before staff use Autofill. Student fields are personal data even when no server receives them.
-
-### 4.2 Existing message protocol
-
-| Receiver | Action | Payload | Response |
+| Feature | Chrome baseline | Safari | Evidence to collect |
 |---|---|---|---|
-| CRM content script | `copyCrmProfile` | No student payload | `{ profile }` or `{ error }` |
-| Worker | `cacheStudent` | `profile` | `{ cache }` or `{ error }` |
-| Worker | `getStudentCache` | None | `{ cache }`, possibly `null` |
-| Worker | `touchStudentCache` | None | `{ cache }`, possibly `null` |
-| Worker | `clearStudentCache` | None | `{ cleared: true }` |
-| Portal content script | `ping` | None | `{ pong, version }` |
-| Portal content script | `scan` | Optional `lean`, `mode`, `fieldMap` | Serializable descriptors/count or `{ error }` |
-| Portal content script | `autofill` | `fieldMap` | Fill report or `{ error }` |
+| Toolbar popup | Copy, Clear, Autofill, identity and countdown, result lists | Required | Native popover, keyboard, long lists, resizing, focus |
+| CRM profile guard | Exact origin, profile path, and marker checks | Required | Profile accepted. Login, list, dashboard, and settings rejected. |
+| Expanded CRM extraction | Label and value, forms, lists, contact context, panel settling | Required | Same canonical fields from all CRM fixtures |
+| Single student replacement | Copy overwrites the cache | Required | Copy A, then B. Only B fills. |
+| Temporary cache | `storage.session`, 30 minute activity expiry | Required | Suspension, timestamp expiry, Clear, browser restart, update |
+| Exact hosts and dev/prod split | Allowlist at the popup and page boundary | Required | No localhost in prod, no wildcard, denied hosts untouched |
+| Frames of the selected origin only | Frame URL filter, targeted injection, per-frame ports | Required | Same-origin child, cross-origin child (including a mapped portal), sandboxed child, navigation race |
+| Text, email, tel, textarea | Eligible empty controls, section-aware matching | Required | Same values. Prefilled controls unchanged. |
+| Native select and radio | Matched options and eligible radio groups | Required | Same choice. No unrelated option. Keyboard and page events work. |
+| Custom combobox or listbox | Scoped option matching with click guard | Conditional on the page DOM | WebKit fixture. No navigation or irreversible clicks. |
+| Date input | Shared normalization to ISO values | Required where Chrome maps it | Safari value and validation agree with the expected date |
+| Explicit split dates | Page-scoped Greenwich and Bangor configs | Required | Correct date for each section. Preselected parts kept. |
+| Phones | Portal-specific dial-prefix handling | Required | UK and non-UK examples. Maxlength reporting. |
+| Address context | Applicant residence does not fill institution or referee context | Required | Negative fixtures for education and referee |
+| Qualification limits | Greenwich qualification row 1 only | Required | No rows 2 to 20 on the first or repeat fill |
+| Repeat Autofill | Existing values kept, no duplicate mappings | Required | Same values and event counts on the second click |
+| Result reporting | Filled, existing, missing, unmatched, manual categories | Required | Same outcomes. Partial frame failures visible. |
+| Repeated injection | Guards in reader and handler. Portal configs do not duplicate. | Required | Reload, inject, and fill many times with no duplicate listeners |
+| Open shadow DOM | Shared scanning | Conditional on portal use | Fixture in real Safari |
+| Closed shadow DOM | Optional Chrome API helper | Conditional on Safari version and API | No invented workaround. Unsupported controls stay manual. |
+| Bangor Programme | Selector mapping incomplete. The workflow can need a saved Personal section. | No parity claim yet | A confirmed draft and access. A separately approved inventory. |
+| Campora and Greater Manchester | Chrome config and fixtures | No Safari parity claim | Supervised Safari tests of the configured origins and flows |
+| Files, checkboxes, authentication, declarations | Manual or blocked | Required safety parity | No writes, clicks, uploads, or agreement changes |
+| Submit, save, pay, next, continue | The extension never selects them | Required safety parity | Negative action and event checks |
+| Transfer between browsers | Not implemented | Not requested | Safari starts with its own empty cache |
 
-Preserve these contracts unless a tested change is necessary. `ping`/`scan` are implementation capabilities, not additional popup features. DOM elements cannot cross the message boundary.
+Missing CRM values stay missing. Safari must not invent a country of birth, ethnicity, previous name, course, dates, funding, referee details, or other application answers to raise the fill count.
 
-Existing handlers use `sendResponse` and return `true` for asynchronous replies. Test this exact pattern in Safari, including CRM panels that take several seconds to settle. Distinguish an absent receiver, a closed popup, a permission denial, and a portal validation error.
+## 6. Safari website access and popup behaviour
 
-### 4.3 Copy flow
+Safari has a second gate beyond the manifest allowlist. Users can grant, ask, or deny website access. The popup must tell an unsupported origin apart from an approved origin without Safari permission. A granted website access does not widen the exact-origin rule of the extension. [A4]
 
-1. Staff open an approved CRM profile and choose Copy.
-2. Query the actual active tab and validate its exact origin.
-3. Inject, in order: build mode, allowlist, CRM mapping, reader. Target frame `0` only.
-4. Reader checks origin, accepted profile path, and profile-page markers.
-5. Reader expands known sections and extracts labelled, contextual values, including selected list/form values and derived year/name parts.
-6. Reader returns the profile to the popup; popup requests worker caching.
-7. Worker replaces `studentCache` in session storage, sets expiry to now plus 30 minutes, and schedules `expire-student-cache`.
-8. Popup displays student identity, copied time, countdown, and field count.
+Use the toolbar interaction and the Safari permission interface first. Explain how to allow the exact CRM or portal website. If a run-time permission request is necessary, ask for the one approved host, from an explicit user action. Never ask for all websites. Catch failures at the injection and messaging boundaries. Do not assume access from the manifest alone.
 
-Do not treat Copy as an OS clipboard action. If the popup closes before the response is cached, do not claim that Copy succeeded. Test cancellation and consider moving only the operation orchestration to the worker if Safari popup lifetime causes reproducible failures.
+The popup needs these states:
 
-### 4.4 Target Autofill flow
+- **No copied student.** Autofill is disabled. Copy instructions show.
+- **Unsupported Safari version or capability.** Copy and Autofill are disabled. Supported-version guidance shows.
+- **Approved website with Ask or Deny.** Clear website-access instructions show. The extension does not scan and does not send data.
+- **Wrong website, login page, missing tab URL, or no active tab.** A safe error shows. The extension reads and fills nothing.
+- **Valid student.** Name, copy time, expiry, and Clear show. The extension never selects another student silently.
+- **Expired or cleared student.** The identity is removed. Staff must copy again.
+- **Partial fill or frame error.** Successful counts show with a warning. Staff check the form before they continue.
 
-This retains the existing flow. Freshness hardening (re-read worker cache after `prepare`, before values) is implemented on the Autofill path. Real Safari `documentId` targeting and Port.sender.url behavior remain unverified on a Safari runtime.
+Test the real native popover. Do not test only `popup.html` in an extension tab. Check scrollable result lists, text zoom, VoiceOver and keyboard labels, disabled states, status announcements, and the return of focus to the form. Keep local assets and script-only event handlers. Do not load remote scripts or fonts.
 
-1. Staff manually open the desired application step and choose Autofill.
-2. Revalidate current cache availability and expiry immediately before transmitting fields. The current popup-held cache alone is not an authoritative freshness check.
-3. Query the active tab and accept any HTTP(S) origin except CRM origins (2026-10-15: unmapped universities are reached through the toolbar `activeTab` grant).
-4. Enumerate frames using `webNavigation.getAllFrames`; keep only frames whose **own URL origin** equals the top page's origin. Each retained frame must expose a `documentId`; missing `documentId` fails closed (no frameId-only silent Autofill fallback). Actual Safari support for `documentId` injection/connect is unverified.
-5. Inject build mode, allowlist, synonyms, all three portal config files, engine, then portal handler into those frames via `scripting.executeScript({ documentIds })`.
-6. Open one `tabs.connect(..., { documentId })` port per frame, ask each to `prepare`, re-read the worker cache, then send the canonical field map over the same port. A closed port is reported and never reopened.
-7. Handler accepts only the popup sender, rechecks its current origin, `self.origin` and top origin, scans eligible controls and uses the shared engine.
-8. Engine preserves existing values, applies section-specific rules and split dates, and returns results.
-9. Popup merges reports and displays Filled, Skipped existing, No CRM value, Unmatched CRM fields, and Manual review.
-10. Extend cache expiry only for a valid, completed Autofill operation. A missing/expired cache returned by the worker must not resurrect stale popup data.
+Safari 17 and later can share granted website access across profiles and private browsing. This is permission behaviour. It does not prove that student caches are separate. [A4] Test several profiles and windows. Refuse private browsing in the first release, if SAMS approves. Do not claim that private windows give a separate secure cache, unless you observe it in every supported configuration.
 
-An approved top-level tab does not authorize a third-party child frame. Reject `about:blank`, `srcdoc`, opaque/sandboxed origins, and unknown frames rather than inheriting the parent's permission. Recheck after navigation; do not replace targeted injection with `allFrames: true`.
+## 7. Safety rules and known gaps
 
-If one frame fails, show which frame failed using an origin-safe identifier and retain successful counts. Do not present an unqualified complete-success message when only some frames were processed. Current code can hide per-frame errors or stop on a rejected `Promise.all`; this needs explicit regression coverage.
+### 7.1 Rules
 
-### 4.5 Clear and expiry
+1. Only approved exact origins can read or receive student data. Child frames must qualify on their own.
+2. Copy only reads the approved student profile. Section expansion in the CRM must not save or submit.
+3. The extension writes only to eligible empty portal controls. It does not change existing values.
+4. The extension never completes authentication, payment, file upload, declaration, signature, consent, or navigation controls.
+5. The extension never selects Submit, Save, Pay, Send, Delete, Confirm, Declare, Agree, Next, Continue, or a similar irreversible control.
+6. The cache expires after 30 minutes of inactivity. The extension checks it again before use. It does not persist or sync it.
+7. Clear and cache loss cannot bring back stale data from another popup or a kept variable.
+8. Production artifacts contain no localhost hosts, test credentials, personal fixtures, logs, `.env` files, CRM snapshots, or development-only resources.
+9. Reports and support files contain synthetic identifiers, field keys, counts, and error categories. They never contain real field values, authenticated URLs, or tokens.
+10. Staff check the draft and do any saving or submitting themselves.
 
-Clear removes session cache, clears the alarm, empties popup memory, hides identity, and disables Autofill. It does **not** erase fields already filled into a portal; staff remain responsible for the visible draft.
+### 7.2 Gaps to evaluate before release
 
-Reads compare `expiresAt` with the current time and remove expired data. Alarms provide cleanup but must not be the sole enforcement mechanism: sleep, suspension, and popup timers can delay delivery. Browser quit/relaunch, extension disable/re-enable, reload, and update must be tested for cache removal on every supported Safari version.
+These are limits of the shared source. Nobody has shown them to be Safari defects. A fix changes shared behaviour and needs targeted tests in both browsers.
 
-Changing pages does not prolong retention. Do not persist data to `local`, `sync`, native files, preferences, or Keychain to survive browser restarts.
-
-### 4.6 Engine pipeline to preserve
-
-`src/engine/engine.js` is the shared matching implementation, not a collection of Safari-specific selectors. Preserve its phases and their safety boundaries:
-
-1. Detect the applicable portal from exact origin/page matchers; apply its selector overrides, extra synonyms, section restrictions and blocked controls.
-2. Scan form controls and accessible shadow trees; collect labels, identifiers, autocomplete hints, required/type metadata and section context. Reinjection must not duplicate portal registration or message handlers.
-3. Prepare synonyms and field-match metadata, then rank candidates for each supplied canonical CRM key. Exact portal overrides outrank generic label signals; missing values are not synthesized.
-4. Preserve occupied controls, reject ineligible targets and constrain multi-fill behavior. Applicant residence/contact keys must not drift into institution, referee or scholarship sections.
-5. Normalize values for the control type, match native select/radio options or the appropriate visible custom listbox, and use DOM setters/events. A visible value alone does not prove a page framework accepted the update.
-6. Report filled, skipped-existing, skipped-empty/select, unmatched, no-CRM-value and manual-review outcomes. The popup displays a subset/merge of those categories.
-7. Run the explicit page-scoped split-date path separately from generic scanning; preserve components already chosen by staff.
-
-Do not loosen match thresholds, remove blocked selectors or expand fuzzy option selection just to make a WebKit test pass. Custom listbox code has fallback searches beyond directly associated options, so include unrelated visible-listbox negative fixtures rather than assuming scope safety from the helper's name. Date normalization, country/qualification aliases, phone formatting and safe native event delivery need the same expected values on both browsers.
-
-Unlike the CRM profile guard, `src/portal-fill.js` checks the portal origin but does not enforce a mandatory application-path guard. Portal page matchers select configuration, not a universal refusal on other page types. Test login, account/settings and non-application forms on an approved portal origin; decide whether a shared per-portal page guard is needed rather than claiming it already exists.
-
-## 5. Manifest and API compatibility
-
-### 5.1 Manifest policy
-
-Preserve Manifest V3, the toolbar `action.default_popup`, and the classic `background.service_worker` using `importScripts`. Safari supports MV3 and background service workers from 15.4; `storage.session` raises this project's API floor to 16.4. [A3, M1, M5]
-
-Keep the current permissions: `activeTab`, `scripting`, `storage`, `alarms`, and `webNavigation`. Generate exact `host_permissions` from the same allowlist for both browsers. Do not add `tabs`, `nativeMessaging`, `unlimitedStorage`, `<all_urls>`, blanket content scripts, or web-accessible resources without a demonstrated requirement and review.
-
-Do not add `background.type: "module"` while the worker uses `importScripts`. Do not ship an MV2/persistent-background fallback to support older Safari. Missing session storage must disable Copy/Autofill with an unsupported-version message, not silently switch to persistent storage.
-
-The packager reports unsupported manifest keys. Capture and classify every warning during the spike. Warning-free packaging is not proof of runtime parity. Safari app updates are distributed through the selected Apple app channel, not the Chrome Web Store or a Chrome `update_url`. [A1, A3]
-
-### 5.2 API inventory
-
-| API used today | Safari evidence | Required verification |
+| Observation | Risk | Acceptance rule |
 |---|---|---|
-| `tabs.query({ active: true, currentWindow: true })` | Safari tabs require host permission [A3] | Real toolbar popup, multiple windows, missing URL/id, permission revoked, toolbar `activeTab` grant on an unmapped university origin |
-| `scripting.executeScript({ target: { tabId, frameIds }, files })` | Safari supports script injection; current call does not use unsupported `injectImmediately` [A3, M2] | File ordering, isolated-world globals, reinjection and targeted child frames |
-| `tabs.connect(..., { frameId })`, `runtime.onConnect` | WebExtension messaging supported [A3]; frame-targeted ports and `Port.sender.url` unverified in Safari | Correct frame receives data; popup sender accepted; navigation closes the port with a useful error |
-| `runtime.sendMessage`, `runtime.onMessage` | Safari support recorded from 14 [M6] | Async response lifetime, thrown/rejected calls and serializable objects |
-| `storage.session.get/set/remove` | Safari support from 16.4 [A3, M1] | Survives worker suspension, not browser restart; no content-script access expansion |
-| `alarms.create/clear/onAlarm` | Safari support from 14 [M3] | Cleanup after sleep/wake and rescheduling; timestamp check remains authoritative |
-| `webNavigation.getAllFrames` | Safari macOS support from 14, iOS from 15 [M4] | Frame URLs/IDs available under granted hosts, cross-origin rejection |
-| `chrome.dom.openOrClosedShadowRoot` | Optional engine helper; Safari support recorded from 26 [M7] | Feature detection, any required permission, actual namespace availability and DOM access |
-| DOM selectors, events and native value setters | Shared engine, not extension API parity alone | WebKit dates/selects, page-framework reaction, shadow roots and popup focus |
+| `autofill()` sends `cache.fields` from popup memory before a fresh worker read. | A popup with stale state can use expired or cleared data. | Check again before sending. Test an expired cache and Clear from another popup. |
+| `cache = touched.cache \|\| cache` after Autofill. | A `null` worker result keeps an invalid student in the UI. | `null` means clear and disable. Never fall back to the old cache. |
+| The worker ignores `_sender` and accepts a profile shape without validation. | Privileged data actions lack a sender and schema boundary. | Reject unauthorized action sources and malformed or unapproved profiles. A rejected message must not clear a valid cache. |
+| The portal handler checks the origin, not a required application-page guard. | Other forms on an approved host can reach generic matching. | Negative-test non-application pages. Add a narrow shared page guard if needed. |
+| Parallel frame handling uses `Promise.all`. | One failure can stop the report or give a misleading partial success. | Collect the outcome of each frame. Show partial failure clearly. |
+| Engine reports include shortened filled values and existing values. | Logs or support tools could expose personal data. | Keep values out of persistent diagnostics and external reports. |
 
-The optional closed-shadow-root helper already returns `null` when the API is absent. Below Safari 26, closed-shadow-only controls cannot be promised parity through that helper. Open shadow roots can still be scanned. Current approved portals do not establish a closed-shadow requirement; historical Ulster/Salesforce notes do not make that portal supported. Even on newer Safari, verify the helper and permission setup rather than assuming the Chrome call works unchanged.
+Cache actions come from the extension popup. Check the extension identity and the expected sender URL of the extension page. Do not trust an origin string that the caller supplies. Check profile keys and types, the approved `sourceOrigin`, and size limits. Content-script responses stay tied to the requested tab and frame. The design needs no external messaging and no native bridge.
 
-API support tables are evidence for a spike, not an acceptance test. They also do not define the minimum supported macOS version. Test the approved Safari/OS combinations explicitly, including the oldest release to be advertised.
+If you need operation tokens or background-owned dispatch to prevent a Clear or Copy race, keep the mechanism small. Do not add a job service for this. Test Copy of student B, or Clear, during a fill that is already running. Refuse every later send that uses the invalidated cache of student A. The extension cannot recall values that it already wrote.
 
-## 6. Feature-parity matrix
+**Important limit.** If the extension does not select Save, the website can still make write requests. DOM changes can start portal autosave or analytics. The extension does not block requests. The supervised no-save test harness must detect or block unexpected writes and stop. Do not describe the extension as a network write blocker. Unexpected autosave blocks acceptance until SAMS approves the effect on the workflow.
 
-Legend: **Required** means the Safari release must reproduce the current Chrome behavior. **Conditional** means parity depends on supplied CRM data, portal scope, or a browser capability. All Safari runtime entries below are unverified.
+Cache cleanup removes only what the extension controls. It cannot guarantee a memory wipe against forensic tools. It cannot delete the original CRM data. It cannot erase the visible portal values. Privacy notices must describe the real local processing. Do not promise that no personal data is handled.
 
-| Feature | Chrome baseline | Safari requirement | Evidence to collect |
-|---|---|---|---|
-| Toolbar popup | Copy, Clear, Autofill, identity/countdown, result lists | Required | Native popover, keyboard, long lists, resizing and focus |
-| CRM profile guard | Exact origin, profile path and marker checks | Required | Profile accepted; login/list/dashboard/settings rejected |
-| Expanded CRM extraction | Label/value, forms, lists, contact context, panel settling | Required | Same canonical fields from all three CRM fixtures |
-| Single student replacement | Copy overwrites cache | Required | Copy A then B, only B fills |
-| Ephemeral cache | `storage.session`, 30-minute activity expiry | Required | Suspension, timestamp expiry, Clear, browser restart, update |
-| Exact hosts and dev/prod separation | Allowlist at popup and page boundary | Required | No localhost in prod, no wildcard, denied hosts stay untouched |
-| Selected-origin frames only | Frame URL filtering, targeted injection, per-frame ports | Required | Same-origin child, cross-origin child (including a mapped portal), sandboxed child, navigation race |
-| Text/email/tel/textarea | Eligible empty controls, section-aware matching | Required | Same resulting values and unchanged prefilled controls |
-| Native select/radio | Matched options and eligible radio groups | Required | Same choice; no unrelated option, keyboard/page events work |
-| Custom combobox/listbox | Scoped option matching with click guard | Conditional on actual page DOM | Controlled WebKit fixture; no navigation or irreversible control clicks |
-| Date input | Shared normalization to ISO values | Required where Chrome maps it | Safari value and validation agree with expected date |
-| Explicit split dates | Page-scoped Greenwich/Bangor configs | Required | Correct date by section; preselected components preserved |
-| Phones | Portal-specific dial-prefix preservation | Required | UK/non-UK examples and maxlength reporting |
-| Address context | Applicant residence does not fill institution/referee context | Required | Education and referee negative fixtures |
-| Qualification limits | Greenwich qualification row 1 only | Required | No rows 2-20 on first or repeat fill |
-| Repeat Autofill | Existing values preserved, no duplicate mappings | Required | Same second-click values and event counts |
-| Result reporting | Filled/existing/missing/unmatched/manual categories | Required | Equivalent outcomes; partial frame failures visible |
-| Reinjection | Reader/handler guards, portal configs do not duplicate | Required | Reload/inject/fill repeatedly without duplicate listeners |
-| Open shadow DOM | Shared scanning capability | Conditional on portal use | Representative fixture in real Safari |
-| Closed shadow DOM | Optional Chrome API helper | Conditional on Safari version/API | No invented workaround; unsupported controls stay manual |
-| Bangor Programme | Selector mapping incomplete; workflow may require saved Personal | Not a release parity claim yet | Confirmed draft/access and a separately approved inventory |
-| Campora / Greater Manchester | Chrome config and fixtures in tree | Not a Safari parity claim | Supervised Safari acceptance of the configured origins and flows |
-| Files/checkboxes/auth/declarations | Manual/blocked | Required safety parity | No writes, clicks, uploads or agreement changes |
-| Submit/save/pay/next/continue | Never clicked by extension | Required safety parity | Negative action/event assertions |
-| Cross-browser transfer | Not implemented | Not requested | Safari starts with an independent empty cache |
+## 8. Build and resources
 
-Missing CRM values remain missing. Safari must not fabricate country of birth, ethnicity, previous name, course, dates, funding, referee details, or other application answers to increase fill counts.
+`scripts/build.mjs` takes `dev` or `prod` and an optional target (`chrome` or `safari`). Each target deletes only its own paths: `dist/chrome` and its zips, or `dist/safari-webextension`. A Chrome build does not delete the Safari output.
 
-## 7. Safari-specific UX and website access
+The root `manifest.json` has no Greenwich or Bangor host permissions. The build generates them from `config/allowlist.js`. Package the generated, validated resources. Do not copy the repository root.
 
-Safari has a second access gate beyond the manifest allowlist: users can grant, ask, or deny website access. The popup must distinguish an unsupported origin from an approved origin lacking Safari permission. Granted website access does not expand the application's exact-origin policy. [A4]
+- `npm run build` and `npm run build:prod` build Chrome.
+- `npm run build:safari` and `npm run build:safari:prod` write `dist/safari-webextension`.
+- `npm run build:safari:app` runs `scripts/package-safari.mjs`. It makes an unsigned Debug app with `xcodebuild` and checks that the embedded resources match `dist/safari-webextension`.
+- Both targets share the resource copy, the version check, the exact-host generation, and the rejection of incomplete production origins.
+- Nobody edits `dist/` by hand.
+- The app and extension `MARKETING_VERSION` match `package.json` and `manifest.json` (`0.1.0`). Apple build numbers can change on their own when signing starts.
 
-Use existing toolbar interaction and Safari permission UI first. Explain how to allow the exact CRM or portal website. If runtime permission requests prove necessary, request the specific approved host from an explicit user gesture, not all websites. Catch failures at both injection and messaging boundaries; do not infer granted access from the manifest alone.
+The native project is created once and kept in Git. Its web resources come from the generated Safari output through stable project-relative references to `dist/safari-webextension`. A build system must create that folder before Xcode builds. Check the resource membership of every target and the contents of the archive. [A1]
 
-Required UX states:
+If references do not suit your build layout, use an explicit build-time copy and check hashes. Never keep a second JavaScript tree by hand. `--copy-resources` makes a snapshot. Later source edits do not update it.
 
-- No copied student: Autofill disabled; Copy instructions visible.
-- Unsupported Safari capability/version: Copy and Autofill disabled; supported-version guidance.
-- Approved website with Ask/Deny: actionable website-access instructions, no scan or payload delivery.
-- Wrong website, login page, missing tab URL or no active tab: safe error without reading or filling.
-- Valid student: name, copied time, expiry, and Clear visible; never silently select another student.
-- Expired or cleared student: identity removed and Copy required again.
-- Partial fill/frame error: successful counts plus a warning; staff review before navigating.
+The original packaging command is in [safari/README.md](../safari/README.md). The project already exists and has hand edits. Avoid `--force` and routine regeneration, which could overwrite native changes. The identifier `com.example.sams.portalautofill` in earlier plans was an example. The project uses `com.example.dev.*` placeholders. Neither is a SAMS identifier to register.
 
-Test the actual native popover, not only `popup.html` opened as an extension tab. Verify scrollable result lists, text zoom, VoiceOver/keyboard labels, disabled states, status announcements, and focus returning to the form. Preserve local assets and script-only event handlers; do not load remote scripts or fonts.
+## 9. Install, sign, and distribute
 
-Safari 17+ can share granted website access across profiles and private browsing. That is **permission behavior**, not proof of student-cache isolation. [A4] Test multiple profiles/windows explicitly. Recommend a private-browsing refusal for the first release, pending approval. Do not claim that private windows provide a separate secure cache unless observed on every supported configuration.
+### 9.1 Local development
 
-## 8. Safety and privacy: release invariants and existing gaps
+Current Apple documentation supports a temporary install of a web extension folder or zip in macOS Safari, where that interface exists. Safari removes temporary extensions after 24 hours or when it quits. This is a fast compatibility check. It is not a distribution artifact. It does not test the final signed containing app. Older Safari versions may need the Xcode route. [A5]
 
-### 8.1 Invariants
+For Xcode tests, build and run the containing app, enable the extension, and grant access only to the fixture or approved sites. Testing an unsigned extension needs a developer setting. Safari may reset it when it quits. The operator must approve this setting. Do not change the settings of a normal staff browser. Do not weaken release requirements.
 
-1. Only approved exact origins can read or receive student data; child frames must qualify independently.
-2. Copy only reads the approved student profile. CRM section expansion must not save or submit.
-3. Only eligible empty portal controls are written. Existing operator/application values remain untouched.
-4. No authentication, payment, file upload, declaration, signature, consent, or navigation control is completed automatically.
-5. No clicks on Submit, Save, Pay, Send, Delete, Confirm, Declare, Agree, Next, Continue, or equivalent irreversible controls.
-6. Cache expires after 30 minutes of inactivity, is revalidated before use, and is not persisted or synced.
-7. Clear and cache loss cannot restore stale data from another popup or retained variable.
-8. Production artifacts contain no localhost hosts, test credentials, personal fixtures, logs, `.env` files, source CRM snapshots, or development-only resources.
-9. Reports and support artifacts contain synthetic identifiers, field keys, counts and error categories, not real field values or authenticated URLs/tokens.
-10. Staff manually review the draft and perform any saving/submission themselves.
+Use a dedicated test environment or profile. A local HTTP test does not prove injection into the production HTTPS origin. The final acceptance run must use the packaged extension and the real toolbar popup.
 
-### 8.2 Shared hardening to evaluate before shipping
+### 9.2 Distribution channels
 
-These are observed Chrome-source limitations, not verified Safari defects. Addressing them changes shared behavior and requires targeted tests in both browsers. This document does not implement them.
-
-| Source observation | Risk | Proposed acceptance rule |
+| Channel | Needs | Trade-offs |
 |---|---|---|
-| `autofill()` sends `cache.fields` held in popup memory before a fresh worker read | Expired or cleared data can be used while a popup has stale state | Revalidate before dispatch; test expired cache and Clear from another popup |
-| `cache = touched.cache || cache` after Autofill | A `null` worker result can retain an invalid student in UI memory | `null` means clear/disable, never fall back to the old cache |
-| Worker ignores `_sender` and accepts profile shape without validation | Privileged data actions lack an explicit sender/schema boundary | Reject unauthorized action sources and malformed/unapproved profiles; do not clear a valid cache on a rejected message |
-| Portal handler gates by origin, not a mandatory application-page guard | Other forms on an approved host can reach generic matching | Negative-test non-application pages and add a narrow shared page guard if needed |
-| Parallel frame handling uses `Promise.all`; individual errors can be omitted from the final display | One failure aborts reporting or produces misleading partial success | Collect frame outcomes and visibly distinguish partial failure |
-| Engine reports include truncated filled values and existing values | Dumping reports into logs/support tools could disclose personal data | Keep values out of persistent diagnostics and external reports |
+| Developer ID app outside the Mac App Store | A SAMS developer team, identifiers, signing, notarization, and controlled app delivery | Suits staff-only macOS use. SAMS must own and document update delivery. |
+| Mac App Store | A SAMS developer and App Store Connect account, a signed archive, review assets, privacy disclosures, and review | Managed store updates. Plan for review time and reviewer access. |
+| TestFlight | An App Store Connect build and an approved beta setup | For beta tests. Not a permanent production rollout. |
+| Unsigned or temporary local install | Developer settings | For development only. Not a staff deployment method. |
 
-For the current protocol, cache actions originate in the extension popup. Validate the extension identity and expected extension-page sender URL, not a caller-supplied origin string. Validate profile keys/types, approved `sourceOrigin` and sensible size limits. Content-script responses remain tied to the requested tab/frame; no external messaging surface or native bridge is needed.
+Apple supports Developer ID signing and notarization outside the Mac App Store. Chrome force-install policy does not work as a Safari deployment policy. If SAMS uses MDM, ask its administrator about device management and about the controls for extension enablement and website access. Do not promise a silent install or silent grants. [A6]
 
-If operation tokens or background-owned dispatch are needed to avoid a Clear/Copy race, keep that mechanism narrowly scoped. Do not introduce a job service just for this port. Test Copy B or Clear during an in-flight fill and refuse any subsequent sends using A's invalidated cache. Values already written cannot be recalled automatically.
+The web packager of App Store Connect can package macOS and iOS resources, deliver TestFlight builds, and submit to App Store review. It uses the Xcode Cloud compute allowance and needs Apple Developer Program membership. It is an alternative way to package after compatibility is proven. It is not a compatibility converter and not a Developer ID route. [A2]
 
-**Important boundary:** not clicking Save does not guarantee the website makes no write requests. DOM changes can trigger portal autosave or analytics. The extension currently does not block requests. The supervised no-save test harness must detect/block unexpected writes and stop; do not advertise the extension as a network write blocker. Unexpected portal autosave is an acceptance blocker until SAMS approves the workflow implications.
+### 9.3 Release checklist
 
-Session cache cleanup removes extension-controlled storage. It cannot guarantee memory forensic erasure, delete original CRM data, or erase visible portal values. Privacy disclosures must describe the actual local processing rather than promise zero personal-data handling.
+- SAMS owns the team, the app and extension identifiers, the account access, and the recovery plans.
+- Signing certificates, profiles, and notarization credentials stay outside Git and ordinary logs.
+- Confirm the macOS deployment target, the Safari requirements, Intel and Apple Silicon support (if both apply), and the archive architectures.
+- Check signing, identifiers, versions, and entitlements of the app and of the embedded extension. Check the exported artifact, not only the Debug build.
+- Compare the generated privacy-manifest requirements and the store privacy disclosures with the real APIs and data collection. Do not invent a general exemption.
+- Prepare the app icon, name, screenshots, enablement instructions, privacy policy and support URLs, and the permission justification.
+- For App Store review, agree a safe demo or reviewer route with SAMS. Never show production student accounts or real student screenshots.
+- Test install, enablement, grant, upgrade, cache loss, disable and enable, and uninstall on a clean test machine or account.
+- Record the source commit, version, Apple build number, artifact hash, channel, supported browser and OS matrix, and redacted acceptance evidence.
+- Get approval before you sign for distribution, upload, publish, or roll out.
 
-## 9. Build and resource ownership
+For rollback, keep the last accepted signed artifact and the steps for a controlled reinstall. Do not migrate the Safari cache between versions. Recovery in the App Store may need a new build with the reverted code. Do not assume that a public version can be downgraded.
 
-### 9.1 Build changes
+## 10. Tests and acceptance
 
-**Implemented.** `scripts/build.mjs` takes `dev|prod` and optional `chrome|safari`. Each target deletes only its own owned paths (`dist/chrome` + zips, or `dist/safari-webextension`). A Chrome build does not wipe Safari output.
+### 10.1 What existing tests prove
 
-The checked-in `manifest.json` does not include Greenwich or Bangor host permissions; the build generates them from `config/allowlist.js`. Package the generated, validated resources, not a raw copy of the repository root.
+`npm test` runs unit and config tests, CRM reader DOM tests, session lifecycle tests, and Safari packaging and fixture checks. A pass does not prove installed Safari extension APIs, native popover behaviour, signing, or current live portal layouts.
 
-Current build contract:
+`npm run test:e2e` loads the extension in a Chromium browser (Helium by default) with synthetic HTTPS routing. It covers the real Chromium flow from popup to worker to content script. It opens the popup as an extension tab. Keep it as the Chrome regression gate. Changing the Playwright browser to WebKit does not turn it into a Safari extension test.
 
-- `npm run build` / `npm run build:prod` remain Chrome commands.
-- `npm run build:safari` / `npm run build:safari:prod` write `dist/safari-webextension`.
-- `npm run build:safari:app` runs `scripts/package-safari.mjs` (unsigned Xcode Debug build + embedded resource hash check into `dist/safari-app`).
-- Shared resource copy, version validation, exact-host generation, and incomplete-production-origin rejection apply to both targets.
-- Generated files under `dist/` are never edited as source.
-- App/extension `MARKETING_VERSION` stays aligned with `package.json` / `manifest.json` (`0.1.0`); Apple build numbers can move independently when signing is introduced.
+Playwright WebKit can test shared DOM logic. It is not the Safari Web Extension run time of Apple. SafariDriver or ordinary page automation also does not prove permission, popup, and worker integration. The repeatable manual script is [e2e/safari/README.md](../e2e/safari/README.md). Automate only the parts that the tools can really control.
 
-### 9.2 Xcode resource strategy
-
-Create the native project once, commit its source/project metadata, and keep its web resources synchronized from the generated Safari output. The packager references input resources by default. A stable project-relative reference to `dist/safari-webextension` avoids a second editable copy, but CI must generate that directory before Xcode builds. Verify all target resource memberships and archive contents. [A1]
-
-If references are unsuitable for the approved CI/build layout, use an explicit build-time copy and verify hashes. Do not manually maintain a second JavaScript tree. `--copy-resources` creates a snapshot; subsequent source edits do not automatically update that snapshot.
-
-Packaging sketch, not an instruction to execute now:
-
-```sh
-# Run from the repository after building the Safari resources.
-# Replace the example identifier with a SAMS-approved registered identifier.
-xcrun safari-web-extension-packager 'dist/safari-webextension' \
-  --project-location 'safari' \
-  --app-name 'SAMS Portal Autofill' \
-  --bundle-identifier 'com.example.sams.portalautofill' \
-  --swift --macos-only --no-open
-```
-
-`com.example.sams.portalautofill` is an illustrative placeholder, not an identifier to register. Confirm generated target names, schemes, extension identifier, Info.plist settings, entitlements and provisioning before writing build/archive commands. Avoid `--force` and routine project regeneration that could overwrite native customizations.
-
-## 10. Installation, signing and distribution
-
-### 10.1 Local development
-
-Current Apple documentation supports temporary installation of a web-extension folder/ZIP in macOS Safari where that UI is available. Safari removes temporary extensions after 24 hours or on quit. This is a fast compatibility path, not a distribution artifact or a test of the final signed containing app. Older supported versions may require the Xcode route. [A5]
-
-For Xcode testing, build/run the containing app, enable the extension, and grant access only to the fixture/approved sites. Unsigned-extension testing requires a developer setting and may reset after Safari quits. The operator must approve this setting; do not alter normal staff-browser settings or weaken release requirements.
-
-Use a dedicated test environment/profile. A synthetic local HTTP test does not prove injection into the production HTTPS origin. The final acceptance run includes the packaged extension and actual toolbar popup.
-
-### 10.2 Distribution choices
-
-| Channel | Requirements | Trade-offs |
-|---|---|---|
-| Developer ID app outside Mac App Store | SAMS Developer team, identifiers, signing, notarization, controlled app delivery | Suitable for staff-only macOS; update delivery must be owned/documented |
-| Mac App Store | SAMS Developer/App Store Connect account, signed archive, review assets, privacy disclosures, review | Managed store updates; review timing and reviewer access need planning |
-| TestFlight | App Store Connect build and approved beta setup | Beta testing, not a permanent production rollout |
-| Unsigned/temporary local install | Developer settings | Development only; not a staff deployment strategy |
-
-Developer ID signing/notarization outside the Mac App Store is supported by Apple. Chrome force-install policy cannot be reused as Safari deployment policy. If SAMS uses MDM, confirm device management and extension enablement/website-access controls with its administrator instead of promising silent installation or grants. [A6]
-
-App Store Connect's web packager can package macOS/iOS resources, deliver TestFlight builds, and submit to App Store review. It consumes Xcode Cloud compute allowance and needs Apple Developer Program membership. It is an alternative packaging route after compatibility is established, not a compatibility converter or a Developer ID distribution route. [A2]
-
-### 10.3 Release checklist
-
-- SAMS owns the team, app and extension identifiers, account access, and recovery arrangements.
-- Signing certificates/profiles and notarization credentials remain outside Git and ordinary logs.
-- Confirm macOS deployment target, Safari requirements, Intel/Apple Silicon support if both are in scope, and archive architectures.
-- App and embedded extension have correct signing, identifiers, versions and entitlements; verify the exported artifact, not only Debug output.
-- Review generated privacy-manifest requirements and store privacy disclosures against actual APIs and collection. Do not invent a blanket exemption.
-- Prepare app icon, name, screenshots, enablement instructions, privacy-policy/support URLs and permission justification.
-- For App Store review, provide a safe demonstration/reviewer route agreed with SAMS; never expose production student accounts or real student screenshots.
-- Verify install, enablement, grant, upgrade, cache loss, disable/re-enable and uninstall on a clean test machine/account.
-- Record source commit, version, Apple build number, artifact hash, channel, supported browser/OS matrix and redacted acceptance evidence.
-- Obtain approval before signing for distribution, uploading, publishing or rolling out.
-
-For rollback, retain the last accepted signed artifact and instructions for controlled reinstall. Safari cache must not be migrated between versions. App Store recovery may require a new build carrying reverted code rather than assuming a public version can be downgraded.
-
-## 11. Test and acceptance architecture
-
-### 11.1 What existing tests prove
-
-`npm test` runs Node's test runner, including unit/config tests, CRM reader DOM tests, session lifecycle tests, and Safari packaging/fixture checks. Passing it does not prove installed Safari extension APIs, native popover behavior, signing, or current live portal layouts.
-
-`npm run test:e2e` loads the extension in a Chromium browser (Helium by default) with synthetic HTTPS routing. It covers real Chromium popup-to-worker-to-content-script flow, but opens the popup as an extension tab. Keep it as a Chrome regression gate. It cannot be converted into a Safari-extension test merely by changing the Playwright browser to WebKit.
-
-Playwright WebKit can help exercise shared DOM logic, but it is not Apple's Safari Web Extension runtime. SafariDriver or ordinary browser-page automation alone also does not establish permission/popup/worker integration. The reproducible manual Safari acceptance script is [e2e/safari/README.md](../e2e/safari/README.md); automate only the parts the selected tools can actually control.
-
-### 11.2 Verification layers
+### 10.2 Verification layers
 
 | Layer | Scope | Pass criteria |
 |---|---|---|
-| Shared unit/config | Current tests plus new lifecycle/build cases | Chrome regressions remain green; deterministic expected outcomes |
-| WebKit DOM fixtures | CRM panels, selects, dates, radio/listbox, shadow DOM | Same canonical extraction and field values on fixture DOMs |
-| Installed Safari extension fixtures | Actual popup, worker, permissions and messages | Copy/fill/repeat/Clear/expiry work with no denied-frame data |
-| Signed package smoke | Exported containing app/extension | Clean install, enablement, upgrade and cache reset work |
-| Supervised live acceptance | Approved CRM and portal draft journeys | Same mapping/safety outcomes, no unauthorized save/submit/write |
+| Shared unit and config | Current tests plus new lifecycle and build cases | Chrome regressions stay green. Outcomes are deterministic. |
+| WebKit DOM fixtures | CRM panels, selects, dates, radio and listbox, shadow DOM | Same canonical extraction and field values on the fixture DOMs |
+| Installed Safari extension with fixtures | Real popup, worker, permissions, messages | Copy, fill, repeat, Clear, and expiry work. Denied frames get no data. |
+| Smoke test of the signed package | Exported containing app and extension | Clean install, enablement, upgrade, and cache reset work |
+| Supervised live acceptance | Approved CRM and portal draft journeys | Same mapping and safety results. No unauthorized save, submit, or write. |
 
-Do not mix results from these layers. Store synthetic reports separately from ignored/redacted live reports.
+Do not mix the results of these layers. Keep synthetic reports apart from ignored, redacted live reports.
 
-### 11.3 Mandatory test cases
+### 10.3 Mandatory test cases
 
-1. Copy each current CRM fixture, including reversed `dd`/`dt` layout and asynchronously expanded sections; compare canonical fields.
-2. Reject wrong CRM origin, login/list/dashboard/settings routes, missing markers and malformed profile messages. Separately verify no writes to non-application portal pages on an approved host.
-3. Copy student A, then B; verify identity/cache replacement and that subsequent fill uses B.
-4. Fill Bangor and Greenwich fixtures; compare expected values, report categories and existing-value preservation with Chrome.
-5. Repeat fill: no secondary qualifications, additional address-line duplication, unrelated option selection, or new field-change events.
-6. Split-date cases: Greenwich DOB versus employment reuse of `#bday_*`; Bangor month/year education and employment; preserve selected components.
-7. Negative controls: passwords, account emails, CAPTCHA, chat, referee data, institution residence fields, signatures, finance scholarship name, checkboxes and files stay unchanged.
-8. Count attempted clicks/submissions and unexpected network writes. Intentional safe listbox/radio interaction must be distinguished from irreversible action.
-9. Denied/unapproved child frame receives no student payload; approved child receives the right payload. Exercise frame disappearance/navigation between discovery and send.
-10. Ask/Allow/Deny website access, grant expiry/revocation, inactive windows, missing active-tab URL and private-browsing behavior.
-11. Worker suspension and wake preserve an unexpired cache; timestamp expiry after sleep/wake rejects it regardless of alarm timing.
-12. Keep popup open across expiry, Clear in another popup, and student replacement; stale memory cannot send/resurrect invalid data.
-13. Close popup during Copy or fill; reopening accurately reflects completion/cancellation and cache identity.
-14. Quit/relaunch Safari, reload/update/disable extension: no previous student's cache remains. Temporary installs disappearing on quit are a separate case.
-15. No student fields in `storage.local`, `storage.sync`, native app storage, console/support logs or exported reports.
-16. Real toolbar popover: keyboard/VoiceOver access, countdown, long reports, focus and error display.
-17. Package resource/version/host checks and clean signed-app installation on the oldest supported Safari/OS combination and current supported releases.
+1. Copy each current CRM fixture, including the reversed `dd` and `dt` layout and sections that expand asynchronously. Compare the canonical fields.
+2. Reject a wrong CRM origin, login, list, dashboard, and settings routes, missing markers, and malformed profile messages. Check separately that nothing is written to non-application portal pages on an approved host.
+3. Copy student A, then B. Check that the identity and cache are replaced and that the next fill uses B.
+4. Fill the Bangor and Greenwich fixtures. Compare the values, report categories, and kept existing values with Chrome.
+5. Repeat the fill. Check for no secondary qualifications, no repeated address lines, no unrelated option, and no new field-change events.
+6. Split-date cases: Greenwich date of birth against the reuse of `#bday_*` for employment. Bangor month and year for education and employment. Keep selected parts.
+7. Negative controls: passwords, account emails, CAPTCHA, chat, referee data, institution residence fields, signatures, the finance scholarship name, checkboxes, and files stay unchanged.
+8. Count the attempted clicks, submissions, and unexpected network writes. Tell an intended safe listbox or radio action apart from an irreversible action.
+9. A denied or unapproved child frame gets no student data. An approved child gets the right data. Test a frame that disappears or navigates between discovery and send.
+10. Ask, Allow, and Deny website access. Grant expiry and revocation. Inactive windows. Missing active-tab URL. Private-browsing behaviour.
+11. Worker suspension and wake keep an unexpired cache. After a sleep and wake, the timestamp expiry rejects the cache whatever the alarm timing is.
+12. Keep a popup open during expiry, Clear in another popup, and a student replacement. Stale memory cannot send or bring back invalid data.
+13. Close the popup during Copy or a fill. When you open it again, it shows the real completion or cancellation and the right cache identity.
+14. Quit and restart Safari. Reload, update, or disable the extension. No cache of the previous student remains. Temporary installs that disappear on quit are a separate case.
+15. No student fields appear in `storage.local`, `storage.sync`, native app storage, console or support logs, or exported reports.
+16. Real toolbar popover: keyboard and VoiceOver access, countdown, long reports, focus, and error display.
+17. Package resource, version, and host checks. A clean install of the signed app on the oldest supported Safari and OS combination and on the current supported releases.
 
-For each case record browser/OS version, install type, fixture or redacted journey identifier, result, and failure category. A test that cannot run is Blocked, not Passed.
+For each case, record the browser and OS version, the install type, the fixture or redacted journey identifier, the result, and the failure category. A test that cannot run is Blocked, not Passed.
 
-### 11.4 Live-testing controls
+### 10.4 Live-test controls
 
-Require explicit approval for the browser/profile, credentials, student sample, portals and existing drafts. Reuse the documented no-save safeguards from `e2e/README.md`; do not reuse its Chromium runner as if it tested Safari.
+Get explicit approval for the browser and profile, the credentials, the student sample, the portals, and the existing drafts. Reuse the no-save safeguards of [e2e/README.md](../e2e/README.md). Do not use its Chromium runner as a Safari test.
 
-Never create an application, upload documents, save a step, submit, or bypass CAPTCHA to complete this port's acceptance. If Bangor Programme is locked until Personal is saved, use an already unlocked approved draft or mark it blocked. Do not use real data in committed fixtures or screenshots.
+Never create an application, upload documents, save a step, submit, or bypass a CAPTCHA to complete this acceptance. If Bangor Programme stays locked until Personal is saved, use an approved draft that is already unlocked, or mark it Blocked. Never put real data in committed fixtures or screenshots.
 
-## 12. Sequenced implementation plan and gates
+## 11. iPhone and iPad
 
-This is a proposed execution checklist. Implementation, signing and release remain separate approvals. The Safari work does not authorize unrelated refactors or changes to production scope.
+Do not claim mobile Safari support as a result of a macOS archive. If SAMS approves it, add an iOS containing app and an embedded extension target that use the same web resources. Apple provides a packager route to add iOS. [A1, A5]
 
-### Phase A: approve scope and establish compatibility
+Extra work:
 
-- [ ] Agree platforms, staff Safari/OS inventory, developer-account ownership, private-browsing policy and intended channel.
-- [ ] Stage generated development resources, including confirmed portal hosts, without changing the allowlist or production gates.
-- [ ] Package/install locally and inventory actual manifest warnings and missing APIs.
-- [ ] Exercise Copy, simple text/select fill, session storage, alarm expiry, targeted frames and the native popover with synthetic data.
-- [ ] Record the smallest necessary source changes and any unsupported/manual features.
+- Confirm that the CRM and each portal support the mobile or tablet workflow. Responsive DOMs can differ from desktop selectors and panel behaviour.
+- Test the Safari extension menu or sheet, touch, the on-screen keyboard, focus, viewport changes, text zoom, and long reports. Change the fixed desktop sizes only where needed.
+- Check inactive-tab behaviour, background suspension, the short life of a popup or sheet, frame messaging, and permission requests on a device.
+- Keep session-only storage. Do not use native persistence to work around mobile lifecycle limits.
+- Require acceptance on a physical device in addition to simulator tests.
+- Provision and sign the containing app and the extension. Agree TestFlight or App Store delivery and the mobile privacy and review assets.
+- Review private browsing and shared website permissions for mobile on their own.
+- State the mobile support limits if portal controls or required draft steps cannot be tested safely.
 
-**Exit evidence:** compatibility report for actual Safari versions, not an assumption from API tables. Stop and revise the plan if core ephemeral storage or origin-safe frame targeting cannot be preserved.
+Safari on iOS lacks some desktop extension APIs, including `webRequest`, several window operations, and context menus. This extension does not use them in its product flow. The request-blocking tools of the Chromium test harness may not exist in a mobile extension. [A3]
 
-### Phase B: shared build and minimal Apple shell
+## 12. Risks
 
-- [ ] Introduce independent browser outputs and preserve current Chrome scripts.
-- [ ] Add Safari output/resource/host/version tests and retain the production rejection.
-- [ ] Create the macOS containing app and extension target with approved identifiers.
-- [ ] Establish one-way generated resource synchronization and clean CI build order.
-- [ ] Add only onboarding, enablement guidance, privacy and support to the containing app.
-
-**Exit evidence:** Chrome build unchanged in behavior; Safari resources reproducible; local app embeds the correct shared code. Native storage contains no student records.
-
-### Phase C: parity and required hardening
-
-- [ ] Reproduce any API or DOM differences before changing shared code.
-- [ ] Add fresh-cache, Clear/replacement race, null-cache and message-validation regressions.
-- [ ] Implement the smallest confirmed compatibility/permission changes.
-- [ ] Surface frame failures without weakening origin checks.
-- [ ] Run shared tests, Chrome loaded-extension fixtures, and real Safari fixture acceptance.
-
-**Exit evidence:** equivalent supported outcomes, preserved safety controls, documented manual exclusions, no regression hidden behind a browser-only fork.
-
-### Phase D: supervised acceptance and release preparation
-
-- [ ] Resolve the existing production-origin/integration gate or obtain an explicit scope revision.
-- [ ] Complete the approved Safari/OS matrix and live no-save journeys with SAMS.
-- [ ] Prepare signing, privacy, support, screenshots and the selected distribution procedure.
-- [ ] Test the exported signed package and upgrade/cache-reset behavior on a clean environment.
-- [ ] Present artifact/evidence and obtain release approval before external distribution.
-
-**Exit evidence:** SAMS acceptance, signed-package verification, resolved release blockers, and an owned update/rollback process. Conversion or an Xcode build alone is not Done.
-
-## 13. Optional iPhone and iPad delta
-
-Do not claim mobile Safari support as a by-product of a macOS archive. If approved, add an iOS containing app and embedded extension target using the same web resources. Apple provides a packager rebuild route for adding iOS. [A1, A5]
-
-Additional work:
-
-- Confirm whether the CRM and each portal genuinely support the mobile/tablet workflow. Responsive DOMs may differ from desktop selectors and panel behavior.
-- Test the Safari extension menu/sheet, touch, on-screen keyboard, focus, viewport resizing, text zoom and long reports. Replace fixed desktop sizing only where necessary.
-- Verify inactive-tab behavior, background suspension, short popup/sheet lifetime, frame messaging and permission requests on device.
-- Preserve session-only storage; do not use native persistence to compensate for mobile lifecycle limits.
-- Require physical-device acceptance in addition to simulator tests. Follow the repository's approved simulator tooling; no unpinned simulator/browser-mirroring setup.
-- Provision and sign the containing app and extension; agree TestFlight/App Store delivery and mobile privacy/review assets.
-- Review private browsing and shared website-permission behavior independently from desktop.
-- Define mobile support limits explicitly if portal controls or required draft steps cannot be exercised safely.
-
-Safari iOS lacks some desktop extension APIs, including `webRequest`, several window operations and context menus, but this extension does not currently rely on those for its product flow. The existing Chromium test harness's request-blocking mechanisms still cannot be assumed to exist inside the mobile extension. [A3]
-
-## 14. Risks and dependencies
-
-| Risk/dependency | Consequence | Control |
+| Risk or dependency | Consequence | Control |
 |---|---|---|
-| Campora/third-portal live acceptance | The production package builds but is not release-verified | Complete live CRM-to-portal and Safari acceptance before release |
-| Safari permission grants/revocation | Approved site fails injection or hides tab URL | Native access guidance and tested fail-closed errors |
-| WebKit control/framework differences | Fields appear filled but portal state rejects values | Check DOM value, selected option and validation/events in Safari |
-| Background/popover lifetime | Copy response lost, expiry late, stale UI | Session storage, fresh reads, cancellation/lifecycle tests |
-| Mixed frame success | Misleading report or unintended data destination | Per-frame outcomes, current-origin recheck, no broad fallback |
-| Shared-code changes | Chrome regression | Shared and loaded-Chrome tests on every behavioral change |
-| Closed shadow controls on older Safari | Conditional features not accessible | Feature-detect; declare manual exclusions, do not bypass isolation |
-| Live autosave or locked drafts | No-save acceptance cannot complete | Stop, human handoff, existing approved draft or blocked result |
-| Account/signing/distribution delays | Working dev build cannot reach staff | Resolve SAMS ownership/channel before release work |
-| Stale documentation | False feature or verification claims | Use code/tests as baseline and record evidence by version |
+| Live acceptance for Campora and the portals | The production package builds, but nobody has verified the release | Complete the live CRM-to-portal tests and Safari acceptance before release |
+| Safari permission grants and revocation | An approved site fails injection or hides the tab URL | Native access guidance and tested fail-closed errors |
+| WebKit control and framework differences | Fields look filled, but the portal state rejects the values | Check the DOM value, the selected option, and validation and events in Safari |
+| Background and popover lifetime | A lost Copy response, a late expiry, a stale UI | Session storage, fresh reads, cancellation and lifecycle tests |
+| Mixed frame success | A misleading report or a wrong data destination | Per-frame outcomes, a check of the current origin, no broad fallback |
+| Changes to shared code | Chrome regression | Shared tests and loaded-Chrome tests on every behaviour change |
+| Closed shadow controls on older Safari | Conditional features are not reachable | Detect the feature. Declare manual exclusions. Do not bypass isolation. |
+| Live autosave or locked drafts | The no-save acceptance cannot finish | Stop. Hand over to a person, use an existing approved draft, or record Blocked. |
+| Delays in account, signing, or distribution | A working development build cannot reach staff | Settle SAMS ownership and the channel before release work |
+| Out-of-date documentation | False claims about features or verification | Use the code and tests as the baseline. Record evidence by version. |
 
-No reliable effort estimate is assigned before the compatibility spike, staff platform inventory, distribution decision, and missing-integration scope are resolved. The main unknown is runtime/portal validation, not the amount of Swift code.
+No reliable effort estimate exists until SAMS settles the compatibility checks, the staff platform inventory, the distribution decision, and the scope of missing integrations. The main unknown is validation at run time and on portals. The amount of Swift code is small.
 
-## 15. Evidence, toolchain and references
+## 13. References
 
-### Local observations for this document
-
-- `xcode-select -p`: `/Applications/Xcode.app/Contents/Developer`.
-- Installed Safari app metadata (one local environment, not a support minimum): version `27.0.1`, build `22625.1.29.11.28`.
-- Packaging tool: `safari-web-extension-packager` (project already generated and hand-edited under `safari/`).
-- Still not done by docs work alone: signed archive, distribution account, host-policy change, authenticated Safari journey, or production upload.
-
-### Repository references
+Repository:
 
 - [Codebase map](CODEBASE_MAP.md)
-- [Chrome README](../README.md)
+- [README](../README.md)
 - [Technical and mapping guide](TECHNICAL-AND-MAPPING.md)
-- [Install and controlled deployment](INSTALL-AND-DEPLOY.md)
+- [Install and deploy](INSTALL-AND-DEPLOY.md)
 - [Safari build and enablement](../safari/README.md)
-- [Safari acceptance checklist](../e2e/safari/README.md)
-- [Portal verification matrix](../PORTALS.md)
-- [Existing E2E architecture and live safeguards](../e2e/README.md)
-- [Chrome manifest](../manifest.json), [build](../scripts/build.mjs), [Safari app package](../scripts/package-safari.mjs), [allowlist](../config/allowlist.js)
-- [Popup orchestration](../popup.js), [worker](../src/background.js), [CRM reader](../src/crm-reader.js), [portal handler](../src/portal-fill.js), [engine](../src/engine/engine.js)
-- [Split-date regression tests](../test/split-dates.test.js), [Safari build tests](../test/safari-build.test.js)
+- [Safari checklist](../e2e/safari/README.md)
+- [Portal status](../PORTALS.md)
+- [E2E tests and live safeguards](../e2e/README.md)
+- [Safari build tests](../test/safari-build.test.js), [split-date tests](../test/split-dates.test.js)
 
-### Apple documentation
+Apple documentation (reviewed on 2026-10-12; check it again before you pick an older support floor):
 
-Reviewed on 2026-10-12. Recheck relevant documentation and tool help when implementing or selecting an older support floor.
+- **A1:** [Packaging a web extension for Safari](https://developer.apple.com/documentation/safariservices/packaging-a-web-extension-for-safari). Packager name, Xcode targets, resource references, flags, and iOS rebuild.
+- **A2:** [Packaging and distributing Safari Web Extensions with App Store Connect](https://developer.apple.com/documentation/safariservices/packaging-and-distributing-safari-web-extensions-with-app-store-connect). Browser-based packaging, membership, TestFlight and App Store, compute allowance.
+- **A3:** [Assessing your Safari web extension's browser compatibility](https://developer.apple.com/documentation/safariservices/assessing-your-safari-web-extension-s-browser-compatibility). Namespaces, promises, MV3, storage, and API limits.
+- **A4:** [Managing Safari web extension permissions](https://developer.apple.com/documentation/safariservices/managing-safari-web-extension-permissions). Website grants and the Safari 17 behaviour for profiles and private browsing.
+- **A5:** [Running your Safari web extension](https://developer.apple.com/documentation/safariservices/running-your-safari-web-extension). Temporary folder install, Xcode app install, unsigned development, and enablement.
+- **A6:** [Distributing your Safari web extension](https://developer.apple.com/documentation/safariservices/distributing-your-safari-web-extension). Signed app distribution, App Store, and notarized Developer ID delivery.
 
-- **A1:** [Packaging a web extension for Safari](https://developer.apple.com/documentation/safariservices/packaging-a-web-extension-for-safari): packager name, Xcode targets, resource references, flags and iOS rebuild.
-- **A2:** [Packaging and distributing Safari Web Extensions with App Store Connect](https://developer.apple.com/documentation/safariservices/packaging-and-distributing-safari-web-extensions-with-app-store-connect): browser-based packaging, membership, TestFlight/App Store and compute allowance.
-- **A3:** [Assessing your Safari web extension's browser compatibility](https://developer.apple.com/documentation/safariservices/assessing-your-safari-web-extension-s-browser-compatibility): namespaces, promises, MV3, storage and API limitations.
-- **A4:** [Managing Safari web extension permissions](https://developer.apple.com/documentation/safariservices/managing-safari-web-extension-permissions): website grants and Safari 17+ profile/private access behavior.
-- **A5:** [Running your Safari web extension](https://developer.apple.com/documentation/safariservices/running-your-safari-web-extension): temporary folder installation, Xcode app installation, unsigned development and enablement.
-- **A6:** [Distributing your Safari web extension](https://developer.apple.com/documentation/safariservices/distributing-your-safari-web-extension): signed app distribution, App Store and notarized Developer ID delivery.
+MDN browser compatibility data (live upstream data, not fixed test results):
 
-### MDN browser compatibility data
-
-These are live upstream data links inspected on the review date, not immutable test results.
-
-- **M1:** [Storage](https://github.com/mdn/browser-compat-data/blob/main/webextensions/api/storage.json): `storage.session` from Safari 16.4.
-- **M2:** [Scripting](https://github.com/mdn/browser-compat-data/blob/main/webextensions/api/scripting.json): script-injection compatibility.
-- **M3:** [Alarms](https://github.com/mdn/browser-compat-data/blob/main/webextensions/api/alarms.json): Safari support from 14.
-- **M4:** [Web navigation](https://github.com/mdn/browser-compat-data/blob/main/webextensions/api/webNavigation.json): `getAllFrames` support.
-- **M5:** [Background manifest](https://github.com/mdn/browser-compat-data/blob/main/webextensions/manifest/background.json): service worker from Safari 15.4.
-- **M6:** [Runtime](https://github.com/mdn/browser-compat-data/blob/main/webextensions/api/runtime.json): messaging support.
-- **M7:** [DOM extension API](https://github.com/mdn/browser-compat-data/blob/main/webextensions/api/dom.json): `openOrClosedShadowRoot` support from Safari 26.
+- **M1:** [Storage](https://github.com/mdn/browser-compat-data/blob/main/webextensions/api/storage.json). `storage.session` from Safari 16.4.
+- **M2:** [Scripting](https://github.com/mdn/browser-compat-data/blob/main/webextensions/api/scripting.json). Script injection.
+- **M3:** [Alarms](https://github.com/mdn/browser-compat-data/blob/main/webextensions/api/alarms.json). Safari support from 14.
+- **M4:** [Web navigation](https://github.com/mdn/browser-compat-data/blob/main/webextensions/api/webNavigation.json). `getAllFrames` support.
+- **M5:** [Background manifest](https://github.com/mdn/browser-compat-data/blob/main/webextensions/manifest/background.json). Service worker from Safari 15.4.
+- **M6:** [Runtime](https://github.com/mdn/browser-compat-data/blob/main/webextensions/api/runtime.json). Messaging support.
+- **M7:** [DOM extension API](https://github.com/mdn/browser-compat-data/blob/main/webextensions/api/dom.json). `openOrClosedShadowRoot` from Safari 26.

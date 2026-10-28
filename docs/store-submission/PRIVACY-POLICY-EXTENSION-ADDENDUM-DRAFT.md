@@ -1,6 +1,6 @@
 # Privacy policy extension addendum (DRAFT, not published, not approved, legal review required)
 
-Status: prepared locally on 2026-10-22 for SAMS Portal Autofill version `0.1.0`.
+Status: drafted on 2026-10-22 for SAMS Portal Autofill version `0.1.0`.
 
 - This is proposed insertion text for the existing public SAMS privacy policy at https://samscrm.co.uk/privacy-policy/. The existing policy is live and has not been changed by this work.
 - The text below is **not published**, **not approved by SAMS** and **not legally reviewed**. Do not treat it as the current policy, as evidence of compliance, or as legal advice.

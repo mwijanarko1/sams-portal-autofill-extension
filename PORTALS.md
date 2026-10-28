@@ -1,22 +1,45 @@
-# Portal verification matrix
+# Portal status
 
-Each portal's exact origin and field inventory is confirmed: Greenwich (`nelson.gre.ac.uk`), Bangor (`apps.bangor.ac.uk`), Greater Manchester (`evision.bolton.ac.uk`) and the Campora source (`v-sams-backend.samsapply.co.uk`). Full inventories are dated 2026-10-23 (Campora 2026-10-25). Live CRM-to-portal results: one supervised Campora-to-Bangor no-save sample passed on 2026-10-25; no other live journey result is recorded here. Do not guess or broaden production host permissions.
+This page shows what the extension supports for each portal and what has been tested live. Do not guess or widen the production host permissions.
 
-| Portal | Origin confirmed | Personal | Contact | Education | Employment | Fixtures | Status |
-|---|---:|---:|---:|---:|---:|---:|---|
-| University of Greenwich | Yes (`nelson.gre.ac.uk`) | Mapped | Mapped | Mapped | Mapped | Synthetic in `e2e/fixtures/greenwich.html` | Complete 2026-10-23 inventory of all ten checklist sections; applicant address, qualification award date and education attendance dates now mapped via split dates; Programme fills intake → programme → mode over three passes. Fixed agent-ID, address-line-2, interview-date and teacher-training mis-fills. Live CRM-to-portal journey pending. See `docs/portal-maps/GREENWICH.md` |
-| University of Greater Manchester | Yes (`evision.bolton.ac.uk`) | Mapped | Mapped | Mapped | Mapped | Synthetic Personal Details fixture in `e2e/fixtures/manchester-personal-mapping.html`; full sanitized live-form replay still pending | Origin + selector map in `config/portals/manchester.js`; SITS IPP tabs; complete 2026-10-23 inventory of PD, CD, PI, QU, EX, PS, PA and SU (Referees/Funding/Research hidden on the MBA sample). Synthetic Copy-to-Autofill covers derived birth/residence countries and preserves existing residence. Qualification name/subject/grade and typed statement need the documented two-pass reveal. Live CRM Autofill pending. See `docs/portal-maps/MANCHESTER.md` |
-| Bangor University | Yes (`apps.bangor.ac.uk`) | Mapped | Mapped | Mapped | Mapped | Synthetic in `e2e/fixtures/bangor.html` | Origin + selector map in `config/portals/bangor.js`; complete 2026-10-23 inventory of Personal, International, Programme lookup, Additional Info, Contact, Education, Employment, Language, Finance and the restricted-admissions branch (286 controls, 0 gaps after the independent second pass). Programme opens once Personal is saved. One Campora-to-Bangor no-save sample passed 2026-10-25; full live CRM Autofill pending. See `docs/portal-maps/BANGOR.md` |
+## Portals
 
+| Portal | Origin | Mapped sections | Synthetic test page | Live test result | Field map |
+|---|---|---|---|---|---|
+| University of Greenwich | `nelson.gre.ac.uk` | Personal, Contact, Education, Employment, and the other checklist sections (all ten inventoried on 2026-10-23) | `e2e/fixtures/greenwich.html` | None recorded | [GREENWICH.md](docs/portal-maps/GREENWICH.md) |
+| University of Greater Manchester | `evision.bolton.ac.uk` | Personal Details, Contact Details, Qualifications, Experience, and the other SITS tabs (inventoried on 2026-10-23) | `e2e/fixtures/manchester-personal-mapping.html` (Personal Details) | None recorded | [MANCHESTER.md](docs/portal-maps/MANCHESTER.md) |
+| Bangor University | `apps.bangor.ac.uk` | Personal, International, Programme lookup, Additional Info, Contact, Education, Employment, Language, Finance (inventoried on 2026-10-23) | `e2e/fixtures/bangor.html` | One Campora-to-Bangor run without saving (2026-10-25) | [BANGOR.md](docs/portal-maps/BANGOR.md) |
+
+Notes:
+
+- **Greenwich.** Programme fills in three passes: intake, then programme, then mode. Split dates cover the applicant address, the qualification award date, and the education attendance dates.
+- **Greater Manchester.** Qualification name, subject, grade, and the typed statement need a two-pass reveal. Staff answer the conditional questions first and then run Autofill again.
+- **Bangor.** The Programme section opens only after Personal is saved. The extension never saves, so Programme stays untested unless the draft is already unlocked.
 
 ## CRM sources
 
-Copy reads two approved sources: the SAMS CRM at `https://app.samscrm.co.uk` (lead Profile and Applications tabs) and Campora APPLY at `https://v-sams-backend.samsapply.co.uk` (application route `/applyuser/show/<id>/profile`). Campora's read-only profile loads when its Profile tab is opened; the reader opens that tab, maps only the canonical fields the engine and portal maps consume, and restores the previous tab. Reference records, status flags, student quality and the level badge are not mapped. Campora documents are not listed or fetched; staff attach them manually. A first real Campora-to-Bangor no-save sample passed on 2026-10-25: Copy returned 30 fields and Bangor education, employment and finance filled eight controls, with existing/blocked values preserved, zero blocked writes and the cache cleared. This is one application and one portal, not full acceptance; draft ownership was not verified, so treat it as a no-save field-fill smoke test. The full Campora map, deliberate omissions and read-only section endpoints are in [docs/portal-maps/CAMPORA.md](docs/portal-maps/CAMPORA.md).
+Copy reads two approved sources:
 
-For each supervised journey, record the exact origin, page matcher, fields filled, existing values skipped, fields with no CRM value, fields left for manual review, and, where possible, a sanitized HTML fixture alongside the synthetic pages in `e2e/fixtures/`.
+- **SAMS CRM** (`https://app.samscrm.co.uk`). The reader uses the lead header, the Applications tab (stage panels when mounted, otherwise the visible form), and the Profile tab (all ten sections). It works for direct, sub-agent, and converted leads. The layout is the same: `/agent/leads/full-profile/<id>`. Profile values win when both tabs give the same key. The full field map is in [CRM-LEAD-PROFILE.md](docs/portal-maps/CRM-LEAD-PROFILE.md).
+- **Campora APPLY** (`https://v-sams-backend.samsapply.co.uk`, route `/applyuser/show/<id>/profile`). The Profile tab loads when it is opened. The reader opens it, reads only the keys that the engine and portal maps use, and restores the previous tab. It does not map reference records, status flags, student quality, or the level badge. Campora documents are not listed or fetched. Staff attach them manually. The full map is in [CAMPORA.md](docs/portal-maps/CAMPORA.md).
 
-**CRM source coverage (2026-10-23):** Copy reads the lead header, the Applications tab (stage panels when mounted, otherwise its visible form) and the Profile tab (all ten sections) for direct, sub-agent and converted leads (same `/agent/leads/full-profile/<id>` layout). Profile values win on shared keys. Full field-by-field map and limits: [docs/portal-maps/CRM-LEAD-PROFILE.md](docs/portal-maps/CRM-LEAD-PROFILE.md).
+## Live test result
 
-Current automated baseline (2026-10-28): `npm test` 135/135 and `npm run test:e2e` 50/50 in a visible Chromium against the loaded extension and synthetic fixtures, not live portals. A separate `npm run test:e2e:live` Campora-to-Bangor no-save sample passed on 2026-10-25. The synthetic suite includes Greenwich funding, intake, residence, job-title and referee regressions, plus Manchester Personal Details birth/residence fallback and existing-value preservation. This is not full live-portal or Safari acceptance. The live runners can target all three portals, but configuring a journey is not evidence that it passed. See [e2e/README.md](e2e/README.md) for coverage.
+On 2026-10-25, one supervised run copied a real Campora application and filled a real Bangor draft without saving. Copy returned 30 fields. The Bangor education, employment, and finance sections gained eight filled controls. The run kept existing and blocked values, made no blocked writes, and cleared the cache.
 
-Non-UK Home Telephone values over 11 characters remain a manual correction or clear step on Greenwich. See [docs/CODEBASE_MAP.md](docs/CODEBASE_MAP.md).
+This is one application and one portal. The run did not check that the draft belonged to the same applicant. Treat it as a field-fill smoke test, not as acceptance.
+
+No other live CRM-to-portal run is recorded. The live runners can target all three portals, but a configured journey is not a passed journey. See [e2e/README.md](e2e/README.md).
+
+## Record a new journey
+
+For each supervised journey, record:
+
+- the exact origin and page matcher,
+- the fields filled,
+- the existing values skipped,
+- the fields with no CRM value,
+- the fields left for manual review,
+- a sanitized HTML fixture in `e2e/fixtures/`, where possible.
+
+Greenwich limits Home Telephone to 11 characters. Staff must correct longer non-UK numbers.

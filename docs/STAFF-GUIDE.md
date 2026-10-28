@@ -1,17 +1,32 @@
-# Staff guide
+# Staff quick guide
 
-Supported browsers for staff use are decided by SAMS release policy. Development builds exist for Chrome and Safari for macOS; only a SAMS-approved package should be installed on staff machines.
+This is a one-page summary. The full guide is [USER-HANDOVER.md](USER-HANDOVER.md).
 
-1. Sign into SAMS CRM or Campora normally and open one individual student profile.
-2. Open the extension and select **Copy from CRM**. If a section is collapsed or not loaded, open it and copy again. If course or intake details are still missing after a second Copy, reload the lead page in CRM and copy again: opening the Profile tab removes the Applications stage data until the page reloads.
-3. Confirm the student name shown in the extension.
-4. Sign into the university's application portal yourself and open the form step you want to prepare.
-5. Open the extension from the browser toolbar on that page and select **Autofill this page**. Repeat on each wizard step. Only the page you opened it on is filled.
-6. To attach documents from the CRM, keep SAMS CRM open in a tab and select **Attach CRM documents** on the portal page. Choose a document for each upload field (suggested matches are marked, never chosen for you) and select **Attach**. Some portals upload the file as soon as it is attached, so pick carefully. **Show on page** scrolls to and outlines an upload field without changing it; if the portal hides its file input behind its own widget, attach the file in the portal yourself. Documents are listed from SAMS CRM only, so attach Campora documents manually.
-7. Review the summary and every portal field. Complete all fields listed for manual review.
-8. Save, continue, pay, confirm, declare, and submit yourself. Autofill never performs these actions.
-9. Select **Clear** when finished. A copied student is also cleared after 30 minutes of inactivity, a browser restart, or an extension reload/update.
+Install only a SAMS-approved package on staff computers. SAMS decides which browsers are supported.
 
-Greenwich, Bangor, and Greater Manchester have saved mappings. Other universities use shared matching, which fills only common personal and contact fields that clearly ask for one value (name, date of birth, gender, nationality, email, phone, address, postcode, country, passport number). Expect more fields to complete yourself there: account, payment, declaration, referee, emergency contact, agent, education, and employment fields always stay manual.
+## Steps
 
-Autofill does not overwrite a field that already contains a value. Clear an incorrect portal value manually before running Autofill again.
+1. Sign in to SAMS CRM or Campora. Open one student profile.
+2. Open the extension. Select **Copy from CRM**.
+   - If a section is closed or not loaded, open it. Then copy again.
+   - If course or intake details are still missing, reload the lead page in the CRM. Then copy again. Opening the Profile tab removes the Applications stage data until you reload the page.
+3. Check that the student name in the extension is correct.
+4. Sign in to the university portal yourself. Open the form step that you want to prepare.
+5. Open the extension from the browser toolbar on that page. Select **Autofill this page**. Repeat on each form step. The extension fills only the page where you opened it.
+6. To attach documents, keep SAMS CRM open in a tab. On the portal page, select **Attach CRM documents**.
+   - Choose a document for each upload field. The extension marks suggested documents. It never chooses for you.
+   - Select **Attach**. Some portals upload the file immediately, so choose carefully.
+   - **Show on page** scrolls to an upload field and outlines it. It does not change the field.
+   - If the portal hides its file input behind its own widget, attach the file in the portal.
+   - The extension lists documents from SAMS CRM only. Attach Campora documents in the portal.
+7. Check the summary and every field in the portal. Complete all fields that the summary lists for manual review.
+8. Save, continue, pay, confirm, declare, and submit in the portal yourself. Autofill never does these actions.
+9. Select **Clear** when you finish. The extension also clears the student after 30 minutes of inactivity, a browser restart, or an extension reload or update.
+
+## Which fields are filled
+
+Greenwich, Bangor, and Greater Manchester have saved mappings.
+
+Other universities use shared matching. It fills a field only when one control clearly asks for one of these values: name, date of birth, gender, nationality, email, phone, address, postcode, country, or passport number. You complete the other fields yourself. These fields always stay manual: account, payment, declaration, referee, emergency contact, agent, education, and employment.
+
+Autofill does not overwrite a field that has a value. If a value is wrong, clear it in the portal. Then run Autofill again.

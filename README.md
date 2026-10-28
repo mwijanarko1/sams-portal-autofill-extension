@@ -1,92 +1,119 @@
 # SAMS Portal Autofill
 
-Private Chrome Manifest V3 extension for authorised SAMS staff. It copies visible fields from an approved SAMS CRM or Campora student profile into `chrome.storage.session`, then fills empty fields on the university application page where staff open the extension. It never submits, pays for, declares, or confirms an application, and per-page Autofill never saves or continues. Its only CRM API calls are read-only requests that list the open student's documents and fetch one file when staff attach it.
+A private Chrome extension (Manifest V3) for authorised SAMS staff. It copies student data from a SAMS CRM or Campora profile and fills empty fields on university application forms.
 
-## Current status
+## What it does
 
-Version `0.1.0`. The Chrome extension, CRM page reader (SAMS CRM and Campora APPLY), 30 minute session cache, runtime origin checks, safe frame targeting, draft-only fill engine, CRM document attach, production build and handover documentation are implemented. Saved field mappings exist for the University of Greenwich, Bangor University and the University of Greater Manchester. A macOS Safari development scaffold builds, but installed Safari runtime behaviour has not been verified.
+- **Copy.** Staff open one student profile and select **Copy from CRM**. The extension reads the visible fields. It keeps them in `chrome.storage.session` for 30 minutes of inactivity.
+- **Autofill.** Staff open a university application page and select **Autofill this page**. The extension fills empty fields only.
+- **Attach.** Staff can attach CRM documents to upload fields, one file at a time.
 
-Universities without a saved mapping use shared matching. It fills title, name, date of birth, gender, nationality, email, one phone number, address line 1, town, county, postcode, country, and passport number only where one control clearly asks for that value. Account, password, payment, declaration, referee, emergency-contact, agent, education, and employment fields, split dates, radio groups, search pickers, and duplicate fields stay manual. Opening the toolbar grants one-time page access where supported. On other HTTPS university websites, **Allow this website** requests access to that exact origin only. The optional `https://*/*` declaration lets staff choose a site; it does not grant blanket access. Only the selected page's own-origin frames receive student values. CRM Copy is restricted to approved SAMS CRM or Campora origins.
+## What it does not do
 
-## Verification scope
+- It never submits, pays for, declares, or confirms an application.
+- Autofill never saves or continues to the next page.
+- It has no login, licence server, AI service, or backend of its own.
+- Its only CRM API calls are read-only. They list the open student's documents and fetch one file when staff attach it.
 
-Verified: `npm test` (135 tests), the loaded-extension `npm run test:e2e` suite (50 tests, synthetic pages), the production build, and one supervised live Campora-to-Bangor no-save run. Live runners (`npm run test:e2e:live`, `npm run test:e2e:documents:live`) and the Safari acceptance checklist are included for SAMS to run against Greenwich, Greater Manchester and installed Safari; no results for those are recorded here. The Chrome Web Store account, privacy-policy publication and Safari signing belong to SAMS. Portal status is in [PORTALS.md](PORTALS.md). The codebase map is [docs/CODEBASE_MAP.md](docs/CODEBASE_MAP.md).
+## Supported portals
+
+| Portal | Support |
+|---|---|
+| University of Greenwich | Saved field mapping |
+| Bangor University | Saved field mapping |
+| University of Greater Manchester | Saved field mapping |
+| Other HTTPS university sites | Shared matching for common personal and contact fields |
+
+Shared matching fills a field only when one control clearly asks for that value. Staff complete these fields themselves: account, password, payment, declaration, referee, emergency contact, agent, education, and employment fields. Split dates, radio groups, search pickers, and duplicate fields also stay manual.
+
+On other university sites, **Allow this website** asks the browser for access to that one site. It does not grant access to other sites. Only frames with the same origin as the selected page receive student data.
+
+Per-portal status is in [PORTALS.md](PORTALS.md).
 
 ## Setup
 
-Requirements: [Node.js](https://nodejs.org/) with npm (developed and tested on Node 26; other versions are untested) and the `zip` command (preinstalled on macOS and most Linux). Install the locked dependencies once after cloning:
+You need [Node.js](https://nodejs.org/) with npm and the `zip` command. The project was developed on Node 26. Other versions are untested.
+
+Install the locked dependencies once after you clone the repository:
 
 ```bash
 npm ci
 ```
 
-The only dependency is `playwright-core`, used by `npm test` and `npm run test:e2e`. `npm run build` and `npm run build:prod` use only Node built-ins. Use `npm install` only when you intend to change dependencies and the lockfile.
+The only dependency is `playwright-core`. `npm test` and `npm run test:e2e` use it. The build commands use only Node built-ins. Use `npm install` only when you change dependencies.
 
-## Development build
+## Build
+
+Development build:
 
 ```bash
-npm ci   # first time only
 npm test
 npm run build
 ```
 
-Load `dist/chrome` from `chrome://extensions` with Developer mode enabled. The development build permits the mock CRM at `http://localhost:3000` and mock portal at `http://localhost:3001`.
+Open `chrome://extensions`, turn on Developer mode, and load `dist/chrome`. The development build also allows the mock CRM at `http://localhost:3000` and the mock portal at `http://localhost:3001`.
 
-## Production build
+Production build:
 
 ```bash
-npm test
 npm run build:prod
 ```
 
-This writes `dist/chrome` and `dist/sams-portal-autofill-prod.zip` with only the SAMS CRM, Campora and three portal origins as host permissions (no localhost, no `<all_urls>`). The same zip is attached to each GitHub release. Packaging and store steps are in [docs/INSTALL-AND-DEPLOY.md](docs/INSTALL-AND-DEPLOY.md).
+This writes `dist/chrome` and `dist/sams-portal-autofill-prod.zip`. The production manifest allows only the SAMS CRM, Campora, and the three portal origins. It has no localhost entry and no `<all_urls>`. Each GitHub release has the production zip attached. See [docs/INSTALL-AND-DEPLOY.md](docs/INSTALL-AND-DEPLOY.md) for the release steps.
 
-## Safari for macOS (development)
+## Safari for macOS (development only)
 
 ```bash
-npm run build:safari        # dist/safari-webextension from the same shared source
-npm run build:safari:app    # unsigned local macOS app, embedded-resource check
+npm run build:safari        # dist/safari-webextension
+npm run build:safari:app    # unsigned macOS app
 ```
 
-The Xcode project lives in `safari/`. It has development-only placeholder identifiers
-and no signing or distribution setup. Safari runtime behavior has not been verified yet.
-See [safari/README.md](safari/README.md) and the
-[Safari acceptance checklist](e2e/safari/README.md).
+The Xcode project is in `safari/`. It has placeholder identifiers and no signing. Nobody has tested the extension in an installed Safari. See [safari/README.md](safari/README.md) and the [Safari checklist](e2e/safari/README.md).
 
-## Staff flow
+## How staff use it
 
-1. Open an individual student profile in SAMS CRM or Campora.
+1. Open one student profile in SAMS CRM or Campora.
 2. Select **Copy from CRM**.
-3. Open the university application form, then open the extension from the browser toolbar on that page.
-   If **Allow this website** appears, confirm the displayed hostname and use it to request access to that site only. Declining does not fill anything. Granting access does not automatically fill, attach files, or save; choose the next action yourself.
-4. Select **Autofill this page** on each form step.
-   To attach CRM documents, keep SAMS CRM open in a tab, select **Attach CRM documents**, choose a document for each upload field, and select **Attach**. **Show on page** scrolls to and outlines a field without changing it; if the portal hides its file input behind its own widget it says so, and you attach manually. Attach only assigns the file in the browser: check the portal accepted it, as some portals upload the file as soon as it is attached.
-5. Review all filled and manual-review fields, then submit manually.
-6. Use **Clear** when finished. Data otherwise expires after 30 minutes of inactivity.
+3. Open the university application form. Open the extension from the browser toolbar on that page.
+4. If **Allow this website** appears, check the host name. Select it to give access to that site only. The extension does not fill anything until you select **Autofill this page**.
+5. Select **Autofill this page** on each form step.
+6. To attach documents, keep SAMS CRM open in a tab. Select **Attach CRM documents**. Choose a document for each upload field. Select **Attach**.
+   - **Show on page** scrolls to the field and outlines it. It does not change the field.
+   - If the portal hides its file input behind its own widget, the popup tells you. Attach the file in the portal.
+   - Attach only gives the file to the browser field. Check that the portal accepted it. Some portals upload the file immediately.
+7. Check all filled fields and all fields marked for manual review. Then save and submit in the portal yourself.
+8. Select **Clear** when you finish.
 
-## Structure
+The full guides are [docs/USER-HANDOVER.md](docs/USER-HANDOVER.md) (staff) and [docs/TECHNICAL-HANDOVER.md](docs/TECHNICAL-HANDOVER.md) (engineers and IT).
 
-- `config/allowlist.js`: approved origins and expiry setting
-- `config/crm-source.js`: SAMS CRM and Campora profile guards and label mapping
-- `config/synonyms.js`: shared deterministic field synonyms and the generic field registry for unmapped universities
-- `config/portals/`: portal-specific mappings
-- `src/crm-reader.js`: visible CRM page reader for SAMS CRM (Profile tab plus the Applications stage panels when mounted; in-place fallback for older layouts) and Campora APPLY (Profile tab plus the application header)
-- `src/crm-documents.js`: lists the open student's CRM documents (metadata only) and fetches one file through the CRM session when staff attach it
-- `src/engine/engine.js`: scan, match, format, and fill engine
-- `src/portal-fill.js`: page handler that accepts student values only from the popup, over a port bound to the selected page
-- `src/background.js`: session cache and expiry alarm
-- `src/popup-motion.js`: popup animation helper
-- `scripts/build.mjs`: development and production packaging for the `chrome` (default) and `safari` targets
-- `scripts/package-safari.mjs`: unsigned macOS app build and embedded-resource check
-- `safari/`: macOS containing app and Safari extension target, no copied extension code
-- `test/`, `e2e/`: unit/DOM tests, Chromium loaded-extension E2E, Safari fixture checklist
-- `docs/`: handover ([USER-HANDOVER.md](docs/USER-HANDOVER.md) for staff, [TECHNICAL-HANDOVER.md](docs/TECHNICAL-HANDOVER.md) for engineers and IT), staff and deployment guides, [CODEBASE_MAP.md](docs/CODEBASE_MAP.md), Safari architecture, per-portal field maps in `docs/portal-maps/` (including the CRM Profile-tab map [CRM-LEAD-PROFILE.md](docs/portal-maps/CRM-LEAD-PROFILE.md)), and Chrome Web Store drafts in `docs/store-submission/`. Word (`.docx`) copies of the README, portal matrix and the guides in `docs/` are in `docs/docx/`; regenerate with `pandoc <file>.md -o docs/docx/<file>.docx` after editing a Markdown source
+## Repository layout
 
-No extension login, licence server, AI inference, backend writes, automatic document upload, or automatic irreversible actions are included.
+| Path | Contents |
+|---|---|
+| `config/` | Approved origins, CRM label map, shared synonyms, and one mapping file per portal in `config/portals/` |
+| `src/` | CRM reader, document access, fill engine, page handler, background worker |
+| `popup.html`, `popup.js` | Toolbar popup |
+| `scripts/` | Build scripts for Chrome and Safari |
+| `safari/` | macOS containing app and Safari extension target |
+| `test/` | Node unit tests and browser DOM tests |
+| `e2e/` | Chromium end-to-end tests, live test runners, and the Safari checklist |
+| `docs/` | Guides, codebase map, per-portal field maps, and store drafts |
+| `docs/docx/` | Word copies of the README, `PORTALS.md`, and the guides in `docs/` |
 
-## End-to-end testing
+[docs/CODEBASE_MAP.md](docs/CODEBASE_MAP.md) describes each file. Regenerate a Word copy after you edit its source:
 
-Run `npm run test:e2e` for the loaded-extension Bangor, Greenwich, Greater Manchester and unmapped-university fixture suite.
-Run the explicit no-save live smoke journey only with an approved automation
-profile and local credentials. Setup, safeguards, coverage, and verification
-boundaries are documented in [e2e/README.md](e2e/README.md).
+```bash
+pandoc docs/NAME.md -o docs/docx/NAME.docx
+```
+
+## Tests
+
+- `npm test` runs the unit and DOM tests.
+- `npm run test:e2e` loads the extension in a visible Chromium browser and tests it on synthetic pages.
+- `npm run test:e2e:live` and `npm run test:e2e:documents:live` test real CRM and portal pages without saving. They need credentials and an approved browser profile. See [e2e/README.md](e2e/README.md).
+
+## Limits
+
+- The tests use synthetic pages. Only one live run is recorded: Campora to Bangor, without saving. Run the live tests for the other portals before you rely on them.
+- The Safari build has not been tested in an installed Safari.
+- SAMS owns the Chrome Web Store account, the privacy policy, and Safari signing.

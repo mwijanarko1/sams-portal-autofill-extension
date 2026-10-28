@@ -234,39 +234,31 @@ Employment / Supporting Info. The page and form patterns keep the two uses apart
 | Teacher-training subject | No CRM key |
 | Signature checkboxes, Continue/Submit | Draft-only policy |
 
-## Fixes made in this pass
+## Blocked controls found in live checks
 
-The live run exposed four mis-fills that the old config allowed:
+The live run showed four mis-fills in an earlier config. The config now blocks or scopes these controls:
 
-| Field | Old behaviour | Fix |
+| Field | Earlier behaviour | Now |
 |---|---|---|
-| `#ud3` agent 9-digit ID | Filled with the CRM county because its label contains "state" | Blocked |
-| `#addr2` address line 2 | Filled with the full address when line 1 was already populated | `location` is now scoped to `#addr1`; `#addr2`/`#addr3` blocked |
-| `#ud8` interview dates | Filled with the CRM county because its label starts "State any dates…" | Blocked |
+| `#ud3` agent 9-digit ID | Filled with the CRM county, because its label contains "state" | Blocked |
+| `#addr2` address line 2 | Filled with the full address when line 1 already had a value | `location` is scoped to `#addr1`. `#addr2` and `#addr3` are blocked. |
+| `#ud8` interview dates | Filled with the CRM county, because its label starts "State any dates…" | Blocked |
 | `#ud138` teacher-training subject | Filled with the CRM major | Blocked |
 
-Also fixed: qualification award month/year and education attendance dates were left blank or
-received an unsplit month-year string in a day select; both now use split-date specs.
+Qualification award month and year and the education attendance dates used to stay blank or receive an unsplit month-year string in a day select. Both now use split-date specs.
 
-The 2026-10-23 screenshot audit added two selector fixes: the mailing-same radios are blocked
-by `input[name='addrflag']`, and the "From Birth" checkbox is blocked by `input[name='ud204']`
-because the live control has no id. Both were re-checked live as blocked.
+A screenshot audit on 2026-10-23 added two more selector fixes. The mailing-same radios are blocked by `input[name='addrflag']`. The "From Birth" checkbox is blocked by `input[name='ud204']`, because the live control has no ID. Both were checked live as blocked.
 
-## Verification
+## Tests and live checks
 
-- Full live authenticated inventory: 2026-10-23, all ten sections, including the existing
-  application's populated values.
-- Live engine run on 2026-10-23 with a synthetic CRM map:
-  - Name filled middle and previous name; existing title, names and passport were preserved;
-    the agent-ID mis-fill is gone.
-  - Employment filled employer, personal statement and work start month/year.
-  - Permanent and Mailing Address matched only line 1 / city / postcode / country / phone;
-    address lines 2-3 stayed untouched.
-  - Statistical filled gender, nationality, birth country, ethnicity, email pair, funding, and
-    split DOB; `#ud70` matched only when the residence option exists.
-  - Qualifications filled row 1 plus award month/year; rows 2-20 stayed empty.
-  - Previous Education filled institution and both attendance month/year ranges.
-  - Programme filled intake, then programme, then mode across three passes.
-- Automated config tests: `test/greenwich.test.js` (part of `npm test`, 112/112 on 2026-10-23).
-- Live CRM Copy → Autofill with a real profile: still pending.
-- Sanitized HTML fixtures in repo: pending.
+- **Live inventory.** An authenticated session, all ten sections, on 2026-10-23, including the populated values of the existing application.
+- **Live engine run (synthetic CRM map, 2026-10-23).**
+  - Name filled middle and previous name. Existing title, names, and passport were kept. The agent-ID mis-fill is gone.
+  - Employment filled employer, personal statement, and work start month and year.
+  - Permanent and Mailing Address matched only line 1, city, postcode, country, and phone. Address lines 2 and 3 stayed untouched.
+  - Statistical filled gender, nationality, birth country, ethnicity, the email pair, funding, and the split date of birth. `#ud70` matched only when the residence option exists.
+  - Qualifications filled row 1 and the award month and year. Rows 2 to 20 stayed empty.
+  - Previous Education filled the institution and both attendance month and year ranges.
+  - Programme filled intake, then programme, then mode, in three passes.
+- **Automated tests.** `test/greenwich.test.js`, and the Greenwich cases in `npm run test:e2e`.
+- **Not done.** A live CRM Copy to Autofill run with a real profile. Sanitized HTML fixtures of the real pages.

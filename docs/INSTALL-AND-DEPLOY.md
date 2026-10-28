@@ -1,42 +1,65 @@
-# Install and controlled deployment
+# Install and deploy
 
 ## Development
 
-Run `npm ci` once to install the locked dependencies (Node.js and npm required), then `npm test && npm run build`, then load `dist/chrome` as an unpacked extension from `chrome://extensions`.
+1. Run `npm ci` once. You need Node.js and npm.
+2. Run `npm test && npm run build`.
+3. Open `chrome://extensions`, turn on Developer mode, and load `dist/chrome` as an unpacked extension.
 
-Safari development uses the same shared source:
+Safari development uses the same source:
 
 ```sh
 npm run build:safari        # dist/safari-webextension
 npm run build:safari:app    # unsigned macOS app in dist/safari-app
 ```
 
-Enablement steps and resource ownership are in [safari/README.md](../safari/README.md). Manual Safari acceptance is in [e2e/safari/README.md](../e2e/safari/README.md). Repository layout is in [CODEBASE_MAP.md](CODEBASE_MAP.md).
+For Safari enablement and resource ownership, see [safari/README.md](../safari/README.md). For the manual Safari checks, see [e2e/safari/README.md](../e2e/safari/README.md).
 
 ## Production package (Chrome)
 
-1. Confirm the origins in `config/allowlist.js` (SAMS CRM, Campora in `camporaOrigins`, and the Greenwich, Bangor and Greater Manchester portals) are the intended production hosts. The production build refuses to run if the Campora list is empty or fewer than three portal origins are set.
-2. Run the no-save live checks in [e2e/README.md](../e2e/README.md) for the portals SAMS relies on.
+1. Check the origins in `config/allowlist.js`: SAMS CRM, Campora (`camporaOrigins`), and the Greenwich, Bangor, and Greater Manchester portals. Confirm that each one is the correct production host. The production build stops if the Campora list is empty or if fewer than three portal origins are set.
+2. Run the no-save live checks in [e2e/README.md](../e2e/README.md) for the portals that SAMS uses.
 3. Set the release version in `manifest.json`, `package.json`, and the Safari Xcode `MARKETING_VERSION`.
 4. Run `npm test && npm run build:prod`.
-5. Inspect `dist/chrome/manifest.json` and the generated `dist/sams-portal-autofill-prod.zip`.
-6. Upload the zip to SAMS's Chrome Web Store developer account as an unlisted item, or deploy the extension ID through Chrome enterprise force-install policy.
+5. Check `dist/chrome/manifest.json` and `dist/sams-portal-autofill-prod.zip`.
+6. Upload the zip to the SAMS Chrome Web Store developer account as an unlisted item. Or deploy the extension ID with a Chrome enterprise force-install policy.
 
-The production build rejects an incomplete Campora or portal allowlist (`scripts/build.mjs`). It never includes localhost or `<all_urls>`. Each build target cleans only its own `dist` paths, so a Chrome build does not delete Safari output.
+The production build never includes localhost or `<all_urls>`. Each build target cleans only its own `dist` paths. A Chrome build does not delete the Safari output.
 
-Chrome Web Store submission also needs a SAMS-owned privacy policy URL, data-use disclosures, and host-permission justification. Store and device-management fees are SAMS costs. Local drafts of the policy text, permission justifications, listing, reviewer instructions and image inventory are in [store-submission/STORE-SUBMISSION-PACK.md](store-submission/STORE-SUBMISSION-PACK.md); they are not hosted, reviewed or submitted.
+## Chrome Web Store
+
+A store submission needs:
+
+- A privacy policy URL that SAMS owns.
+- Data-use disclosures.
+- A justification for each host permission.
+
+SAMS pays the store and device-management fees. The drafts are in [store-submission/STORE-SUBMISSION-PACK.md](store-submission/STORE-SUBMISSION-PACK.md). They cover the policy text, permission justifications, the store listing, reviewer instructions, and the image inventory. SAMS has not reviewed, hosted, or submitted them.
 
 ## Updates
 
-Change config or code, increment the version, rerun checks, generate a production package, and publish it through the same controlled channel. End users cannot edit approved origins.
+1. Change the config or code.
+2. Increase the version.
+3. Run the checks.
+4. Build the production package.
+5. Publish it through the same channel.
+
+Users cannot edit the approved origins.
 
 ## Safari packaging
 
-The checked-in Xcode project under `safari/` embeds resources from `dist/safari-webextension` (built by `scripts/build.mjs`). Do not regenerate the project with `--force` or `--copy-resources`.
+The Xcode project in `safari/` embeds resources from `dist/safari-webextension`. `scripts/build.mjs` builds that folder. Do not regenerate the project with `--force` or `--copy-resources`.
 
 ```sh
-npm run build:safari:prod   # refused until the production allowlist is complete
-npm run build:safari:app    # local unsigned Debug app + embedded-resource hash check
+npm run build:safari:prod   # stops if the production allowlist is incomplete
+npm run build:safari:app    # unsigned Debug app and embedded-resource hash check
 ```
 
-Before distribution: verify `storage.session`, `alarms`, and `scripting` on the supported Safari versions; complete the Safari acceptance checklist; replace development bundle identifiers; and agree the controlled signing/distribution route with SAMS (Developer ID notarized app or App Store). See [SAFARI-ARCHITECTURE-AND-PARITY.md](SAFARI-ARCHITECTURE-AND-PARITY.md).
+Before you distribute the Safari build:
+
+1. Check `storage.session`, `alarms`, and `scripting` on the Safari versions that staff use.
+2. Complete the Safari checklist.
+3. Replace the development bundle identifiers.
+4. Agree the signing and distribution route with SAMS: a notarized Developer ID app, or the App Store.
+
+See [SAFARI-ARCHITECTURE-AND-PARITY.md](SAFARI-ARCHITECTURE-AND-PARITY.md).
