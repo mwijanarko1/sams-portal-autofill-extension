@@ -7,6 +7,8 @@ var AUTOCOMPLETE_PURPOSES = globalThis.SAMS_SYNONYMS.AUTOCOMPLETE_PURPOSES;
 var GENERIC_FIELDS = globalThis.SAMS_SYNONYMS.GENERIC_FIELDS;
 var GENERIC_BLOCKED = globalThis.SAMS_SYNONYMS.GENERIC_BLOCKED;
 var GENERIC_SELECT_EQUIV = globalThis.SAMS_SYNONYMS.GENERIC_SELECT_EQUIV || {};
+var COUNTRIES = globalThis.SAMS_SYNONYMS.COUNTRIES || [];
+var EU_COUNTRIES = globalThis.SAMS_SYNONYMS.EU_COUNTRIES || [];
 
 if (globalThis.__SAMS_PORTAL_AUTOFILL_LOADED__) {
   // The engine is already registered in this frame.
@@ -2232,7 +2234,8 @@ function expandComboboxCandidates(crmKey, value) {
     if (/not award|fail/.test(na)) add("Not Awarded");
   }
 
-  if (crmKey === "studyCountry" || crmKey === "countryName" || crmKey === "employmentCountry") {
+  if (crmKey === "studyCountry" || crmKey === "countryName" || crmKey === "employmentCountry" ||
+      crmKey === "permanentCountry" || crmKey === "passportIssueNation") {
     var nc = normalize(v);
     if (/united kingdom|\buk\b|great britain|england|scotland|wales|britain/.test(nc)) {
       // Ulster education Country select uses short "United Kingdom" (live 2026-07-31)
@@ -2798,9 +2801,119 @@ async function pickLightningComboboxOption(inputEl, value, crmKey) {
 
 // ─── Autofill logic ─────────────────────────────────────────────────────
 
+function plainWords(text) {
+  return String(text || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase()
+    .replace(/&/g, " and ").replace(/[^a-z0-9]+/g, " ").trim();
+}
+
+var COUNTRY_LOOKUP = null;
+
+function countryLookup() {
+  if (COUNTRY_LOOKUP) return COUNTRY_LOOKUP;
+  var lookup = { names: Object.create(null), demonyms: Object.create(null) };
+  function add(table, alias, country) {
+    var key = plainWords(alias).replace(/^the /, "");
+    if (key) table[key] = key in table && table[key] !== country ? "" : country;
+  }
+  COUNTRIES.forEach(function (row) {
+    var parts = row.split("|");
+    add(lookup.names, parts[0], parts[0]);
+    (parts[2] ? parts[2].split(",") : []).forEach(function (alias) { add(lookup.names, alias, parts[0]); });
+    (parts[1] ? parts[1].split(",") : []).forEach(function (alias) { add(lookup.demonyms, alias, parts[0]); });
+  });
+  COUNTRY_LOOKUP = lookup;
+  return lookup;
+}
+
+/**
+ * Canonical country for a country name, or for a demonym when `withDemonyms` is set.
+ * "" when the text is empty, unknown, ambiguous, or lists several countries.
+ */
+function resolveCountry(text, withDemonyms) {
+  var key = plainWords(text).replace(/^the /, "").replace(/ the$/, "");
+  if (!key) return "";
+  var lookup = countryLookup();
+  var found = lookup.names[key];
+  if (found === undefined && withDemonyms) {
+    found = lookup.demonyms[key.replace(/ (citizen|national|citizenship)$/, "")];
+  }
+  return found || "";
+}
+
+function crmText(value) {
+  return String(value || "").replace(/\s+/g, " ").trim();
+}
+
+function crmYesNo(value) {
+  var text = crmText(value).toLowerCase();
+  return text === "yes" || text === "no" ? text : "";
+}
+
+function addressParts(address) {
+  return [plainWords(address.line), plainWords(address.city),
+    plainWords(address.postcode).replace(/ /g, ""), resolveCountry(address.country, false)];
+}
+
+/**
+ * "same" or "different" for two complete addresses, "" when either is incomplete or one holds
+ * the other plus extra text. The CRM sidebar joins the permanent address into one line, so a
+ * strict subset is a joined line, not a different address.
+ */
+function addressRelation(a, b) {
+  var x = addressParts(a);
+  var y = addressParts(b);
+  if (!x.every(Boolean) || !y.every(Boolean)) return "";
+  if (x.every(function (part, index) { return part === y[index]; })) return "same";
+  // Do not treat the same words in a different order as the same street address.
+  // A joined sidebar line can include the other line plus city/postcode; leave that case manual.
+  var otherPartsMatch = x.slice(1).every(function (part, index) { return part === y[index + 1]; });
+  if (otherPartsMatch && (x[0].startsWith(y[0] + " ") || y[0].startsWith(x[0] + " "))) return "";
+  return "different";
+}
+
+function addressKinds(map) {
+  return {
+    permanent: { line: map.permanentAddress, city: map.permanentCity, postcode: map.permanentPostcode, country: map.permanentCountry },
+    present: { line: map.location, city: map.city, postcode: map.postcode, country: map.countryName },
+  };
+}
+
+/** The first instant after a day, month, or year, or null when the date does not exist. */
+function periodEnd(year, month, day) {
+  if (year < 1900 || month < 1 || month > 12) return null;
+  if (day === null) return new Date(year, month, 1);
+  return day >= 1 && day <= new Date(year, month, 0).getDate() ? new Date(year, month - 1, day + 1) : null;
+}
+
+/**
+ * True only when every reading of a recorded date lies wholly in the past. A month and year
+ * ends with that month and a bare year with that year. Anything else is not a past date.
+ */
+function endedInPast(raw, now) {
+  var text = crmText(raw);
+  var m;
+  var ends;
+  if ((m = text.match(/^(\d{4})-(\d{1,2})-(\d{1,2})(?:[T ].*)?$/))) ends = [periodEnd(+m[1], +m[2], +m[3])];
+  else if ((m = text.match(/^(\d{4})-(\d{1,2})$/))) ends = [periodEnd(+m[1], +m[2], null)];
+  else if ((m = text.match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})$/))) {
+    // Day-first and month-first are both readings; one that is not a date drops out.
+    ends = [periodEnd(+m[3], +m[2], +m[1]), periodEnd(+m[3], +m[1], +m[2])].filter(Boolean);
+  } else if ((m = text.match(/^(\d{1,2})[\/.-](\d{4})$/))) ends = [periodEnd(+m[2], +m[1], null)];
+  else if ((m = text.match(/^(?:(\d{1,2})\s+)?([A-Za-z]{3,9})\.?\s+(\d{4})$/))) {
+    var word = m[2].toLowerCase();
+    var month = SPLIT_MONTHS.findIndex(function (name) { return name === word || name.slice(0, 3) === word || (word === "sept" && name === "september"); });
+    ends = month < 0 ? [null] : [periodEnd(+m[3], month + 1, m[1] ? +m[1] : null)];
+  } else if ((m = text.match(/^(\d{4})$/))) ends = [m[1] >= 1900 ? new Date(+m[1] + 1, 0, 1) : null];
+  else ends = [null];
+  return ends.length > 0 && ends.every(function (end) { return end && end.getTime() <= now.getTime(); });
+}
+
 // CRM keys the CRM never sends, built from the ones it does. Staff chose these pairings:
 // birth country follows nationality, country of residence follows the address country,
 // and the programme intake is the CRM's start month and year.
+// The portal answers below fill only on the portal that maps them. An answer the CRM cannot
+// settle is "", so the control stays for staff. Passport nation follows nationality, and
+// "applying from within the UK" follows the current country, never nationality.
 var DERIVED_KEYS = {
   countryOfBirth: function (map) { return map.nationality; },
   currentDomicile: function (map) { return map.countryName; },
@@ -2808,6 +2921,42 @@ var DERIVED_KEYS = {
     return map.preferredStartMonth && map.preferredStartYear
       ? String(map.preferredStartMonth).trim() + " " + String(map.preferredStartYear).trim()
       : "";
+  },
+  holdsBritishPassport: function (map) {
+    var country = resolveCountry(map.nationality, true);
+    return country ? (country === "United Kingdom" ? "Yes" : "No") : "";
+  },
+  holdsEuPassport: function (map) {
+    var country = resolveCountry(map.nationality, true);
+    return country ? (EU_COUNTRIES.indexOf(country) >= 0 ? "Yes" : "No") : "";
+  },
+  passportIssueNation: function (map) { return resolveCountry(map.nationality, true); },
+  applyingFromWithinUk: function (map) {
+    var countries = [map.currentDomicile, map.countryName].filter(crmText).map(function (text) { return resolveCountry(text, false); });
+    if (!countries.length || countries.some(function (country) { return !country || country !== countries[0]; })) return "";
+    return countries[0] === "United Kingdom" ? "Yes" : "No";
+  },
+  agencyName: function () { return "SAMS Global"; },
+  fullLegalName: function (map) {
+    return [map.givenName, map.middleName, map.familyName].map(crmText).filter(Boolean).join(" ");
+  },
+  mailingSameAsPermanent: function (map) {
+    var kinds = addressKinds(map);
+    var relation = addressRelation(kinds.permanent, kinds.present);
+    return relation === "same" ? "Yes" : relation === "different" ? "No" : "";
+  },
+  addCorrespondenceAddress: function (map) {
+    var kinds = addressKinds(map);
+    var relation = addressRelation(kinds.permanent, kinds.present);
+    return relation === "same" ? "No" : relation === "different" ? "Yes" : "";
+  },
+  qualificationCompleted: function (map) { return endedInPast(map.endDate, new Date()) ? "Yes" : ""; },
+  ukVisaRefusal: function (map) {
+    var flag = crmYesNo(map.hasVisaRefusal);
+    var details = [map.visaRefusalCountry, map.visaRefusalType, map.visaRefusalPurpose, map.visaRefusalDates,
+      map.visaRefusalStartDate, map.visaRefusalEndDate, map.refusalReason].some(crmText);
+    if (flag === "no") return details ? "" : "No";
+    return resolveCountry(map.visaRefusalCountry, false) === "United Kingdom" ? "Yes" : "";
   },
 };
 
@@ -2833,9 +2982,10 @@ function withDerivedKeys(fieldMap) {
  *
  * @param {Record<string,string>} fieldMap - CRM key → value
  * @param {Array} fields - detected form fields (from scanFormFields)
+ * @param {boolean} [followUp] - internal: the rescan pass after a revealing answer
  * @returns {Promise<{filled:Array, skippedEmpty:Array, skippedExisting:Array, skippedSelect:Array, unmatched:string[]}>}
  */
-async function autofillPage(fieldMap, fields) {
+async function autofillPage(fieldMap, fields, followUp) {
   if (!ACTIVE_PORTAL) return autofillGeneric(fieldMap, fields);
   fieldMap = withDerivedKeys(fieldMap);
 
@@ -3060,7 +3210,7 @@ async function autofillPage(fieldMap, fields) {
 
   fillSplitDates(fieldMap, filled);
 
-  return {
+  var result = {
     mapping: ACTIVE_PORTAL.name,
     filled: filled,
     skipped: skippedAll,
@@ -3071,6 +3221,22 @@ async function autofillPage(fieldMap, fields) {
     noCrmValue: noCrmValue,
     manualReview: manualReview,
   };
+
+  // An answer the portal may answer by revealing more controls (a correspondence address)
+  // gets one follow-up pass over the rescanned page, so the new controls fill in this click.
+  var reveals = ACTIVE_PORTAL.revealingKeys || [];
+  if (!followUp && filled.some(function (row) { return reveals.indexOf(row.name) >= 0; })) {
+    try {
+      await waitMs(300);
+      var next = await autofillPage(fieldMap, scanFormFields({ mode: "fill" }), true);
+      var wasFilled = function (row) { return filled.some(function (done) { return done.name === row.name; }); };
+      next.filled = filled.concat(next.filled);
+      next.skippedExisting = next.skippedExisting.filter(function (row) { return !wasFilled(row); });
+      next.skipped = next.skipped.filter(function (row) { return row.reason !== "Field already has a value" || !wasFilled(row); });
+      return next;
+    } catch (error) { /* the page changed; the first pass stands */ }
+  }
+  return result;
 }
 
 // ─── Generic matching (no saved portal mapping) ─────────────────────────

@@ -155,7 +155,6 @@ test("bangor blocks DOB splits, chat widget, files, and finance name", () => {
     { id: "id_transcript_file", name: "transcript_file", type: "file" },
     { id: "id_name", name: "name", type: "text" },
     { id: "id_country", name: "country", type: "select-one" },
-    { id: "id_passport_issue_nation", name: "passport_issue_nation", type: "select-one" },
     { id: "id_study_level", name: "study_level", type: "text" },
     { id: "id_visa_number", name: "visa_number", type: "text" },
     { id: "id_responsibilities", name: "responsibilities", type: "textarea" },

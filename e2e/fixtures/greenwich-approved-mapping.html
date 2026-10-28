@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Greenwich approved mapping regression</title></head>
+<body>
+  <h1 id="heading"></h1>
+  <main id="content"></main>
+  <script>
+    const kind = new URL(location.href).searchParams.get("kind");
+    const heading = document.getElementById("heading");
+    const content = document.getElementById("content");
+    const form = document.createElement("form");
+    if (kind === "name") {
+      heading.textContent = "Name";
+      form.action = "bwskanam.P_ProcAppName";
+      form.innerHTML = '<label>Full Legal Name <input id="ud50"></label>';
+    } else if (kind === "referee" || kind === "unscoped-referee") {
+      heading.textContent = "Referee Details";
+      form.action = "bwskaudf.P_ProcAppUserDef";
+      form.innerHTML = '<label>Name of Referee <input id="ud17"></label><label>E-mail Address <input id="ud18" type="email"></label><label>Telephone Number <input id="ud25"></label><label>Organisation Name <input id="ud27"></label>';
+    } else {
+      heading.textContent = kind === "permanent" ? "Permanent Address" : "Mailing Address";
+      form.action = `bwskaadr.P_ProcAppAddr${kind === "permanent" ? "1" : "2"}`;
+      form.innerHTML = '<label>Address Line 1 <input id="addr1"></label><label>City <input id="city"></label><label>Postcode <input id="zip"></label><label>Country <select id="natn"><option value="">Please select</option><option value="GB">United Kingdom</option><option value="BD">Bangladesh</option><option value="CA">Canada</option></select></label><fieldset><legend>Mailing address same as permanent?</legend><label><input id="addrflag" name="addrflag" type="radio" value="Y">Yes</label><label><input name="addrflag" type="radio" value="N">No</label></fieldset>';
+      if (kind === "mailing") form.querySelector("fieldset").remove();
+    }
+    form.insertAdjacentHTML("beforeend", '<button type="submit">Continue</button>');
+    if (kind.startsWith("unscoped")) content.append(...form.childNodes);
+    else content.append(form);
+    window.activity = { clicks: 0, submissions: 0, changes: [] };
+    document.addEventListener("submit", (event) => { event.preventDefault(); activity.submissions++; });
+    document.addEventListener("click", (event) => { if (event.target.closest("button, a")) activity.clicks++; });
+    document.addEventListener("change", (event) => activity.changes.push(event.target.id));
+  </script>
+</body>
+</html>

@@ -28,12 +28,24 @@ const config = {
     currentDomicile: ["#IPQ_OA_COD"],
     ethnicity: ["#IPQ_OA_ETH"],
     previouslyApplied: ["#IPQ_OA_ALUM"],
-    // Home address only (not correspondence #IPR_CAD*)
-    location: ["#IPR_HAD1"],
-    city: ["#IPR_HAD3"],
-    state: ["#IPR_HAD4"],
-    postcode: ["#IPR_HAPC"],
-    countryName: ["#IPR_CODC"],
+    // Home address takes the CRM permanent address. The correspondence address takes the CRM
+    // present address, and the CRM state is a present-address county. Neither falls back to the other.
+    permanentAddress: ["#IPR_HAD1"],
+    permanentCity: ["#IPR_HAD3"],
+    permanentPostcode: ["#IPR_HAPC"],
+    permanentCountry: ["#IPR_CODC"],
+    location: ["#IPR_CAD1"],
+    city: ["#IPR_CAD3"],
+    state: ["#IPR_CAD4"],
+    postcode: ["#IPR_CAPC"],
+    countryName: ["#IPR_COD2"],
+    // Derived answers (engine DERIVED_KEYS). Each stays unanswered when the CRM cannot settle it.
+    addCorrespondenceAddress: ["#IPQ_OA_CORADD"],
+    holdsBritishPassport: ["#IPQ_OA_UKPPT"],
+    holdsEuPassport: ["#IPQ_OA_EUPPT"],
+    applyingFromWithinUk: ["#IPQ_OA_INUK"],
+    agencyName: ["#IPQ_OA_AGNNAM"],
+    qualificationCompleted: ["#IPQ_OA_QCOM1"],
     phone: ["#IPR_HAT3", "#IPR_HTEL"],
     // Correspondence email is the only email control on the inventoried form
     email: ["#IPR_CAEM"],
@@ -48,6 +60,8 @@ const config = {
     englishFirstLanguage: ["#IPQ_OA_ENGFIRST"],
   },
   phoneKeepsDialPrefix: true,
+  // Answers that reveal more controls: the engine rescans once after filling one of these.
+  revealingKeys: ["addCorrespondenceAddress", "holdsBritishPassport", "holdsEuPassport"],
   extraSynonyms: {
     title: ["title"],
     givenName: ["forename"],
@@ -155,14 +169,10 @@ const config = {
     "#IPR_FNM3",
     "#IPR_FUSD",
     "#IPR_HAD2",
-    // Correspondence address must not take home CRM address/phone
-    "#IPQ_OA_CORADD",
-    "#IPR_COD2",
-    "#IPR_CAPC",
-    "#IPR_CAD1",
+    // CRM state is a present-address county, so the home county stays manual
+    "#IPR_HAD4",
+    // Correspondence line 2 and phones have no source; student phone stays on the home phones
     "#IPR_CAD2",
-    "#IPR_CAD3",
-    "#IPR_CAD4",
     "#IPR_CAT3",
     "#IPR_CAT1",
     // Sensitive / no CRM key
@@ -173,18 +183,14 @@ const config = {
     "#IPQ_OA_DISYN",
     "#IPQ_OA_DISAB",
     "#IPQ_OA_SPDETS",
-    // Passport / immigration: no CRM passport number on this surface; visa keys do not match these labels
-    "#IPQ_OA_UKPPT",
+    // Passport / immigration: no CRM source for settlement, visa, or residence history
     "#IPQ_OA_RESIDENCE",
-    "#IPQ_OA_EUPPT",
-    "#IPQ_OA_INUK",
     "#IPQ_OA_CURRVISA",
     "#IPQ_OA_OTHVISA",
     "#IPQ_OA_UKPREV",
-    // Agent branding
+    // Agent branding: only the agency name has a fixed answer; group, agent, city, and email stay manual
     "#IPQ_OA_AGNAGL",
     "#IPQ_OA_AGNAGL2",
-    "#IPQ_OA_AGNNAM",
     "#IPQ_OA_AGNCIT",
     "#IPQ_OA_AGNEML",
     // Submission declarations
@@ -195,9 +201,8 @@ const config = {
     "#IPQ_OA_QTYP1",
     "#IPQ_OA_QEQEC1",
     "#IPQ_OA_QESUC1",
-    "#IPQ_OA_QCOM1",
     "#IPQ_OA_QGRD1",
-    // Qualification rows 2+ (CRM holds one qualification)
+    // Qualification rows 2+ (the extension copies one qualification)
     "#IPQ_OA_QUINS2",
     "#IPQ_OA_QTYP2",
     "#IPQ_OA_QEQEC2",
@@ -211,7 +216,7 @@ const config = {
     "#IPQ_OA_QENDD2_MONTH",
     "#IPQ_OA_QENDD2_YEAR",
     "#add-q-2",
-    // Previous employment rows (CRM holds one current employer)
+    // Previous employment rows (the extension copies one employer)
     "#IPQ_OA_PREMP1",
     "#IPQ_OA_PRJOB1",
     "#IPQ_OA_PRMOA1",

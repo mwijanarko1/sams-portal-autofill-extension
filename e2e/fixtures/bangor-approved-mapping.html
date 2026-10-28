@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Bangor approved mapping regression</title></head>
+<body>
+  <h1>International</h1>
+  <form>
+    <label>Passport Nation of Issue
+      <select id="id_passport_issue_nation" name="passport_issue_nation">
+        <option value="">Please select</option><option value="GB">United Kingdom</option>
+        <option value="BD">Bangladesh</option><option value="FR">France</option><option value="CA">Canada</option>
+      </select>
+    </label>
+    <fieldset>
+      <legend>Have you ever been refused a UK visa?</legend>
+      <label><input type="radio" name="refused_visa" value="True">Yes</label>
+      <label><input type="radio" name="refused_visa" value="False">No</label>
+    </fieldset>
+    <label>Number of UK visa refusals
+      <select id="id_refused_visa_count" name="refused_visa_count"><option value="">Please select</option><option>1</option><option>2</option></select>
+    </label>
+    <label>Study level <input id="id_study_level"></label>
+    <button type="submit">Save and continue</button>
+  </form>
+  <script>
+    window.activity = { clicks: 0, submissions: 0, changes: [] };
+    document.addEventListener("submit", (event) => { event.preventDefault(); activity.submissions++; });
+    document.addEventListener("click", (event) => { if (event.target.closest("button, a")) activity.clicks++; });
+    document.addEventListener("change", (event) => activity.changes.push(event.target.id || event.target.name));
+  </script>
+</body>
+</html>

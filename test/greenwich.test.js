@@ -61,6 +61,12 @@ function fakeEl({
       return "";
     },
     matches: (selector) => {
+      if (selector.includes(":not(")) {
+        const target = selector.split(":not(")[0];
+        if (target !== `#${id}` && target !== `input[name='${name}']`) return false;
+        const scopes = [...selector.matchAll(/form\[action\*='([^']+)'\]/g)];
+        return !scopes.some((match) => formAction.includes(match[1]));
+      }
       if (selector === `#${id}`) return true;
       if (selector === `input[name='${name}']` || selector === `input[name="${name}"]`) {
         return true;
@@ -107,10 +113,10 @@ test("greenwich keeps split DOB and scopes applicant address overrides", () => {
     (p) => p.id === "greenwich"
   );
   assert.equal(cfg.selectorOverrides.dateOfBirth, undefined);
-  sameJson(cfg.selectorOverrides.location, ["#addr1"]);
-  sameJson(cfg.selectorOverrides.city, ["#city"]);
-  sameJson(cfg.selectorOverrides.postcode, ["#zip"]);
-  sameJson(cfg.selectorOverrides.countryName, ["#natn"]);
+  sameJson(cfg.selectorOverrides.location, ["form[action*='bwskaadr.P_ProcAppAddr2'] #addr1"]);
+  sameJson(cfg.selectorOverrides.city, ["form[action*='bwskaadr.P_ProcAppAddr2'] #city"]);
+  sameJson(cfg.selectorOverrides.postcode, ["form[action*='bwskaadr.P_ProcAppAddr2'] #zip"]);
+  sameJson(cfg.selectorOverrides.countryName, ["form[action*='bwskaadr.P_ProcAppAddr2'] #natn"]);
   sameJson(cfg.selectorOverrides.currentDomicile, ["#ud70"]);
   const flat = Object.values(cfg.selectorOverrides).flat();
   assert.equal(flat.includes("#bday_dd"), false);
@@ -161,7 +167,7 @@ test("greenwich blocks agent id, interview dates, and teacher-training subject m
   assert.equal(
     ctx.SAMS_ENGINE.isFillable(fakeEl({ id: "addrflag", name: "addrflag", type: "radio" })),
     false,
-    "mailing-address radio should be blocked"
+    "unscoped mailing-address radio should be blocked"
   );
   assert.equal(
     ctx.SAMS_ENGINE.isFillable(fakeEl({ id: "", name: "ud204", type: "checkbox" })),
@@ -219,7 +225,7 @@ test("greenwich blocks institution city/postcode on Previous Education form", ()
     cfg.blockedControls.some((s) => s.includes("P_ProcAppPrvCollege") && s.includes("#natn"))
   );
   assert.ok(
-    cfg.blockedControls.some((s) => s.includes("P_ProcAppPrvCollege") && s.includes("#addr1"))
+    cfg.blockedControls.some((s) => s.includes(":not(") && s.includes("#addr1"))
   );
 
   const institutionCity = fakeEl({
@@ -277,15 +283,15 @@ test("greenwich autofill skips institution city and can still fill applicant cit
       currentValue: "",
       hasValue: false,
       nominatedContext: false,
-      overrideCrmKey: "",
+      overrideCrmKey: "permanentCity",
       visible: true,
       enabled: true,
     },
   ];
-  const result = await ctx.SAMS_ENGINE.autofillPage({ city: "Leeds" }, fields);
+  const result = await ctx.SAMS_ENGINE.autofillPage({ permanentCity: "Leeds" }, fields);
   assert.equal(applicantCity.value, "Leeds");
   assert.equal(institutionCity.value, "");
-  assert.ok(result.filled.some((row) => row.name === "city"));
+  assert.ok(result.filled.some((row) => row.name === "permanentCity"));
 });
 
 // Scanned-field shape for autofillPage, with the override key the config assigns.

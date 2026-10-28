@@ -88,8 +88,8 @@ test("manchester selector overrides target known personal and contact ids", () =
   );
   sameJson(cfg.selectorOverrides.givenName, ["#IPR_FNM1"]);
   sameJson(cfg.selectorOverrides.familyName, ["#IPR_SURN"]);
-  sameJson(cfg.selectorOverrides.location, ["#IPR_HAD1"]);
-  sameJson(cfg.selectorOverrides.state, ["#IPR_HAD4"]);
+  sameJson(cfg.selectorOverrides.location, ["#IPR_CAD1"]);
+  sameJson(cfg.selectorOverrides.state, ["#IPR_CAD4"]);
   sameJson(cfg.selectorOverrides.phone, ["#IPR_HAT3", "#IPR_HTEL"]);
   sameJson(cfg.selectorOverrides.email, ["#IPR_CAEM"]);
   sameJson(cfg.selectorOverrides.currentDomicile, ["#IPQ_OA_COD"]);
@@ -102,7 +102,7 @@ test("manchester selector overrides target known personal and contact ids", () =
   assert.ok(cfg.splitDates.some((spec) => spec.key === "graduationYear"));
 });
 
-test("manchester blocks auth, save, DOB splits, correspondence, and row 2 quals", () => {
+test("manchester blocks auth, save, DOB splits, unsupported correspondence, and row 2 quals", () => {
   const ctx = loadManchester("/urd/sits.urd/run/SIW_IPP_USR.start_url");
   assert.equal(typeof ctx.SAMS_ENGINE.isFillable, "function");
   const blocked = [
@@ -111,7 +111,7 @@ test("manchester blocks auth, save, DOB splits, correspondence, and row 2 quals"
     { id: "but_save", name: "", type: "button" },
     { id: "but_save_and_cont", name: "", type: "button" },
     { id: "IPR_DOB_DAY", name: "", type: "select-one" },
-    { id: "IPR_CAD1", name: "", type: "text" },
+    { id: "IPR_CAD2", name: "", type: "text" },
     { id: "IPQ_OA_QUINS2", name: "", type: "text" },
     { id: "IPQ_OA_AGREE", name: "", type: "checkbox" },
   ];
@@ -127,7 +127,7 @@ test("manchester blocks auth, save, DOB splits, correspondence, and row 2 quals"
     true,
     "IPR_FNM1 should remain fillable"
   );
-  for (const id of ["IPQ_OA_COD", "IPQ_OA_CRJOB", "IPQ_OA_ENGFIRST", "IPQ_OA_ALUM", "IPR_HAD4"]) {
+  for (const id of ["IPQ_OA_COD", "IPQ_OA_CRJOB", "IPQ_OA_ENGFIRST", "IPQ_OA_ALUM", "IPR_CAD4"]) {
     assert.equal(
       ctx.SAMS_ENGINE.isFillable(fakeEl({ id, name: id, type: id.includes("CRJOB") ? "textarea" : "text" })),
       true,

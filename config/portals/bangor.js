@@ -44,6 +44,10 @@ const config = {
     preferredCourse: ["#id_course"],
     passportNumber: ["#id_passport_number"],
     visaType: ["#id_visa_type"],
+    // Derived answers (engine DERIVED_KEYS). Passport nation follows nationality; the refusal
+    // answer is Yes only for a UK refusal and No only for an explicit no-refusal flag.
+    passportIssueNation: ["#id_passport_issue_nation", "select[name='passport_issue_nation']"],
+    ukVisaRefusal: ["input[name='refused_visa']"],
   },
   phoneKeepsDialPrefix: true,
   extraSynonyms: {
@@ -136,9 +140,7 @@ const config = {
     "#id_prefname",
     "input[name='prefname']",
     // International: no safe CRM source for these (visa number, refusal count,
-    // course withdrawal, study level, passport nation of issue)
-    "#id_passport_issue_nation",
-    "select[name='passport_issue_nation']",
+    // course withdrawal, study level)
     "#id_study_level",
     "input[name='study_level']",
     "#id_visa_number",
@@ -169,7 +171,6 @@ const config = {
     "input[name='european_settlement']",
     "input[name='dependent_visa']",
     "input[name='currently_or_previously_enrolled']",
-    "input[name='refused_visa']",
     "input[name='course_incomplete']",
     // Additional Information: application-specific yes/no and free text
     "input[name='studied_at_bangor']",

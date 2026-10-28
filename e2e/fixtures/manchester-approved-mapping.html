@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Manchester approved mapping regression</title></head>
+<body>
+  <h1>University of Greater Manchester application</h1>
+  <form>
+    <label>Do you hold a British passport? <select id="IPQ_OA_UKPPT"></select></label>
+    <label>Are you a citizen of an EU country? <select id="IPQ_OA_EUPPT"></select></label>
+    <label>Are you applying from within the UK? <select id="IPQ_OA_INUK"></select></label>
+    <label>Agency Name <input id="IPQ_OA_AGNNAM"></label>
+    <label>Agency City <input id="IPQ_OA_AGNCIT"></label>
+    <label>Agency Email <input id="IPQ_OA_AGNEML" type="email"></label>
+    <fieldset>
+      <legend>Home address</legend>
+      <label>Address Line 1 <input id="IPR_HAD1"></label>
+      <label>City <input id="IPR_HAD3"></label>
+      <label>County <input id="IPR_HAD4"></label>
+      <label>Postcode <input id="IPR_HAPC"></label>
+      <label>Country <select id="IPR_CODC"></select></label>
+    </fieldset>
+    <label>Add a correspondence address? <select id="IPQ_OA_CORADD"></select></label>
+    <fieldset id="correspondence" hidden>
+      <legend>Correspondence address</legend>
+      <label>Address Line 1 <input id="IPR_CAD1"></label>
+      <label>City <input id="IPR_CAD3"></label>
+      <label>County <input id="IPR_CAD4"></label>
+      <label>Postcode <input id="IPR_CAPC"></label>
+      <label>Country <select id="IPR_COD2"></select></label>
+      <label>Email <input id="IPR_CAEM" type="email"></label>
+    </fieldset>
+    <label>Qualification Completed <select id="IPQ_OA_QCOM1"></select></label>
+    <label>Select Qualification <select id="IPQ_OA_QEQEC1"><option value="">Please select</option><option>Other</option></select></label>
+    <label>Personal statement to upload? <select id="IPQ_OA_PS_NEEDED"></select></label>
+    <label>Declaration <input id="IPQ_OA_AGREE" type="checkbox"></label>
+    <button type="submit">Save and continue</button>
+  </form>
+  <script>
+    for (const id of ["IPQ_OA_UKPPT", "IPQ_OA_EUPPT", "IPQ_OA_INUK", "IPQ_OA_CORADD", "IPQ_OA_QCOM1", "IPQ_OA_PS_NEEDED"]) {
+      document.getElementById(id).innerHTML = '<option value="">Please select</option><option value="Y">Yes</option><option value="N">No</option>';
+    }
+    for (const id of ["IPR_CODC", "IPR_COD2"]) {
+      document.getElementById(id).innerHTML = '<option value="">Please select</option><option value="GB">United Kingdom</option><option value="BD">Bangladesh</option><option value="CA">Canada</option><option value="FR">France</option>';
+    }
+    document.getElementById("IPQ_OA_CORADD").addEventListener("change", (event) => {
+      document.getElementById("correspondence").hidden = event.target.value !== "Y";
+    });
+    window.activity = { clicks: 0, submissions: 0, changes: [] };
+    document.addEventListener("submit", (event) => { event.preventDefault(); activity.submissions++; });
+    document.addEventListener("click", (event) => { if (event.target.closest("button, a")) activity.clicks++; });
+    document.addEventListener("change", (event) => activity.changes.push(event.target.id));
+  </script>
+</body>
+</html>

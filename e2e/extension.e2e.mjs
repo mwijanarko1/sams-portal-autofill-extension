@@ -23,6 +23,10 @@ const mappingEmploymentUrl = `${employmentUrl}?e2e=mapping`;
 const mappingProgrammeUrl = "https://nelson.gre.ac.uk/pls/prod/bwskapln.P_DispAppPlan?e2e=mapping";
 const mappingRefereeUrl = "https://nelson.gre.ac.uk/pls/prod/bwskaudf.P_DispAppUserDef?e2e=mapping";
 const mappingManchesterUrl = "https://evision.bolton.ac.uk/urd/sits.urd/run/SIW_IPP_USR.start_url?e2e=mapping";
+const approvedManchesterUrl = "https://evision.bolton.ac.uk/urd/sits.urd/run/SIW_IPP_USR.start_url?e2e=approved";
+const approvedBangorUrl = "https://apps.bangor.ac.uk/apply/international/?e2e=approved";
+const approvedCamporaUrl = "https://v-sams-backend.samsapply.co.uk/applyuser/show/999999/profile?e2e=approved";
+const approvedGreenwichUrl = (kind) => `https://nelson.gre.ac.uk/pls/prod/bwskaadr.P_ProcAppAddr1?e2e=approved&kind=${kind}`;
 const documentCrmUrl = "https://app.samscrm.co.uk/agent/leads/full-profile/424242/";
 const documentsPortalUrl = "https://apps.bangor.ac.uk/apply/documents/";
 const documentsFrameUrl = "https://apps.bangor.ac.uk/apply/documents-frame/";
@@ -161,7 +165,7 @@ before(async () => {
   // Test staging is not a production package and never replaces dist or a login profile.
   const manifest = JSON.parse(await readFile(join(root, "manifest.json"), "utf8"));
   manifest.host_permissions = ["https://app.samscrm.co.uk/*", "https://apps.bangor.ac.uk/*", "https://nelson.gre.ac.uk/*",
-    "https://evision.bolton.ac.uk/*"];
+    "https://evision.bolton.ac.uk/*", "https://v-sams-backend.samsapply.co.uk/*"];
   await writeFile(join(extensionPath, "manifest.json"), JSON.stringify(manifest));
   await writeFile(join(extensionPath, "config/build-mode.js"), 'globalThis.SAMS_BUILD_MODE = "prod";\n');
   context = await chromium.launchPersistentContext(join(run, "profile"), {
@@ -190,6 +194,11 @@ before(async () => {
     [mappingProgrammeUrl, "greenwich-programme-mapping.html"],
     [mappingRefereeUrl, "greenwich-referee-mapping.html"],
     [mappingManchesterUrl, "manchester-personal-mapping.html"],
+    [approvedManchesterUrl, "manchester-approved-mapping.html"],
+    [approvedBangorUrl, "bangor-approved-mapping.html"],
+    [approvedCamporaUrl, "../../test/fixtures/campora-profile.html"],
+    ...["name", "referee", "unscoped-referee", "permanent", "mailing", "unscoped-address"].map((kind) =>
+      [approvedGreenwichUrl(kind), "greenwich-approved-mapping.html"]),
     [documentsPortalUrl, "portal-documents.html"], [documentsFrameUrl, "portal-documents-frame.html"],
     [noDocumentsUrl, "portal-no-documents.html"],
     ...portalCases.map((portal) => [portal.url, portal.fixture]),
@@ -234,7 +243,16 @@ before(async () => {
     }
     const fixture = fixtures.get(request.url()) || (url.origin === genericOrigin && genericFixtures.get(url.pathname));
     if (fixture && request.method() === "GET") {
-      await route.fulfill({ contentType: "text/html", body: await readFile(join(fixtureRoot, fixture), "utf8") });
+      let body = await readFile(join(fixtureRoot, fixture), "utf8");
+      if (request.url() === approvedCamporaUrl) {
+        // Reuse the existing asynchronous CRM DOM fixture without its standalone reader harness.
+        // Only the installed extension may read and cache this source in the E2E flow.
+        body = body.replace(/<script\b[^>]*>[\s\S]*?<\/script>/g, (script) =>
+          script.includes("const applicationPane")
+            ? script.replace(/    if \(params.get\("twice"\)[\s\S]*<\/script>/, "</script>")
+            : "");
+      }
+      await route.fulfill({ contentType: "text/html", body });
     } else if (request.url() === "https://example.com/e2e-not-approved" && request.method() === "GET") {
       await route.fulfill({ contentType: "text/html", body: "<main>Unapproved test origin</main>" });
     } else {
@@ -315,16 +333,20 @@ async function clear() {
   assert.equal(await popup.locator("#btnAutofill").isDisabled(), true);
 }
 
-async function copyStudent(url = crmUrl, prepare) {
+async function copyStudent(url = crmUrl, prepare, expected = { name: "Aisha Rahman", email: "aisha.rahman@example.com" }) {
   const crm = await openPage(url);
   if (prepare) await prepare(crm);
   await activate(crm);
   await popup.locator("#btnCopy").click();
-  await popup.locator("#statusArea .success").waitFor();
-  assert.equal(await popup.locator("#studentName").textContent(), "Aisha Rahman");
+  try {
+    await popup.locator("#statusArea .success").waitFor();
+  } catch (error) {
+    throw new Error(`Copy did not succeed: ${(await popup.locator("#statusArea").innerText()).slice(0, 600)}`, { cause: error });
+  }
+  assert.equal(await popup.locator("#studentName").textContent(), expected.name);
   const student = await cache();
-  assert.equal(student.sourceOrigin, "https://app.samscrm.co.uk");
-  assert.equal(student.fields.email, "aisha.rahman@example.com");
+  assert.equal(student.sourceOrigin, new URL(url).origin);
+  assert.equal(student.fields.email, expected.email);
   assert.ok(student.expiresAt > Date.now());
   return crm;
 }
@@ -351,6 +373,266 @@ async function copyMappingStudent(fields) {
     assert.equal(profile.fields[key], value, `Real CRM Copy supplies ${key}`);
   }
   return profile;
+}
+
+async function copyApprovedStudent(fields = {}, { reference, refusalCountry, educationEnd } = {}) {
+  await copyStudent(mappingCrmUrl, (crm) => crm.evaluate(({ values, reference, refusalCountry, educationEnd }) => {
+    const labels = {
+      nationality: "Nationality", countryName: "Country", location: "Present Address", city: "City", postcode: "Postcode",
+      permanentAddress: "Permanent Address", permanentCity: "Permanent City", permanentPostcode: "Permanent Zip Code",
+      permanentCountry: "Permanent Country", middleName: "Middle Name", hasVisaRefusal: "Prev Visa Refusal",
+    };
+    const add = (parent, labelText, value) => {
+      const label = document.createElement("label");
+      label.append(`${labelText} `);
+      const input = document.createElement("input");
+      input.value = value;
+      label.append(input);
+      parent.append(label);
+    };
+    for (const [key, value] of Object.entries(values)) {
+      if (!labels[key]) throw new Error(`Unknown approved CRM source ${key}`);
+      add(document.querySelector("#mapping-fields"), labels[key], value);
+    }
+    const section = (title) => {
+      const form = document.createElement("form");
+      const heading = document.createElement("h2");
+      heading.className = "main_title";
+      heading.textContent = title;
+      form.append(heading);
+      document.querySelector("main").append(form);
+      return form;
+    };
+    if (reference) {
+      const form = section("References");
+      for (const [label, value] of Object.entries(reference)) add(form, label, value);
+    }
+    if (refusalCountry) add(section("Visa Refusal"), "Country", refusalCountry);
+    if (educationEnd) {
+      const trigger = document.createElement("li");
+      trigger.className = "btn_collapse_educational_add";
+      trigger.textContent = "Educational Information";
+      document.querySelector("#stages").append(trigger);
+      const panel = document.createElement("section");
+      panel.className = "collapse_common";
+      panel.innerHTML = '<h2 class="main_title">Educational Information</h2><div class="title_in_border">List of Education History</div><div class="single_part"><span class="progress-lbl">Synthetic University</span><span id="education-duration"></span></div>';
+      panel.querySelector("#education-duration").textContent = `September 2019 - ${educationEnd}`;
+      document.querySelector("main").append(panel);
+    }
+  }, { values: fields, reference, refusalCountry, educationEnd }));
+  const profile = await copiedProfile();
+  for (const [key, value] of Object.entries(fields)) {
+    assert.equal(profile.fields[key], value.replace(/\s+/g, " ").trim() || undefined, `Real CRM Copy supplies ${key}`);
+  }
+  if (reference) {
+    assert.equal(profile.fields.referenceName, reference.Name);
+    assert.equal(profile.fields.referenceEmail, reference.Email);
+    assert.equal(profile.fields.referencePhone, reference.Phone);
+  }
+  if (refusalCountry) assert.equal(profile.fields.visaRefusalCountry, refusalCountry);
+  if (educationEnd) assert.equal(profile.fields.endDate, educationEnd, "Copy reads the saved education range without requiring a grade");
+  return profile;
+}
+
+async function assertRepeatUnchanged(page, profile) {
+  const first = await page.evaluate(() => activity);
+  await autofillMappingPage(page);
+  assert.deepEqual(await page.evaluate(() => activity), first, "Repeated Autofill changes nothing");
+  assert.deepEqual(await copiedProfile(), profile, "Autofill does not rewrite cached CRM source data");
+}
+
+async function captureApprovedEvidence(page, name) {
+  const directory = join(root, "tmp/approved-rules-evidence");
+  await mkdir(directory, { recursive: true });
+  await page.screenshot({ path: join(directory, `${name}.png`), fullPage: true });
+}
+
+const differentAddresses = {
+  location: "12 Present Road", city: "London", postcode: "SW1A 1AA", countryName: "United Kingdom",
+  permanentAddress: "34 Permanent Road", permanentCity: "Dhaka", permanentPostcode: "1205", permanentCountry: "Bangladesh",
+};
+
+for (const [nationality, british, eu] of [
+  ["British", "Y", "N"], ["French", "N", "Y"], ["Bangladeshi", "N", "N"],
+  ["Swiss", "N", "N"], ["Unknown", "", ""], ["British / French", "", ""], ["Congolese", "", ""],
+  ["constructor", "", ""], ["__proto__", "", ""],
+]) {
+  test(`Approved rules: Manchester passport and EU answers from ${nationality}`, { timeout: 20000 }, async () => {
+    const page = await openPage(approvedManchesterUrl);
+    const profile = await copyApprovedStudent({ nationality, countryName: "United Kingdom" });
+    await autofillMappingPage(page);
+    assert.equal(await page.locator("#IPQ_OA_UKPPT").inputValue(), british);
+    assert.equal(await page.locator("#IPQ_OA_EUPPT").inputValue(), eu);
+    assert.equal(await page.locator("#IPQ_OA_INUK").inputValue(), "Y");
+    assert.equal(await page.locator("#IPQ_OA_AGNNAM").inputValue(), "SAMS Global");
+    for (const id of ["IPQ_OA_AGNCIT", "IPQ_OA_AGNEML", "IPQ_OA_PS_NEEDED", "IPQ_OA_QEQEC1"]) {
+      assert.equal(await page.locator(`#${id}`).inputValue(), "", `${id} stays manual`);
+    }
+    assert.equal(await page.locator("#IPQ_OA_AGREE").isChecked(), false);
+    await assertRepeatUnchanged(page, profile);
+  });
+}
+
+for (const [countryName, expected] of [["Canada", "N"], ["Unknown", ""], [undefined, ""]]) {
+  test(`Approved rules: Manchester application location uses ${countryName || "missing residence"}`, { timeout: 20000 }, async () => {
+    const page = await openPage(approvedManchesterUrl);
+    const profile = await copyApprovedStudent({ nationality: "British", ...(countryName ? { countryName } : {}) });
+    await autofillMappingPage(page);
+    assert.equal(await page.locator("#IPQ_OA_INUK").inputValue(), expected, "Application location is not nationality");
+    await assertRepeatUnchanged(page, profile);
+  });
+}
+
+test("Approved rules: Manchester separates permanent and present addresses and reveals correspondence", { timeout: 20000 }, async () => {
+  const page = await openPage(approvedManchesterUrl);
+  const profile = await copyApprovedStudent(differentAddresses, { educationEnd: "June 2023" });
+  await autofillMappingPage(page);
+  for (const [id, expected] of Object.entries({
+    IPR_HAD1: "34 Permanent Road", IPR_HAD3: "Dhaka", IPR_HAPC: "1205", IPR_CODC: "BD", IPR_HAD4: "",
+    IPQ_OA_CORADD: "Y", IPR_CAD1: "12 Present Road", IPR_CAD3: "London", IPR_CAPC: "SW1A 1AA", IPR_COD2: "GB",
+    IPR_CAEM: "aisha.rahman@example.com", IPQ_OA_QCOM1: "Y",
+  })) assert.equal(await page.locator(`#${id}`).inputValue(), expected, id);
+  await assertRepeatUnchanged(page, profile);
+  await captureApprovedEvidence(page, "manchester-addresses-and-completion");
+});
+
+for (const [label, fields, expected] of [
+  ["same normalized address", { ...differentAddresses, permanentAddress: " 12 PRESENT Road ", permanentCity: "London", permanentPostcode: "sw1a1aa", permanentCountry: "UK" }, "N"],
+  ["reordered street numbers", { ...differentAddresses, location: "12 14 High Street", permanentAddress: "14 12 High Street", permanentCity: "London", permanentPostcode: "SW1A 1AA", permanentCountry: "United Kingdom" }, "Y"],
+  ["missing permanent address", { location: "12 Present Road", city: "London", postcode: "SW1A 1AA", countryName: "United Kingdom" }, ""],
+  ["incomplete permanent address", { ...differentAddresses, permanentPostcode: "" }, ""],
+]) {
+  test(`Approved rules: Manchester address comparison with ${label}`, { timeout: 20000 }, async () => {
+    const page = await openPage(approvedManchesterUrl);
+    const profile = await copyApprovedStudent(fields);
+    await autofillMappingPage(page);
+    assert.equal(await page.locator("#IPQ_OA_CORADD").inputValue(), expected);
+    if (!fields.permanentAddress) assert.equal(await page.locator("#IPR_HAD1").inputValue(), "", "Present address never becomes home address");
+    await assertRepeatUnchanged(page, profile);
+  });
+}
+
+for (const educationEnd of ["June 2099", "December 2099", "Unknown 2020", new Date().toLocaleString("en-GB", { month: "long", year: "numeric" })]) {
+  test(`Approved rules: Manchester leaves completion manual for ${educationEnd}`, { timeout: 20000 }, async () => {
+    const page = await openPage(approvedManchesterUrl);
+    const profile = await copyApprovedStudent({}, { educationEnd });
+    await autofillMappingPage(page);
+    assert.equal(await page.locator("#IPQ_OA_QCOM1").inputValue(), "");
+    await assertRepeatUnchanged(page, profile);
+  });
+}
+
+test("Approved rules: Manchester preserves existing answers and agency name", { timeout: 20000 }, async () => {
+  const page = await openPage(approvedManchesterUrl);
+  await page.locator("#IPQ_OA_UKPPT").selectOption("N");
+  await page.locator("#IPQ_OA_AGNNAM").fill("Existing Agency");
+  await page.locator("#IPQ_OA_QCOM1").selectOption("N");
+  const profile = await copyApprovedStudent({ nationality: "British" }, { educationEnd: "June 2023" });
+  await autofillMappingPage(page);
+  assert.equal(await page.locator("#IPQ_OA_UKPPT").inputValue(), "N");
+  assert.equal(await page.locator("#IPQ_OA_AGNNAM").inputValue(), "Existing Agency");
+  assert.equal(await page.locator("#IPQ_OA_QCOM1").inputValue(), "N");
+  await assertRepeatUnchanged(page, profile);
+});
+
+test("Approved rules: Greenwich combines legal name without losing name parts", { timeout: 20000 }, async () => {
+  const page = await openPage(approvedGreenwichUrl("name"));
+  const profile = await copyApprovedStudent({ middleName: "Samira" });
+  await autofillMappingPage(page);
+  assert.equal(await page.locator("#ud50").inputValue(), "Aisha Samira Rahman");
+  await assertRepeatUnchanged(page, profile);
+  await captureApprovedEvidence(page, "greenwich-legal-name");
+});
+
+test("Approved rules: Greenwich fills only the CRM reference person", { timeout: 20000 }, async () => {
+  const page = await openPage(approvedGreenwichUrl("referee"));
+  const profile = await copyApprovedStudent({}, { reference: { Name: "Dr Synthetic Referee", Email: "referee@example.test", Phone: "+44 7700 900999" } });
+  await autofillMappingPage(page);
+  assert.deepEqual(await page.locator("#ud17, #ud18, #ud25, #ud27").evaluateAll((inputs) => inputs.map((input) => input.value)),
+    ["Dr Synthetic Referee", "referee@example.test", "+44 7700 900999", ""]);
+  await assertRepeatUnchanged(page, profile);
+  await captureApprovedEvidence(page, "greenwich-referee");
+});
+
+test("Approved rules: Campora Copy supplies home address and the reference person", { timeout: 20000 }, async () => {
+  const page = await openPage(approvedGreenwichUrl("referee"));
+  await copyStudent(approvedCamporaUrl, undefined, { name: "Test Student", email: "test.student@example.com" });
+  const profile = await copiedProfile();
+  assert.equal(profile.fields.permanentAddress, "1 Test Street, Test City");
+  assert.equal(profile.fields.location, "2 Present Street, Test City");
+  assert.equal(profile.fields.referenceName, "Dr Ref");
+  assert.equal(profile.fields.hasVisaRefusal, "No");
+  await autofillMappingPage(page);
+  assert.deepEqual(await page.locator("#ud17, #ud18, #ud25, #ud27").evaluateAll((inputs) => inputs.map((input) => input.value)),
+    ["Dr Ref", "ref@example.com", "+44 7700 900000", ""]);
+  await assertRepeatUnchanged(page, profile);
+});
+
+for (const [country, expected] of [["United Kingdom", "True"], ["Canada", ""]]) {
+  test(`Approved rules: Campora refusal table distinguishes ${country}`, { timeout: 20000 }, async () => {
+    const page = await openPage(approvedBangorUrl);
+    await copyStudent(approvedCamporaUrl, (crm) => crm.evaluate((country) => {
+      const template = document.querySelector("#camporaProfile").content;
+      const summaryRow = [...template.querySelectorAll(".single_part_visa_info tr")]
+        .find((row) => row.cells[0].textContent === "Prev Visa Refusal");
+      summaryRow.cells[1].textContent = "Yes";
+      const title = [...template.querySelectorAll(".main_title")].find((entry) => entry.textContent === "Visa Refusal");
+      const table = document.createElement("table");
+      table.className = "list_table";
+      table.innerHTML = '<thead><tr><th>Country</th></tr></thead><tbody><tr><td></td></tr></tbody>';
+      table.querySelector("td").textContent = country;
+      title.closest(".row").append(table);
+    }, country), { name: "Test Student", email: "test.student@example.com" });
+    const profile = await copiedProfile();
+    assert.equal(profile.fields.hasVisaRefusal, "Yes");
+    assert.equal(profile.fields.visaRefusalCountry, country);
+    await autofillMappingPage(page);
+    const checked = page.locator("input[name='refused_visa']:checked");
+    assert.equal(await checked.count() ? await checked.inputValue() : "", expected);
+    await assertRepeatUnchanged(page, profile);
+  });
+}
+
+for (const kind of ["permanent", "mailing"]) {
+  test(`Approved rules: Greenwich ${kind} address at the previous page URL`, { timeout: 20000 }, async () => {
+    const page = await openPage(approvedGreenwichUrl(kind));
+    const profile = await copyApprovedStudent(differentAddresses);
+    await autofillMappingPage(page);
+    const expected = kind === "permanent" ? ["34 Permanent Road", "Dhaka", "1205", "BD"] : ["12 Present Road", "London", "SW1A 1AA", "GB"];
+    assert.deepEqual(await Promise.all(["#addr1", "#city", "#zip", "#natn"].map((selector) => page.locator(selector).inputValue())), expected);
+    if (kind === "permanent") assert.equal(await page.locator("input[name='addrflag']:checked").inputValue(), "N");
+    await assertRepeatUnchanged(page, profile);
+  });
+}
+
+for (const kind of ["unscoped-referee", "unscoped-address"]) {
+  test(`Approved rules: Greenwich blocks ${kind} controls outside a known form`, { timeout: 20000 }, async () => {
+    const page = await openPage(approvedGreenwichUrl(kind));
+    const profile = await copyApprovedStudent(differentAddresses);
+    await autofillMappingPage(page);
+    const selector = kind === "unscoped-referee" ? "#ud17, #ud18, #ud25, #ud27" : "#addr1, #city, #zip, #natn";
+    assert.ok((await page.locator(selector).evaluateAll((inputs) => inputs.map((input) => input.value))).every((value) => value === ""));
+    assert.equal(await page.locator("input[name='addrflag']:checked").count(), 0);
+    await assertRepeatUnchanged(page, profile);
+  });
+}
+
+for (const [flag, country, expected] of [
+  ["Yes", "United Kingdom", "True"], ["No", undefined, "False"],
+  ["Yes", "Canada", ""], ["Yes", undefined, ""], ["No", "United Kingdom", ""],
+]) {
+  test(`Approved rules: Bangor UK visa refusal ${flag}, country ${country || "missing"}`, { timeout: 20000 }, async () => {
+    const page = await openPage(approvedBangorUrl);
+    const profile = await copyApprovedStudent({ nationality: "Bangladeshi", hasVisaRefusal: flag }, { refusalCountry: country });
+    await autofillMappingPage(page);
+    const checked = page.locator("input[name='refused_visa']:checked");
+    assert.equal(await checked.count() ? await checked.inputValue() : "", expected);
+    assert.equal(await page.locator("#id_passport_issue_nation").inputValue(), "BD");
+    assert.equal(await page.locator("#id_refused_visa_count").inputValue(), "");
+    assert.equal(await page.locator("#id_study_level").inputValue(), "");
+    await assertRepeatUnchanged(page, profile);
+    if (country === "United Kingdom" && flag === "Yes") await captureApprovedEvidence(page, "bangor-passport-and-uk-refusal");
+  });
 }
 
 async function autofillMappingPage(page) {

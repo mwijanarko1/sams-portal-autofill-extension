@@ -832,6 +832,11 @@ if (!globalThis.__SAMS_CRM_READER_LOADED__) {
     "maritalStatus",
     "funding",
     "visaType",
+    "hasVisaRefusal",
+    "visaRefusalCountry",
+    "referenceName",
+    "referenceEmail",
+    "referencePhone",
     "phone",
     "email",
     "emergencyName",
@@ -839,6 +844,7 @@ if (!globalThis.__SAMS_CRM_READER_LOADED__) {
     "emergencyEmail",
     "emergencyRelationship",
     "location",
+    "permanentAddress",
     "institutionName",
     "degree",
     "major",
@@ -944,8 +950,10 @@ if (!globalThis.__SAMS_CRM_READER_LOADED__) {
     camporaPairFields(root.querySelector(".single_part_funding_info"), fields, {
       funding: "funding",
     });
+    // A refusal Yes needs a matching UK record; the summary alone only proves an explicit No.
     camporaPairFields(root.querySelector(".single_part_visa_info"), fields, {
       "visa type": "visaType",
+      "prev visa refusal": "hasVisaRefusal",
     });
     camporaPairFields(root.querySelector(".single_part_contact_info"), fields, {
       "contact no": "phone",
@@ -959,14 +967,15 @@ if (!globalThis.__SAMS_CRM_READER_LOADED__) {
     });
 
     // The address block renders a label row and puts the value in the next row.
-    // Home Address has no portal consumer; Present Address maps to location.
+    // Keep the two address kinds separate. Do not split free text into invented components.
     const addressRows = camporaRows(root.querySelector(".single_part_address_info"));
     addressRows.forEach((row, index) => {
       if (!visible(row)) return;
       const label = normalizeLabel(row.querySelector(":scope > td")?.innerText);
-      if (label !== "present address") return;
+      const key = { "present address": "location", "home address": "permanentAddress" }[label];
+      if (!key) return;
       const value = addressRows[index + 1]?.querySelector(":scope > td")?.innerText;
-      if (value) setField(fields, "location", value);
+      if (value) setField(fields, key, value);
     });
   }
 
@@ -976,11 +985,10 @@ if (!globalThis.__SAMS_CRM_READER_LOADED__) {
       readTestScoreTable(table, fields);
       return;
     }
-    // Reference records, passport comments and prior-visa tables have no
-    // consumer in the portal maps; do not read them into the cache under an
-    // assumed meaning. The summary supplies the current visaType.
+    // Prior visas must not replace the current summary visaType. Referee contacts
+    // and a refusal country now have exact portal consumers and remain section-scoped.
     const keys = SECTION_TABLE_KEYS[section];
-    if (!keys || section === "references" || section === "visa history" || section === "visa refusal") return;
+    if (!keys || section === "visa history") return;
     const headers = Array.from(table.querySelectorAll("thead th")).map((cell) => normalizeLabel(cell.textContent));
     const rows = Array.from(table.querySelectorAll("tbody tr"))
       .filter((row) => visible(row) && row.querySelectorAll(":scope > td").length);

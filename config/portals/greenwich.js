@@ -38,11 +38,24 @@ const config = {
     ethnicity: ["#ethn"],
     // Applicant phones only (not referee #ud25)
     phone: ["#mobiletelno", "#hometelno"],
-    // Applicant address (Permanent and Mailing); institution address is blocked
-    location: ["#addr1"],
-    city: ["#city"],
-    postcode: ["#zip"],
-    countryName: ["#natn"],
+    // Permanent Address takes the CRM permanent address and Mailing Address takes the CRM present
+    // address. Both pages reuse #addr1/#city/#zip/#natn, so the form a control posts to says which
+    // page it is (the URL still names the previous page after a save). Any other form is blocked.
+    permanentAddress: ["form[action*='bwskaadr.P_ProcAppAddr1'] #addr1"],
+    permanentCity: ["form[action*='bwskaadr.P_ProcAppAddr1'] #city"],
+    permanentPostcode: ["form[action*='bwskaadr.P_ProcAppAddr1'] #zip"],
+    permanentCountry: ["form[action*='bwskaadr.P_ProcAppAddr1'] #natn"],
+    location: ["form[action*='bwskaadr.P_ProcAppAddr2'] #addr1"],
+    city: ["form[action*='bwskaadr.P_ProcAppAddr2'] #city"],
+    postcode: ["form[action*='bwskaadr.P_ProcAppAddr2'] #zip"],
+    countryName: ["form[action*='bwskaadr.P_ProcAppAddr2'] #natn"],
+    // Derived answers (engine DERIVED_KEYS)
+    fullLegalName: ["#ud50"],
+    mailingSameAsPermanent: ["form[action*='bwskaadr.P_ProcAppAddr1'] input[name='addrflag']"],
+    // Referee name, e-mail, and telephone take only the CRM reference record
+    referenceName: ["form[action*='bwskaudf.P_ProcAppUserDef'] #ud17"],
+    referenceEmail: ["form[action*='bwskaudf.P_ProcAppUserDef'] #ud18"],
+    referencePhone: ["form[action*='bwskaudf.P_ProcAppUserDef'] #ud25"],
     // Area of Permanent Residence: country names are among its options (country of residence)
     currentDomicile: ["#ud70"],
     institutionName: ["#col_name"],
@@ -140,23 +153,25 @@ const config = {
     "form[action*='P_ProcAppPrvCollege'] #city",
     "form[action*='P_ProcAppPrvCollege'] #zip",
     "form[action*='P_ProcAppPrvCollege'] #natn",
-    // Referee Details (must not receive applicant CRM contact values)
-    "#ud17",
-    "#ud18",
+    // Referee Details: name, e-mail, and telephone map to the CRM reference record, and only in the
+    // referee form. The rest (address, country, fax, organisation, relationship, reference text)
+    // has no CRM source.
+    "#ud17:not(form[action*='bwskaudf.P_ProcAppUserDef'] #ud17)",
+    "#ud18:not(form[action*='bwskaudf.P_ProcAppUserDef'] #ud18)",
+    "#ud25:not(form[action*='bwskaudf.P_ProcAppUserDef'] #ud25)",
+    "input[name='addrflag']:not(form[action*='bwskaadr.P_ProcAppAddr1'] input[name='addrflag'])",
     "#ud19",
     "#ud20",
     "#ud21",
     "#ud22",
     "#ud23",
     "#ud24",
-    "#ud25",
     "#ud26",
     "#ud27",
     "#ud28",
     "#ud29",
     "#ud30",
-    // Name: fields with no CRM key (agent reference, previous student number, legal name, previous-apply)
-    "#ud50",
+    // Name: fields with no CRM key (agent reference, previous student number, previous-apply)
     "#ud2",
     "#ud3",
     "input[name='ud1']",
@@ -169,8 +184,6 @@ const config = {
     "input[name='ud5']",
     "#ud204",
     "input[name='ud204']",
-    "#addrflag",
-    "input[name='addrflag']",
     "#euk_dd",
     "#euk_mm",
     "#euk_yyyy",
@@ -181,6 +194,11 @@ const config = {
     "#addr2",
     "#addr3",
     "form[action*='P_ProcAppPrvCollege'] #addr1",
+    // The shared address controls fill only inside the Permanent and Mailing address forms
+    "#addr1:not(form[action*='bwskaadr.P_ProcAppAddr1'] #addr1):not(form[action*='bwskaadr.P_ProcAppAddr2'] #addr1)",
+    "#city:not(form[action*='bwskaadr.P_ProcAppAddr1'] #city):not(form[action*='bwskaadr.P_ProcAppAddr2'] #city)",
+    "#zip:not(form[action*='bwskaadr.P_ProcAppAddr1'] #zip):not(form[action*='bwskaadr.P_ProcAppAddr2'] #zip)",
+    "#natn:not(form[action*='bwskaadr.P_ProcAppAddr1'] #natn):not(form[action*='bwskaadr.P_ProcAppAddr2'] #natn)",
     // Qualification award date selects are split-date targets
     "#ud91month",
     "#ud91year",
@@ -195,7 +213,7 @@ const config = {
     "#p_month",
     "#p_year",
     "#ud138",
-    // Qualification rows 2-20 (#ud92*..#ud110*): CRM holds one qualification,
+    // Qualification rows 2-20 (#ud92*..#ud110*): the extension copies one qualification,
     // so only row 1 may fill; otherwise a repeat click duplicates it into row 2.
     ...Array.from({ length: 19 }, (_, i) =>
       ["qualtype", "subject", "grade", "month", "year"].map((field) => `#ud${92 + i}${field}`)
