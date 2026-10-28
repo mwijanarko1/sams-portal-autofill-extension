@@ -55,9 +55,9 @@ which the test-only `--enable-unsafe-extension-debugging` flag enables. Playwrig
 does not expose that popup, so the test drives it through its own CDP target
 session. Screenshots are written to `tmp/general-portal-evidence/`.
 
-Helium is visible by default. The installed executable is
-`/Applications/Helium.app/Contents/MacOS/Helium`. Override `SAMS_E2E_BROWSER` only
-with an explicitly selected compatible Chromium executable.
+The runner opens a visible browser. It defaults to Helium at
+`/Applications/Helium.app/Contents/MacOS/Helium` on macOS. Set `SAMS_E2E_BROWSER` to
+the path of any compatible Chromium executable to use another browser.
 `SAMS_E2E_HEADLESS=1` is diagnostic only: the installed Helium aborted fixture
 navigation in headless mode. It is not the verified test mode.
 
@@ -194,3 +194,11 @@ invalidates existing sessions, or that devices, clipboards, and university uploa
 are securely erased. No offboarding simulation or live upload was performed for
 the handover update. Those controls require approved checks by the system owners.
 See [the technical handover](../docs/TECHNICAL-HANDOVER.md#employee-offboarding-and-device-loss).
+
+## Live document attachment
+
+Run `npm run test:e2e:documents:live -- --no-save` with the existing private `.env.local` credentials and installed Helium. This creates its own temporary browser profile, copies actual CRM documents through the extension, and visits real Bangor, Greenwich and Greater Manchester pages. It never fulfills portal responses with fixtures, creates applications or clicks Save/Submit.
+
+The runner blocks non-login writes, checks Show on page, exact CRM file bytes in the native file input and the occupied-field guard, then clears the session cache and removes its temporary profile. Successful file assignment is not proof of server upload or custom-widget acceptance. Inaccessible forms and authentication challenges are reported as blocked, not passed.
+
+Set `SAMS_DOCUMENT_WAIT_CAPTCHA=1` to pause for human Greenwich login. Only the exact login action and Google/reCAPTCHA authentication POST paths are allowed during that login. Do not automate the challenge. Redacted popup screenshots and count-only reports go under ignored `tmp/generic-upload-evidence/` (override with `SAMS_DOCUMENT_EVIDENCE`, still within `tmp/`). `SAMS_DOCUMENT_BASELINE=1` stages the current Git HEAD versions of the three changed UI files into the temporary extension, for a before/after check without changing the worktree.

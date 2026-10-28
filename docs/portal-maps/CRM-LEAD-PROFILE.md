@@ -223,7 +223,7 @@ Only one saved entry per section is copied because `studentCache.fields` is a fl
 
 ## Verification
 
-Live check on 2026-10-23, using the `sams-inventory` PinchTab profile and the credentials in ignored `.env.local`:
+Live check on 2026-10-23, with a browser session signed in using the credentials in the ignored `.env.local`:
 
 | Lead | Type | Fields copied | Notes |
 |---|---|---:|---|
@@ -236,7 +236,7 @@ Live check on 2026-10-23, using the `sams-inventory` PinchTab profile and the cr
 Manual re-check commands (the injected bundle is the same file set `popup.js` injects):
 
 ```sh
-pinchtab nav "https://app.samscrm.co.uk/agent/leads/full-profile/<id>"
+# open https://app.samscrm.co.uk/agent/leads/full-profile/<id> in the signed-in browser
 # inject config/build-mode.js, config/allowlist.js, config/crm-source.js, src/crm-reader.js
 # then:
 SAMS_CRM_READER.readProfile().then((p) => console.log(p.fields))

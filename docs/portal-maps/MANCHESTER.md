@@ -6,7 +6,7 @@
 **Inventory date:** 2026-10-23 (full re-inventory; supersedes 2026-10-15)
 **Config:** `config/portals/manchester.js`
 **Course sample:** MBA Global Healthcare Management STV (`0994-D` / seq `0010`, start Sep 2027)
-**Raw captures:** `tmp/gm-inventory-2026-10-23/` (local only, gitignored)
+**Raw captures:** not in this repository (they can contain applicant-like data); this document records the inventory by result.
 
 ## Journey shape
 
@@ -284,6 +284,6 @@ Verified live on 2026-10-23: after choosing those options, a second Autofill fil
 
 ### Current popup and live-smoke boundary
 
-The current popup offers page-by-page Autofill, not a Fill all mode. The current config has no `fillAll` property. Older draft-save descriptions are not current operating instructions. Staff navigate tabs, answer conditional questions, and save or submit themselves. Portal autosave on input remains possible.
+The popup offers page-by-page Autofill only. Staff navigate tabs, answer conditional questions, and save or submit themselves. Portal autosave on input remains possible.
 
 `npm run test:e2e:live` can target `greater-manchester` with its own credentials and an existing draft. It opens only PD, CD, QU, and EX, waits for each pane's controls, checks existing and blocked fields, repeats Autofill, and clears the cache. After login, non-GET/HEAD requests are blocked, including tab-loading POSTs. A blocked request or unavailable draft is reported as blocked, not passed. This traffic restriction belongs to the test runner, not the deployed extension. See [the live smoke instructions](../../e2e/README.md#live-random-sample-smoke-test). No new live Manchester result is claimed here.

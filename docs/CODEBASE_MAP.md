@@ -1,12 +1,12 @@
 ---
-last_mapped: 2026-10-12T12:10:26Z
+last_mapped: 2026-10-28
 ---
 
 # Codebase Map
 
 Private Chrome MV3 / Safari Web Extension for authorised SAMS staff. Copies visible fields from an approved CRM profile into `chrome.storage.session`, then draft-fills empty fields on approved university portal pages. Never submits forms. Only read-only CRM API calls: list the student's documents at Copy, fetch one file when staff attach it.
 
-Scanner inventory (excluding `node_modules`, `dist`, `tmp`, `.git`, binaries): **69 source/docs files**, ~132k tokens. Generated/build output and probe dumps live under `dist/` and `tmp/` and are not source of truth.
+Generated build output lives under `dist/` (git-ignored) and is not source of truth.
 
 ## System Overview
 
@@ -38,7 +38,7 @@ Build produces independent browser outputs from the same shared JS:
 | Target | Command | Output |
 |---|---|---|
 | Chrome dev | `npm run build` | `dist/chrome`, `dist/sams-portal-autofill-dev.zip` |
-| Chrome prod | `npm run build:prod` | `dist/chrome`, prod zip (refused until allowlist complete) |
+| Chrome prod | `npm run build:prod` | `dist/chrome`, `dist/sams-portal-autofill-prod.zip` (refused if the allowlist is incomplete) |
 | Safari resources | `npm run build:safari` | `dist/safari-webextension` |
 | Safari macOS app | `npm run build:safari:app` | unsigned app under `dist/safari-app` |
 
@@ -49,7 +49,8 @@ Production packaging still rejects an empty Campora list or fewer than three por
 | Path | Role |
 |---|---|
 | `manifest.json` | Source MV3 shell. Build injects `host_permissions` from allowlist. |
-| `popup.html`, `popup.js` | Toolbar UI: Copy, Autofill, Clear, student card, countdown, result lists. |
+| `popup.html`, `popup.js` | Toolbar UI: Copy, Autofill, Clear, student card, countdown, result lists, CRM document attach (Show on page, Attach). |
+| `src/popup-motion.js` | Popup animation helper. |
 | `config/allowlist.js` | Exact CRM, Campora, portal, and dev origins; 30 minute retention. |
 | `config/build-mode.js` | Placeholder overwritten per build (`dev` / `prod`). |
 | `config/crm-source.js` | SAMS CRM and Campora profile path/marker guards and label map. |
@@ -65,19 +66,16 @@ Production packaging still rejects an empty Campora list or fewer than three por
 | `scripts/build.mjs` | Chrome/Safari resource package; per-target `dist` cleanup only. |
 | `scripts/package-safari.mjs` | Xcode unsigned app build + embedded-resource hash check. |
 | `safari/` | macOS containing app + Safari extension target. No copied JS tree. |
-| `test/` | Node unit/config tests and Chromium DOM fixtures (84 tests on 2026-10-15). |
+| `test/` | Node unit/config tests and Chromium DOM fixtures. |
 | `test/fixtures/` | Synthetic CRM HTML for reader tests. |
 | `e2e/` | Loaded-extension Chromium E2E + opt-in live smoke. |
 | `e2e/fixtures/` | Synthetic CRM/Bangor/Greenwich HTML for E2E and Safari checklist. |
 | `e2e/safari/` | Safari fixture server and manual acceptance checklist. |
-| `fixtures/` | Empty reserved root for future committed sanitized portal steps. |
-| `docs/` | Staff, deploy, technical, Safari architecture, this map. |
-| `docs/history/` | Historical portal notes (Greenwich inventory, Ulster/Sunderland, etc.) and the Campora CRM-source inventory. |
-| `PORTALS.md` | Live portal verification matrix (current status). |
-| `BUILD-PLAN.md` | Original phased plan; partially historical. |
+| `docs/` | Handover, staff, deploy, technical, Safari architecture, release status, this map. |
+| `docs/portal-maps/` | Per-portal field inventories (Greenwich, Bangor, Greater Manchester), the Campora source map and the SAMS CRM Profile-tab map. |
+| `docs/store-submission/` | Chrome Web Store and privacy-policy drafts for SAMS, with store image drafts. |
+| `PORTALS.md` | Portal verification matrix (current status). |
 | `README.md` | Product entry point and commands. |
-| `tmp/` | Local probes, screenshots, live reports. Ignored; not documentation. |
-| `.pstack/` | Local task notes. Not shipped. |
 
 ## Key Workflows
 
@@ -112,7 +110,7 @@ Mapped but never filled from a real CRM profile, because the CRM reader does not
 ```sh
 npm test
 npm run build          # load dist/chrome unpacked
-npm run test:e2e       # Helium + synthetic HTTPS fixtures
+npm run test:e2e       # visible Chromium (Helium by default) + synthetic HTTPS fixtures
 ```
 
 ### Safari development loop
@@ -128,7 +126,7 @@ Safari runtime acceptance is manual. Playwright WebKit and `npm run test:e2e` do
 
 ### Production gate
 
-`npm run build:prod` and `npm run build:safari:prod` still refuse an empty Campora list or fewer than three portal origins. The Campora origin and the three portal origins are now configured, so the automated gate passes; live CRM-to-portal journeys, Campora live autofill, Safari runtime acceptance and signing/distribution remain open. Campora's profile map is in [history/CAMPORA.md](history/CAMPORA.md). Current status: [publication/PREPARATION-REPORT.md](publication/PREPARATION-REPORT.md).
+`npm run build:prod` and `npm run build:safari:prod` still refuse an empty Campora list or fewer than three portal origins. The Campora origin and the three portal origins are now configured, so the automated gate passes; live CRM-to-portal journeys, Campora live autofill, Safari runtime acceptance and signing/distribution remain open. Campora's profile map is in [portal-maps/CAMPORA.md](portal-maps/CAMPORA.md). Current status: [RELEASE-STATUS.md](RELEASE-STATUS.md).
 
 ## Navigation: where guidance lives
 
@@ -142,10 +140,11 @@ Safari runtime acceptance is manual. Playwright WebKit and `npm run test:e2e` do
 | Safari build/enablement | `safari/README.md` |
 | Safari manual acceptance | `e2e/safari/README.md` |
 | Chromium E2E and live smoke rules | `e2e/README.md` |
-| Historical Greenwich/Bangor inventories | `docs/history/` |
-| CRM lead lists, lead types, Profile-tab field map | `docs/history/CRM-LEAD-PROFILE.md` |
-| Current publication preparation, store drafts, blockers | `docs/publication/` |
-| Phased delivery plan (partly historical) | `BUILD-PLAN.md` |
+| Per-portal field inventories | `docs/portal-maps/` |
+| CRM lead lists, lead types, Profile-tab field map | `docs/portal-maps/CRM-LEAD-PROFILE.md` |
+| What is verified, what is open, and who owns it | `docs/RELEASE-STATUS.md` |
+| Handover (technical, staff) | `docs/TECHNICAL-HANDOVER.md`, `docs/USER-HANDOVER.md` |
+| Chrome Web Store and privacy-policy drafts | `docs/store-submission/` |
 | This map | `docs/CODEBASE_MAP.md` |
 
 ## Known Risks
@@ -154,18 +153,17 @@ Safari runtime acceptance is manual. Playwright WebKit and `npm run test:e2e` do
 - **Safari runtime unverified:** containing app builds and embeds resources; installed Safari behavior still needs operator checklist (ports 3000/3001 may be owned by other projects).
 - **Localhost fixtures use generic matching:** Bangor/Greenwich portal-specific maps apply on production origins only. Safari fixture parity is not portal-origin parity.
 - **Generic matching is conservative:** unmapped universities get shared personal/contact fields only; everything ambiguous or third-party stays manual. Sandboxed same-origin frames are not filled and are reported as not filled.
-- **Live no-save smoke is opt-in only:** needs approved PinchTab profile and credentials in ignored `.env.local`. Not part of `npm test`.
-- **Empty `fixtures/` root:** committed sanitized per-step portal HTML for warranty still largely local/`tmp` or `e2e/fixtures` synthetics.
+- **Live no-save smoke is opt-in only:** needs credentials in an ignored `.env.local` and a supervised browser. Not part of `npm test`.
+- **No sanitized live-portal fixtures:** portal tests use the synthetic pages in `e2e/fixtures/`; sanitized per-step captures of the real portals are not committed.
 - **Non-UK Home Telephone length:** Greenwich 11-character limit can require manual clear/correct.
 - **Student replacement race:** popup cache read vs in-flight fill can race; no operation token yet (release hardening).
 - **Portal autosave:** extension does not block network writes; no-save harness must detect unexpected POSTs.
 - **CRM Copy is flat and first-entry only:** the Profile tab is read in full, but `studentCache.fields` keeps one value per key, so a second education, passport, visa, work or reference entry is not stored. The Applications stage panels, lead lists, remarks, tasks and documents are separate surfaces.
-- **Do not treat `tmp/` or `.pstack/` as product docs.**
 
-## Verification snapshot (refreshed 2026-10-25)
+## Verification snapshot (refreshed 2026-10-28, version 0.1.0)
 
-- `npm test`: 135/135 pass on 2026-10-25 (unit + Chromium DOM, including the CRM Profile-tab fixture with its asynchronous section load and the Campora profile fixture plus its double-Copy/tab-restoration, route-guard, closed-work-range, score-breakdown, pre-opened-pane, prior-visa and delayed-section regressions).
-- 2026-10-25 (Helium, loaded extension, synthetic pages): `npm run test:e2e` 50/50. Details: [publication/PREPARATION-REPORT.md](publication/PREPARATION-REPORT.md).
-- 2026-10-25 (Helium, real Campora to real Bangor, one `--no-save` sample): Copy 30 fields; Bangor education, employment and finance filled 8 controls; existing/blocked values preserved; 0 blocked writes; cache cleared. Not full live acceptance. Details: [history/CAMPORA.md](history/CAMPORA.md).
-- Safari: unsigned app builds (23 embedded resources, ad hoc signature, no team); runtime acceptance still pending operator enablement and a free port 3000.
+- `npm test`: 135/135 pass (Node unit tests and Chromium DOM fixtures).
+- `npm run test:e2e`: 50/50 pass in a visible Chromium (Helium) with the loaded extension against synthetic pages, not live portals.
+- 2026-10-25 (real Campora to real Bangor, one `--no-save` sample): Copy 30 fields; Bangor education, employment and finance filled 8 controls; existing/blocked values preserved; 0 blocked writes; cache cleared. Not full live acceptance. Details: [portal-maps/CAMPORA.md](portal-maps/CAMPORA.md).
+- Safari: the unsigned dev app builds with an ad hoc signature and no team; runtime acceptance is still pending operator enablement and free local ports.
 - Version: `0.1.0` across `package.json`, `manifest.json`, and Safari `MARKETING_VERSION`.

@@ -132,7 +132,7 @@ values are intentionally left alone:
 
 ## Live result (2026-10-25)
 
-One supervised `--no-save` sample with the real loaded extension in visible Helium:
+One supervised `--no-save` sample with the real loaded extension in a visible Chromium browser:
 
 - Source: Campora APPLY profile route `/applyuser/show/<id>/profile`.
 - Target: the existing Bangor application draft.
@@ -182,5 +182,5 @@ sub-content/apply_profile_funding_info_edit
   not a live portal.
 - `npm run test:e2e:live`: one Campora-to-Bangor no-save sample passed on 2026-10-25 with
   `SAMS_E2E_CRM=campora`. See the live result above for scope.
-- Live inventory: PinchTab, 2026-10-25. No credentials or applicant values are recorded in
+- Live inventory: browser-driven, 2026-10-25. No credentials or applicant values are recorded in
   this document.

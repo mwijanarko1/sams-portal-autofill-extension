@@ -4,7 +4,7 @@
 **Login used for inventory:** agent apply account at `/apply/account/login/?next=/apply/agent/`
 **Inventory date:** 2026-10-23 (full re-inventory; supersedes 2026-10-08)
 **Config:** `config/portals/bangor.js`
-**Raw captures:** `tmp/bangor-inventory-2026-10-23/` (local only, gitignored)
+**Raw captures:** not in this repository (they can contain applicant-like data); this document records the inventory by result.
 
 ## Journey shape
 
@@ -262,4 +262,4 @@ accepts that, ISO dates and `YYYY-MM`. Live CRM values are what matter here.
   after the blocked-control updates.
 - Automated config tests: `test/bangor.test.js` (part of `npm test`).
 - Live CRM Copy → Autofill on a fresh draft: still pending.
-- Sanitized HTML fixtures in repo: pending (local inventory JSON under `tmp/bangor-inventory-2026-10-23/`).
+- Sanitized HTML fixtures in repo: pending.

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Build the local DRAFT Chrome Web Store images from the reviewed synthetic sources.
 
-Run from the repository root: python3 docs/publication/assets/build-store-assets.py
+Run from the repository root: python3 docs/store-submission/assets/build-store-assets.py
 Needs Pillow and macOS Helvetica Neue at FONT below. No network or live data.
 
 Sources (assets/source/) are real toolbar-popup captures taken by

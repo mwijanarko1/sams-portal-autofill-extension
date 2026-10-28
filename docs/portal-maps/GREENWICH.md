@@ -6,7 +6,7 @@
 `/pls/prod/bwskalog.P_DispLoginNon` (Login ID + PIN)
 **Inventory date:** 2026-10-23 (full re-inventory; supersedes PR #1's 2026-09 inventory)
 **Config:** `config/portals/greenwich.js`
-**Raw captures:** `tmp/greenwich-inventory-2026-10-23/` (local only, gitignored)
+**Raw captures:** not in this repository (they can contain applicant-like data); this document records the inventory by result.
 
 ## Journey shape
 
@@ -270,7 +270,3 @@ because the live control has no id. Both were re-checked live as blocked.
 - Automated config tests: `test/greenwich.test.js` (part of `npm test`, 112/112 on 2026-10-23).
 - Live CRM Copy → Autofill with a real profile: still pending.
 - Sanitized HTML fixtures in repo: pending.
-
-## Fill all (draft saves), added 2026-10-19
-
-`fillAll` in `config/portals/greenwich.js` lets the optional, consented Fill all mode walk the application checklist: `a.submenulinktext2` links to recognised data-entry sections, each saved by the `input[name=submit_btn][value=Continue]` of its own form (the id `submit_btn` is duplicated on the address form, so it is not used). The checklist `appno` binds the run. Signature, **Application is Complete**, **Finish Later**, Search Address and Delete Record are never used. Synthetic E2E only; unverified live: the response to Continue (checklist or next section), whether `wsct` must stay in sequence, and the `P_Proc*` names for sections other than Name, Permanent Address and Previous/Current Education.

@@ -97,4 +97,4 @@ These are public website facts. They are not proof of the final extension contro
 7. Decide the effective date and version history, and whether the existing page's "effective upon posting" wording is sufficient.
 8. Decide the Chrome in-product disclosure and consent step. This is an unresolved submission requirement and is not implemented here.
 9. Decide the App Store privacy label for the Safari containing app and extension.
-10. Obtain publisher and legal review before any live page edit. No website CMS access, publication or external communication is authorised in this task.
+10. Obtain publisher and legal review before any live page edit. The live page has not been changed by this repository.

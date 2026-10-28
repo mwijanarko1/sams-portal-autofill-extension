@@ -4,13 +4,11 @@ Private Chrome Manifest V3 extension for authorised SAMS staff. It copies visibl
 
 ## Current status
 
-The Chrome architecture, CRM page reader, 30 minute session cache, runtime origin checks, safe frame targeting, draft-only fill engine, development build, and documentation are implemented.
+Version `0.1.0`. The Chrome extension, CRM page reader (SAMS CRM and Campora APPLY), 30 minute session cache, runtime origin checks, safe frame targeting, draft-only fill engine, CRM document attach, production build and handover documentation are implemented. Saved field mappings exist for the University of Greenwich, Bangor University and the University of Greater Manchester. A macOS Safari development scaffold builds, but installed Safari runtime behaviour has not been verified.
 
-~~Production packaging and the three portal mappings remain blocked until SAMS provides the exact Campora, Greenwich, Greater Manchester, and Bangor application origins plus supervised test access.~~ Greenwich and Bangor origins, field inventories, and reviewed mappings are in tree. PR #1 (Greenwich) merged as `8d0f534`. Greater Manchester's origin (`evision.bolton.ac.uk`) and mapping are also in tree. On 2026-10-22 `npm test` passed 108 of 108, and the loaded-extension Helium suite passed 28 of 28 (`npm run test:e2e`, after the test owner corrected a stale popup-text assertion) on synthetic pages. Qualification and phone fixes also passed sanitized saved-form replay in Helium.
+Universities without a saved mapping use shared matching. It fills title, name, date of birth, gender, nationality, email, one phone number, address line 1, town, county, postcode, country, and passport number only where one control clearly asks for that value. Account, password, payment, declaration, referee, emergency-contact, agent, education, and employment fields, split dates, radio groups, search pickers, and duplicate fields stay manual. Opening the toolbar grants one-time page access where supported. On other HTTPS university websites, **Allow this website** requests access to that exact origin only. The optional `https://*/*` declaration lets staff choose a site; it does not grant blanket access. Only the selected page's own-origin frames receive student values. CRM Copy is restricted to approved SAMS CRM or Campora origins.
 
-Universities without a saved mapping use shared matching: it fills title, name, date of birth, gender, nationality, email, one phone number, address line 1, town, county, postcode, country, and passport number only where one control clearly asks for that value. Account, password, payment, declaration, referee, emergency-contact, agent, education, and employment fields, split dates, radio groups, search pickers, and duplicate fields stay manual. Greenwich, Bangor, and Greater Manchester keep their saved mappings. Opening the toolbar grants one-time page access where supported. On other HTTPS university websites, **Allow this website** requests access to that exact origin only, including third-party application domains. The optional `https://*/*` declaration lets staff choose a site; it does not grant blanket access. Browser settings can revoke each grant. Only the selected page's own-origin frames receive student values. CRM Copy remains restricted to approved SAMS CRM or Campora origins. Site access is not a guarantee of portal field coverage or Safari compatibility.
-
-Live CRM-to-portal verification, committed sanitized per-step fixtures under `fixtures/<portal>/`, and remaining Greenwich manual fields remain open. The Campora origin (`camporaOrigins` in `config/allowlist.js`) and its first-pass profile mapping are now configured, so `npm run build:prod` now succeeds; a first supervised Campora-to-Bangor no-save sample passed, while broader live acceptance and the remaining release blockers still prevent release. Campora's profile map is in [docs/history/CAMPORA.md](docs/history/CAMPORA.md). A macOS Safari development scaffold exists (`npm run build:safari:app`); installed Safari runtime acceptance is still pending. The current preparation status, blockers and store drafts are in [docs/publication/PREPARATION-REPORT.md](docs/publication/PREPARATION-REPORT.md). Non-UK numbers exceeding Home Telephone's 11-character limit need manual correction or clearing. See `PORTALS.md`, `docs/CODEBASE_MAP.md`, `BUILD-PLAN.md`, and `docs/history/GREENWICH.md`.
+Not yet done: complete live CRM-to-portal acceptance for every portal, Safari runtime acceptance and signing, and the SAMS-owned store and privacy-policy steps. Details and the owner of each open item are in [docs/RELEASE-STATUS.md](docs/RELEASE-STATUS.md). Portal status is in [PORTALS.md](PORTALS.md); the codebase map is [docs/CODEBASE_MAP.md](docs/CODEBASE_MAP.md).
 
 ## Development build
 
@@ -20,6 +18,15 @@ npm run build
 ```
 
 Load `dist/chrome` from `chrome://extensions` with Developer mode enabled. The development build permits the mock CRM at `http://localhost:3000` and mock portal at `http://localhost:3001`.
+
+## Production build
+
+```bash
+npm test
+npm run build:prod
+```
+
+This writes `dist/chrome` and `dist/sams-portal-autofill-prod.zip` with only the SAMS CRM, Campora and three portal origins as host permissions (no localhost, no `<all_urls>`). The same zip is attached to each GitHub release. Packaging and store steps are in [docs/INSTALL-AND-DEPLOY.md](docs/INSTALL-AND-DEPLOY.md).
 
 ## Safari for macOS (development)
 
@@ -40,7 +47,7 @@ See [safari/README.md](safari/README.md) and the
 3. Open the university application form, then open the extension from the browser toolbar on that page.
    If **Allow this website** appears, confirm the displayed hostname and use it to request access to that site only. Declining does not fill anything. Granting access does not automatically fill, attach files, or save; choose the next action yourself.
 4. Select **Autofill this page** on each form step.
-   To attach CRM documents, keep SAMS CRM open in a tab, select **Attach CRM documents**, choose a document for each upload field, and select **Attach**. Some portals upload the file as soon as it is attached.
+   To attach CRM documents, keep SAMS CRM open in a tab, select **Attach CRM documents**, choose a document for each upload field, and select **Attach**. **Show on page** scrolls to and outlines a field without changing it; if the portal hides its file input behind its own widget it says so, and you attach manually. Attach only assigns the file in the browser: check the portal accepted it, as some portals upload the file as soon as it is attached.
 5. Review all filled and manual-review fields, then submit manually.
 6. Use **Clear** when finished. Data otherwise expires after 30 minutes of inactivity.
 
@@ -59,13 +66,13 @@ See [safari/README.md](safari/README.md) and the
 - `scripts/package-safari.mjs`: unsigned macOS app build and embedded-resource check
 - `safari/`: macOS containing app and Safari extension target, no copied extension code
 - `test/`, `e2e/`: unit/DOM tests, Chromium loaded-extension E2E, Safari fixture checklist
-- `docs/`: staff, deployment, mapping guides, Safari architecture, and [CODEBASE_MAP.md](docs/CODEBASE_MAP.md); the CRM lead-management and Profile-tab field map is [docs/history/CRM-LEAD-PROFILE.md](docs/history/CRM-LEAD-PROFILE.md)
+- `docs/`: handover, staff and deployment guides, [CODEBASE_MAP.md](docs/CODEBASE_MAP.md), [RELEASE-STATUS.md](docs/RELEASE-STATUS.md), Safari architecture, per-portal field maps in `docs/portal-maps/` (including the CRM Profile-tab map [CRM-LEAD-PROFILE.md](docs/portal-maps/CRM-LEAD-PROFILE.md)), and Chrome Web Store drafts in `docs/store-submission/`
 
 No extension login, licence server, AI inference, backend writes, automatic document upload, or automatic irreversible actions are included.
 
 ## End-to-end testing
 
-Run `npm run test:e2e` for the loaded-extension Bangor, Greenwich, and unmapped-university fixture suite.
+Run `npm run test:e2e` for the loaded-extension Bangor, Greenwich, Greater Manchester and unmapped-university fixture suite.
 Run the explicit no-save live smoke journey only with an approved automation
 profile and local credentials. Setup, safeguards, coverage, and verification
 boundaries are documented in [e2e/README.md](e2e/README.md).
