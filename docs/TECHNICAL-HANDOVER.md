@@ -282,20 +282,28 @@ Nationality does not prove the country of birth. The address country does not ma
 
 ## Document discovery and authentication
 
+This section starts with a plain-language summary of Attach. The reference parts that follow give the exact checks, limits, and security notes.
+
 ### Attach in plain language
 
-**Does Attach download files to the laptop?** No. Copy only notes which documents exist (names and links). Attach fetches the one file that staff choose, from the CRM page where they are already signed in. The file stays in browser memory for a short time. The extension hands it to the portal and then forgets it. Nothing goes to the Downloads folder. The portal keeps its own copy. **View** is different. It opens the CRM file in a normal browser tab, so the browser may cache it, or staff may save it by hand.
+#### Does Attach download files to the laptop?
 
-**How does the extension fill the portal's upload box?** It fills the box from inside the portal page. It does not use the file picker.
+No. Copy only notes which documents exist (names and links). Attach fetches the one file that staff choose, from the CRM page where they are already signed in. The file stays in browser memory for a short time. The extension hands it to the portal and then forgets it. Nothing goes to the Downloads folder. The portal keeps its own copy. **View** is different. It opens the CRM file in a normal browser tab, so the browser may cache it, or staff may save it by hand.
+
+#### How does the extension fill the portal's upload box?
+
+It fills the box from inside the portal page. It does not use the file picker.
 
 1. The extension passes the file name, type, and contents to a script on the portal page (`portal-fill.js`).
 2. The script rebuilds the contents into a `File` object. This is the same kind of object the browser makes when a person picks a file.
 3. The script puts that `File` into the portal's upload input.
 4. The script fires the `input` and `change` events. The portal hears them and reacts as if staff had chosen the file. Many portals start to upload at this point.
 
-If the input already holds a file, the extension does not replace it. If the portal hides its real input behind its own widget, the extension cannot fill it. In that case, **Show on page** points staff to the field and they attach the file by hand. A successful hand-off does not mean that the university accepted the file.
+A successful hand-off does not mean that the university accepted the file. If the portal hides its real input behind its own widget, the extension cannot fill it, and staff attach the file by hand (see **Show on page** below).
 
-**How does a `DataTransfer` object work?** A `DataTransfer` object is a container for data that moves inside a web page. Browsers use it for drag and drop and for copy and paste. When a person drags a file onto a page, the browser puts that file in a `DataTransfer` object, and the page reads it from there.
+#### How does a `DataTransfer` object work?
+
+A `DataTransfer` object is a container for data that moves inside a web page. Browsers use it for drag and drop and for copy and paste. When a person drags a file onto a page, the browser puts that file in a `DataTransfer` object, and the page reads it from there.
 
 The `files` property of an upload input is normally read-only. Code cannot build a file list by hand, and it cannot push files into the list. But code can assign a ready-made file list to the input. A `DataTransfer` object makes that list:
 
@@ -311,7 +319,9 @@ input.files = dt.files;
 
 Setting `files` does not tell the portal anything by itself. This is why the script also fires `input` and `change`. The file comes from memory, not from a path on the laptop. The page never reads the disk. This works only for a file that the extension already holds.
 
-The sections below give the exact checks, limits, and storage rules.
+### Reference: list, fetch, and assign
+
+These paragraphs give the exact rules behind the summary above.
 
 **List (at Copy).** The extension sends read-only GET requests from the CRM page. It uses same-origin credentials and `redirect: "error"`. A row must belong to the lead ID, have an allowed extension (`pdf`, `jpg`, `jpeg`, `png`, `doc`, `docx`), and have an approved file URL.
 
@@ -319,13 +329,15 @@ The sections below give the exact checks, limits, and storage rules.
 
 **Fetch (on Attach only).** The popup finds an open tab on `cache.sourceOrigin`. If needed, it injects `crm-documents.js`. Then it asks that tab for `readCrmDocument`. The fetch uses `credentials: "same-origin"`, `redirect: "error"`, and `cache: "no-store"`. It rejects HTML content types, empty bodies, and bodies larger than 10 MiB (`10 * 1024 * 1024` bytes). The staff-facing error calls this limit 10 MB. The extension encodes the bytes in Base64 for the message. Base64 is a transport encoding. It is not encryption.
 
-**Portal assign.** `portal-fill.js` builds a `File` with `DataTransfer`, sets `input.files`, and fires `input` and `change`. It does not replace an existing file. The portal may upload immediately. The extension does not write to the Downloads folder. After Attach, the portal holds the file. Clear does not remove the file and does not cancel a portal upload.
+**Portal assign.** `portal-fill.js` assigns the file as described in the summary above. It does not replace an existing file. The portal may upload immediately. The extension does not write to the Downloads folder. After Attach, the portal holds the file. Clear does not remove the file and does not cancel a portal upload.
 
 **Show on page.** The `showUpload` action scrolls to an upload field and outlines it for a few seconds. It does not change the field. If the portal hides its file input behind its own widget, the handler returns a message, and staff attach the file in the portal.
 
 **View.** View opens the original CRM media URL in a new tab (`chrome.tabs.create`). This is not the same as the no-store fetch of Attach. The extension setting `cache: "no-store"` does not control CRM or portal server retention. It does not control normal browser caching of a viewed tab.
 
 ### What happens to a document at each step
+
+This is the full sequence, from Copy to the portal.
 
 1. Copy lists metadata from nine CRM document groups. It does not fetch file bytes. If listing fails, field Copy can still succeed with no documents to attach.
 2. **Attach CRM documents** scans the enabled file inputs in the supported frames of the selected page. The popup filters the choices by the `accept` hints of each input. It marks suggested matches. Staff choose the file and the destination. Scanning or choosing does not fetch a file.
