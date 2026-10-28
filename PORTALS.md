@@ -1,6 +1,6 @@
 # Portal verification matrix
 
-Greenwich's origin and supervised field inventory are confirmed. Bangor origin and first-pass field inventory are confirmed 2026-10-08. Greater Manchester origin and first-pass field inventory are confirmed 2026-10-15 on `evision.bolton.ac.uk`. Campora origin (`v-sams-backend.samsapply.co.uk`) and its first-pass CRM-source field map are confirmed 2026-10-25, and a first supervised Campora-to-Bangor no-save sample passed 2026-10-25; broader live CRM-to-portal test journeys remain pending. Do not guess or broaden production host permissions.
+Each portal's exact origin and field inventory is confirmed: Greenwich (`nelson.gre.ac.uk`), Bangor (`apps.bangor.ac.uk`), Greater Manchester (`evision.bolton.ac.uk`) and the Campora source (`v-sams-backend.samsapply.co.uk`). Full inventories are dated 2026-10-23 (Campora 2026-10-25). Live CRM-to-portal results: one supervised Campora-to-Bangor no-save sample passed on 2026-10-25; no other live journey result is recorded here. Do not guess or broaden production host permissions.
 
 | Portal | Origin confirmed | Personal | Contact | Education | Employment | Fixtures | Status |
 |---|---:|---:|---:|---:|---:|---:|---|
@@ -13,7 +13,7 @@ Greenwich's origin and supervised field inventory are confirmed. Bangor origin a
 
 Copy reads two approved sources: the SAMS CRM at `https://app.samscrm.co.uk` (lead Profile and Applications tabs) and Campora APPLY at `https://v-sams-backend.samsapply.co.uk` (application route `/applyuser/show/<id>/profile`). Campora's read-only profile loads when its Profile tab is opened; the reader opens that tab, maps only the canonical fields the engine and portal maps consume, and restores the previous tab. Reference records, status flags, student quality and the level badge are not mapped. Campora documents are not listed or fetched; staff attach them manually. A first real Campora-to-Bangor no-save sample passed on 2026-10-25: Copy returned 30 fields and Bangor education, employment and finance filled eight controls, with existing/blocked values preserved, zero blocked writes and the cache cleared. This is one application and one portal, not full acceptance; draft ownership was not verified, so treat it as a no-save field-fill smoke test. The full Campora map, deliberate omissions and read-only section endpoints are in [docs/portal-maps/CAMPORA.md](docs/portal-maps/CAMPORA.md).
 
-For each supervised journey, record the exact origin, page matcher, fields filled, existing values skipped, fields with no CRM value, fields left for manual review, and and, where possible, a sanitized HTML fixture alongside the synthetic pages in `e2e/fixtures/`.
+For each supervised journey, record the exact origin, page matcher, fields filled, existing values skipped, fields with no CRM value, fields left for manual review, and, where possible, a sanitized HTML fixture alongside the synthetic pages in `e2e/fixtures/`.
 
 **CRM source coverage (2026-10-23):** Copy reads the lead header, the Applications tab (stage panels when mounted, otherwise its visible form) and the Profile tab (all ten sections) for direct, sub-agent and converted leads (same `/agent/leads/full-profile/<id>` layout). Profile values win on shared keys. Full field-by-field map and limits: [docs/portal-maps/CRM-LEAD-PROFILE.md](docs/portal-maps/CRM-LEAD-PROFILE.md).
 

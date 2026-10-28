@@ -69,7 +69,8 @@ incomplete-origin release gate.
 ## Live random-sample smoke test
 
 Live testing is an explicit opt-in, not part of `npm test` or the offline suite.
-Use only an approved PinchTab automation profile. Stop its browser instance first
+Use only an approved PinchTab automation profile. The runner refuses a profile
+that is not under `~/.pinchtab/profiles`. Stop that profile's browser instance first
 to avoid a profile lock. Never point this at a normal personal browser profile.
 
 The ignored extension `.env.local` supplies these keys:
@@ -151,9 +152,8 @@ write, the request is blocked and the test stops. Manchester tab loading gets no
 POST exception: if it requires a non-GET/HEAD request, the portal is marked blocked
 with `blockedTabLoad`, and `blockedWriteStages` records `tabLoadBlocked: true`, the
 tab code, method, and redacted SITS routine path (without query strings or record
-ids). Unknown paths remain `[redacted]`. The lead must inspect this evidence and
-ask for approval of a single confirmed read-only request before any allowlist
-change. No such request is allowed by this runner.
+ids). Unknown paths remain `[redacted]`. Inspect this evidence and get approval for
+a single confirmed read-only request before any allowlist change. No such request is allowed by this runner.
 
 Unsaved form values are discarded by reloading or closing the test browser. The
 overall deadline is 10 minutes, paused for a human CAPTCHA handoff. The existing
@@ -182,7 +182,7 @@ completion.
 
 ## Security evidence boundary
 
-The current automated baseline on 2026-10-25 is 135/135 supporting
+The automated baseline on 2026-10-28 is 135/135 supporting
 tests (`npm test`) and 50/50 loaded-extension E2E cases (`npm run test:e2e`).
 Regenerate these counts by running the commands rather than treating them as
 permanent totals. The document cases prove metadata-only Copy, explicit selected-file
@@ -191,8 +191,8 @@ Clear, and expiry on synthetic pages.
 
 They do not prove that CRM media links require login, that employee revocation
 invalidates existing sessions, or that devices, clipboards, and university uploads
-are securely erased. No offboarding simulation or live upload was performed for
-the handover update. Those controls require approved checks by the system owners.
+are securely erased. No offboarding simulation or live upload is part of these
+suites. Those controls require approved checks by the system owners.
 See [the technical handover](../docs/TECHNICAL-HANDOVER.md#employee-offboarding-and-device-loss).
 
 ## Live document attachment

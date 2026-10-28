@@ -119,16 +119,10 @@ distribution, production allowlist change, or private-browsing policy. Those nee
 decisions listed in
 [the architecture document](../docs/SAFARI-ARCHITECTURE-AND-PARITY.md#decisions-still-owned-by-sams).
 
-The 2026-10-12 snapshot below is historical.
+## Current status
 
-## Verification snapshot (2026-10-12)
-
-- Independent lead checks: `npm test` passed 61/61; `npm run test:e2e` passed 5/5 Chromium extension journeys.
-- Unsigned Xcode app build succeeded. All 18 embedded extension resources match the generated Safari output; native help CSS matches its source.
-- Help-page scrolling was tested at 425x325 and 150% text in Chromium. Neither the containing app UI nor extension behavior was exercised in a running Safari.
-- Real Safari acceptance remains blocked on operator-approved unsigned-extension enablement and fixture ports 3000/3001, currently owned by unrelated development servers. Leave those services running until their owners approve a change.
-- Localhost fixture matching is generic, not a substitute for production-origin Bangor/Greenwich configuration acceptance. Portal-specific Safari parity remains unverified.
-- A student replacement can still race between the popup's fresh cache read and field dispatch. No operation token was added. Portal page guards and fill-report redaction are also deferred; these are release hardening items, not verified Safari fixes.
-- Deployment targets and bundle identifiers remain development defaults. Production packaging still rejects the incomplete Campora/third-portal allowlist; signing and distribution are not implemented.
-
-Full implementation and review evidence remains in local project task records, which are not included in the repository or distribution package.
+- The unsigned Xcode app builds (`npm run build:safari:app`) and its embedded extension resources match the generated `dist/safari-webextension`.
+- Neither the containing app UI nor extension behaviour has been exercised in a running Safari. Acceptance needs a person to enable the unsigned extension and free local ports 3000 and 3001 for the fixture server.
+- Localhost fixture matching is generic, not a substitute for production-origin Bangor, Greenwich and Greater Manchester acceptance. Portal-specific Safari parity is unverified.
+- A student replacement can still race between the popup's fresh cache read and field dispatch. No operation token was added. Portal page guards and fill-report redaction are also deferred; these are release hardening items.
+- Deployment targets and bundle identifiers remain development defaults. Signing and distribution are not implemented.

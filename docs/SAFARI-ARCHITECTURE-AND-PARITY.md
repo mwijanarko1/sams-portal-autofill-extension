@@ -1,10 +1,8 @@
 # Safari architecture and Chrome parity plan
 
-Status: architecture and implementation roadmap; a macOS development build exists, but installed Safari runtime acceptance is pending.
+Status: architecture and implementation roadmap for Safari. A macOS development build exists (shared Safari build, containing app, cache, message and frame hardening, regression tests). Installed Safari runtime acceptance has not been run; see the [Safari acceptance checklist](../e2e/safari/README.md) and [safari/README.md](../safari/README.md). Not every proposed improvement in section 8.2 is implemented.
 
-Implementation status (2026-10-12): a macOS app/extension project, shared Safari build, cache/message/frame hardening, and regression tests now exist. Not every proposed section 8.2 improvement is implemented. See [safari/README.md](../safari/README.md). Safari runtime parity is unverified; see the [Safari acceptance checklist](../e2e/safari/README.md).
-
-Baseline inspected: Chrome extension `0.1.0`, commit `1b774cb`, on 2026-10-12. This document describes the source at that point, not every feature mentioned in historical project notes.
+Baseline: Chrome extension `0.1.0`. Test counts and live results are in [CODEBASE_MAP.md](CODEBASE_MAP.md) and [../PORTALS.md](../PORTALS.md).
 
 ## Contents
 
@@ -67,7 +65,7 @@ All paths in this document are relative to the extension repository.
 | `config/synonyms.js` | Shared field-name vocabulary | Shared |
 | `config/portals/greenwich.js` | Greenwich selectors, page-specific dates and blocked controls | Shared |
 | `config/portals/bangor.js` | Bangor selectors, page-specific dates and blocked controls | Shared |
-| `config/portals/manchester.js` | Greater Manchester placeholder with no origins or selectors | Remains unavailable |
+| `config/portals/manchester.js` | Greater Manchester selectors, page-specific dates and blocked controls | Shared |
 | `scripts/build.mjs` | Dev/prod resource copy, host generation, Chrome ZIP | Refactor narrowly to support independent browser outputs |
 | `test/` | Node tests and Chromium DOM tests | Keep; add Safari-specific regression coverage |
 | `e2e/extension.e2e.mjs` | Loaded Chromium extension with synthetic HTTPS fixtures | Retain as Chrome regression; create a separate Safari harness |
@@ -87,13 +85,13 @@ Development adds `http://localhost:3000` for CRM and `http://localhost:3001` plu
 
 The production build still rejects an empty Campora list or fewer than three portal origins. The Campora origin and the three portal origins are now configured, so the gate passes; that only proves the allowlist is complete, not that the integrations were accepted. Live Campora and Safari runtime acceptance remain open.
 
-### 2.3 Source versus older documentation
+### 2.3 Dates, fixtures and verification
 
-The source now has `splitDates` mappings and `fillSplitDates()` support. Dedicated tests cover Greenwich DOB, Greenwich employment dates, Bangor education dates, and preserving an existing date selection. Older comments and guides still describe split-date controls as blocked. Generic scanning continues to block these controls; the explicit page-scoped split-date path handles them separately.
+`splitDates` mappings and `fillSplitDates()` handle explicit split-date controls (Greenwich DOB and employment dates, Bangor education dates, Manchester date of birth and graduation year), and preserve an existing date selection. Generic scanning continues to block split-date controls; the page-scoped path handles them separately.
 
-The repository contains synthetic fixtures in `e2e/fixtures/` and CRM HTML under `test/fixtures/`. Older notes describing no fixtures or a 16-test baseline are historical, not the current test inventory. Navigation for the whole repo is in [CODEBASE_MAP.md](CODEBASE_MAP.md).
+Synthetic fixtures are in `e2e/fixtures/` and CRM HTML is under `test/fixtures/`. Navigation for the whole repo is in [CODEBASE_MAP.md](CODEBASE_MAP.md).
 
-Do not infer live acceptance from docs alone. Verification snapshot on 2026-10-12: `npm test` **61/61**; Chromium `npm run test:e2e` documented 5/5 when Helium is available. Production packaging, authenticated CRM-to-portal journeys, and installed Safari runtime acceptance remain open.
+Do not infer live acceptance from documentation alone. Authenticated CRM-to-portal journeys and installed Safari runtime acceptance are tracked in [../PORTALS.md](../PORTALS.md) and [../e2e/safari/README.md](../e2e/safari/README.md).
 
 ## 3. Target architecture
 
@@ -466,9 +464,9 @@ For rollback, retain the last accepted signed artifact and instructions for cont
 
 ### 11.1 What existing tests prove
 
-`npm test` runs Node's test runner, including unit/config tests, CRM reader DOM tests, session lifecycle tests, and Safari packaging/fixture checks (61 tests on 2026-10-12). Passing it does not prove installed Safari extension APIs, native popover behavior, signing, or current live portal layouts.
+`npm test` runs Node's test runner, including unit/config tests, CRM reader DOM tests, session lifecycle tests, and Safari packaging/fixture checks. Passing it does not prove installed Safari extension APIs, native popover behavior, signing, or current live portal layouts.
 
-`npm run test:e2e` loads the extension in Helium with synthetic HTTPS routing. It covers real Chromium popup-to-worker-to-content-script flow, but opens the popup as an extension tab. Keep it as a Chrome regression gate. It cannot be converted into a Safari-extension test merely by changing the Playwright browser to WebKit.
+`npm run test:e2e` loads the extension in a Chromium browser (Helium by default) with synthetic HTTPS routing. It covers real Chromium popup-to-worker-to-content-script flow, but opens the popup as an extension tab. Keep it as a Chrome regression gate. It cannot be converted into a Safari-extension test merely by changing the Playwright browser to WebKit.
 
 Playwright WebKit can help exercise shared DOM logic, but it is not Apple's Safari Web Extension runtime. SafariDriver or ordinary browser-page automation alone also does not establish permission/popup/worker integration. The reproducible manual Safari acceptance script is [e2e/safari/README.md](../e2e/safari/README.md); automate only the parts the selected tools can actually control.
 
@@ -594,9 +592,6 @@ No reliable effort estimate is assigned before the compatibility spike, staff pl
 
 ### Local observations for this document
 
-- Original architecture baseline: `1b774cb` (`Document Greenwich progress and portal matrix updates`).
-- Implementation commits after that baseline added the Safari Xcode project, shared Safari build, fixture server/checklist, and session/frame hardening (see `safari/README.md` verification snapshot).
-- Cartographer refresh 2026-10-12: `npm test` 61 passed, 0 failed. Loaded-extension E2E and Safari runtime were not re-executed for the doc-only map pass.
 - `xcode-select -p`: `/Applications/Xcode.app/Contents/Developer`.
 - Installed Safari app metadata (one local environment, not a support minimum): version `27.0.1`, build `22625.1.29.11.28`.
 - Packaging tool: `safari-web-extension-packager` (project already generated and hand-edited under `safari/`).
@@ -610,7 +605,7 @@ No reliable effort estimate is assigned before the compatibility spike, staff pl
 - [Install and controlled deployment](INSTALL-AND-DEPLOY.md)
 - [Safari build and enablement](../safari/README.md)
 - [Safari acceptance checklist](../e2e/safari/README.md)
-- [Portal verification matrix](../PORTALS.md), with the historical limitations noted in section 2.3
+- [Portal verification matrix](../PORTALS.md)
 - [Existing E2E architecture and live safeguards](../e2e/README.md)
 - [Chrome manifest](../manifest.json), [build](../scripts/build.mjs), [Safari app package](../scripts/package-safari.mjs), [allowlist](../config/allowlist.js)
 - [Popup orchestration](../popup.js), [worker](../src/background.js), [CRM reader](../src/crm-reader.js), [portal handler](../src/portal-fill.js), [engine](../src/engine/engine.js)

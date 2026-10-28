@@ -96,7 +96,7 @@ Production packaging still rejects an empty Campora list or fewer than three por
 1. Exact origin in `config/allowlist.js` (no path, no wildcards).
 2. CRM labels in `config/crm-source.js` if needed.
 3. Portal selectors/blocks/synonyms in `config/portals/<name>.js`; shared synonyms only in `config/synonyms.js`.
-4. Sanitized fixture under `e2e/fixtures/` or future `fixtures/<portal>/`, plus a regression test.
+4. Sanitized fixture under `e2e/fixtures/`, plus a regression test.
 5. Record journey results in `PORTALS.md`. Bump version and rebuild to ship.
 
 ### Derived keys

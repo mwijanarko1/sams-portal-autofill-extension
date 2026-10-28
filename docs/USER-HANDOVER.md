@@ -1,6 +1,6 @@
 # SAMS Portal Autofill: how to use it
 
-This guide is for staff who already have the extension installed. It explains how to copy one student from SAMS CRM and fill a university application draft. It does not cover installation.
+This guide is for staff who already have the extension installed. It explains how to copy one student from SAMS CRM or Campora and fill a university application draft. It does not cover installation.
 
 **What this extension does.** It copies visible student details (and a list of CRM documents) into temporary browser memory, then helps you fill empty fields on a university form page. You still save, continue, pay, declare, and submit yourself.
 
@@ -14,7 +14,7 @@ Mapped universities today are University of Greenwich, Bangor University, and Un
 
 ## Before you start
 
-1. Sign into SAMS CRM the normal way (your usual browser sign-in).
+1. Sign into SAMS CRM or Campora the normal way (your usual browser sign-in).
 2. Work with **one student at a time**. A new successful **Copy from CRM** replaces the previous student in the extension.
 3. Keep the CRM student profile tab open if you plan to attach documents later.
 4. Use your organisation's approved device and browser profile. Do not share an unlocked session or use a personal browser profile without approval.
@@ -23,7 +23,7 @@ Mapped universities today are University of Greenwich, Bangor University, and Un
 
 ## Step 1. Open one student in the CRM
 
-1. In SAMS CRM, open the individual student profile you need.
+1. In SAMS CRM or Campora, open the individual student profile you need.
 2. Expand any collapsed sections that hold the details you care about (personal, contact, education, and similar).
 3. Stay on that profile page. Do not stay on a list, dashboard, or settings page.
 
@@ -88,13 +88,15 @@ Do this only when the page has file upload fields and you have copied documents.
 1. Keep the signed-in SAMS CRM tab open.
 2. On the portal form page, open the extension and select **Attach CRM documents**.
 3. Read the warning on the card: some portals upload the file as soon as it is attached.
-4. For each upload field, open the document list and choose the correct CRM file yourself. Suggested options may be marked. The extension never selects one for you.
+4. For each upload field, open the document list and choose the correct CRM file yourself. Suggested options may be marked. The extension never selects one for you. Select **Show on page** to scroll to and outline that field without changing it. If the portal hides its file input behind its own upload widget, the popup says so and you attach the file in the portal yourself.
 5. Select **Attach** only after you are sure the choice is correct.
 6. Check the portal page. The file may already be uploading or saved by the portal's own behaviour.
 
 Keep the popup open while you choose and attach files. If you close it or change form pages, select **Attach CRM documents** again to refresh the upload list.
 
 Supported attach types are pdf, jpg, jpeg, png, doc, and docx. Files larger than 10 MB (10 × 1024 × 1024 bytes) are refused. Attach those manually in the portal.
+
+Documents are listed from SAMS CRM only. For a student copied from Campora, attach files manually in the portal.
 
 **View** opens the CRM file URL in a normal browser tab so you can inspect it. That is separate from **Attach**, which fetches the file only when you attach it.
 

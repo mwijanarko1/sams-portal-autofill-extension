@@ -25,8 +25,8 @@ Use the architecture and data sections to understand the extension. Use [How to 
 
 A Manifest V3 browser extension for authorised SAMS staff. It:
 
-1. Reads visible labelled values from an approved SAMS CRM student profile.
-2. Lists CRM document metadata (not file bytes) into one session cache.
+1. Reads visible labelled values from an approved SAMS CRM or Campora APPLY student profile.
+2. Lists SAMS CRM document metadata (not file bytes) into one session cache. Campora documents are not listed.
 3. Draft-fills empty controls on university application pages.
 4. On explicit staff action, fetches one CRM file inside an authenticated CRM tab and assigns it to a portal `input[type=file]`.
 
@@ -52,7 +52,7 @@ src/crm-documents.js       CRM document list + on-attach file fetch
 config/crm-source.js       CRM path/marker guards and label aliases
         |
         v
-src/portal-fill.js         port handler: prepare, autofill, listUploads, attachDocument
+src/portal-fill.js         port handler: prepare, autofill, listUploads, showUpload, attachDocument
 src/engine/engine.js       scan, match, format, fill, split dates, click guard
 config/synonyms.js         shared synonyms, GENERIC_FIELDS, GENERIC_BLOCKED
 config/portals/*.js        per-portal origins, pageMatchers, overrides, blocks
@@ -158,6 +158,8 @@ Copy injects into the active CRM tab:
 The reader checks CRM origin, profile path patterns, and page markers from `config/crm-source.js`. It maps visible labels to canonical keys such as `givenName`, `familyName`, `dateOfBirth`, `email`, `phone`, `location`, `passportNumber`. Add a new CRM alias only when you have seen the real visible label on an authorised profile. Do not invent labels. The live field map for every lead type and every Profile-tab section is [portal-maps/CRM-LEAD-PROFILE.md](portal-maps/CRM-LEAD-PROFILE.md).
 
 An individual lead page (`/agent/leads/full-profile/<id>`) has two relevant tabs. **Applications** is the lead-stage workflow with editable stage forms and the admission-preference fields. **Profile** is the read-only review tab with the lead header, sidebar and ten summary sections. Copy reads the Applications tab first (mounted stage panels plus the visible form), then opens Profile, waits for its section tables to finish loading, and restores the tab staff were on. Opening Profile removes the Applications stage tracker until the lead page reloads, so a Profile-first copy reopens Applications only far enough to read its visible form. Profile values win on shared keys; Applications fills in admission preference, social contacts and split address components.
+
+**Campora APPLY** (`https://v-sams-backend.samsapply.co.uk`, route `/applyuser/show/<id>/profile`) is a second Copy source. Its Profile tab loads on demand, so the reader opens that tab, waits for the sections to finish loading, reads the summary and record tables and the application header, then restores the tab that was active. The field map, deliberate omissions and read-only endpoints are in [portal-maps/CAMPORA.md](portal-maps/CAMPORA.md).
 
 The reader resolves labels that mean different things per panel: `Study Destination` is `preferredDestination` in Admission Preference but `previousStudyDestination` in Previous Study Abroad; `Institute Name` in Admission Preference is `preferredUniversity`, not `institutionName`; reference `Phone`/`Email` are `referencePhone`/`referenceEmail`. Checked checkboxes are ignored (they only carry `on`), and a dial-code select is joined with the adjacent number input rather than copied as `phone`.
 
@@ -334,17 +336,18 @@ Use a current Node.js environment and npm. Run `npm ci` in the repository to ins
 |---|---|
 | `npm test` | Node tests under `test/` (supporting checks) |
 | `npm run test:e2e` | Loaded-extension Chromium E2E |
-| `npm run test:e2e:live` | Opt-in live smoke |
+| `npm run test:e2e:live` | Opt-in live no-save smoke |
+| `npm run test:e2e:documents:live` | Opt-in live document-attach check (Show on page, exact file bytes) |
 | `npm run build` | Chrome **dev** package to `dist/chrome` |
-| `npm run build:prod` | Chrome **prod** package (allowlist gate passes; release acceptance pending) |
+| `npm run build:prod` | Chrome **prod** package, `dist/sams-portal-autofill-prod.zip` |
 | `npm run build:safari` | Safari web-extension resources |
 | `npm run build:safari:prod` | Safari prod resources (same allowlist gate) |
 | `npm run build:safari:app` | Unsigned Safari app packaging |
 | `npm run safari:fixtures` | Local fixture server for Safari checklist |
 
-**Production packaging is enabled; release acceptance is not complete.** `config/allowlist.js` now lists the Campora origin and three portal origins, so `scripts/build.mjs` produces production packages. Live Campora-to-portal acceptance, the remaining portal journeys and Safari runtime acceptance still block release. If the allowlist becomes incomplete again, the build refuses; do not bypass that gate. Root `manifest.json` is a template; the built manifest under `dist/` receives generated `host_permissions`. Never edit `dist/` by hand as source of truth. Reload the extension and the tested page after a rebuild. Version bumps and distribution follow the approved release process in [INSTALL-AND-DEPLOY.md](INSTALL-AND-DEPLOY.md).
+**Production packaging.** `config/allowlist.js` lists the SAMS CRM origin, the Campora origin and three portal origins, and `scripts/build.mjs` builds production packages from them. If the Campora list is empty or fewer than three portal origins are set, the build refuses; do not bypass that gate. Root `manifest.json` is a template; the built manifest under `dist/` receives generated `host_permissions`. Never edit `dist/` by hand as source of truth. Reload the extension and the tested page after a rebuild. Version bumps and distribution follow the approved release process in [INSTALL-AND-DEPLOY.md](INSTALL-AND-DEPLOY.md).
 
-The current Chromium E2E runner uses the installed Helium browser by default. Check [the E2E browser setup](../e2e/README.md) before running it on another machine. Live checks require approved test access. Do not put credentials in this guide or in fixtures.
+The Chromium E2E runner uses Helium on macOS by default; set `SAMS_E2E_BROWSER` to use another Chromium. Check [the E2E browser setup](../e2e/README.md) before running it on another machine. Live checks require approved test access. Do not put credentials in this guide or in fixtures.
 
 The live runner targets Bangor, Greenwich, and Greater Manchester when their separate credentials and an existing test draft are available. Manchester checks the Personal Details (PD), Contact Details (CD), Qualifications (QU), and Experience (EX) tabs after lazy tab loading. It blocks non-GET/HEAD traffic after login, including tab-loading POSTs, and records blocked stages without field values. This is a test-runner safeguard, not a network firewall in the deployed extension. A blocked tab is not a pass. See [live smoke instructions and boundaries](../e2e/README.md#live-random-sample-smoke-test).
 
@@ -355,12 +358,12 @@ Safari packaging of shared JS is not proof that Autofill, document binding, or e
 ## Current limitations
 
 - Not every university is mapped. Unmapped sites get generic common-field matching only.
-- Live CRM-to-portal acceptance may still be pending for mapped portals. Check [../PORTALS.md](../PORTALS.md).
+- Live CRM-to-portal results are recorded per portal in [../PORTALS.md](../PORTALS.md); portals without a recorded run have only been tested on synthetic fixtures.
 - Exact-document Autofill requires `documentId` from `webNavigation.getAllFrames`. Browsers without that fail closed for Autofill and Attach flows that use `selectedPageFrames`.
 - Top document and same-origin frames only.
 - No automatic Save / Next / Submit / pay / declaration. Portal handlers may still react to filled values or attached files.
-- The production allowlist is configured (Campora APPLY and three portal origins); one Campora-to-Bangor no-save sample passed, while full Campora and Safari runtime acceptance remain open.
-- Unit tests for new coverage are prohibited by project policy. Prefer E2E with sanitized fixtures.
+- Safari runtime behaviour has not been verified in an installed Safari; see [../e2e/safari/README.md](../e2e/safari/README.md).
+- For new coverage, prefer E2E with sanitized fixtures over unit tests.
 
 ---
 
@@ -478,7 +481,7 @@ Build generates `host_permissions` from this list (plus CRM / Campora / dev orig
 
 ### 7. Record status
 
-Update [../PORTALS.md](../PORTALS.md) with filled, skipped, no-value, and manual fields. Keep sanitized HTML fixtures free of personal data, credentials, tokens, and application IDs. See [../e2e/README.md](../e2e/README.md). Add E2E coverage through the project's approved test process. Do not add new unit test suites.
+Update [../PORTALS.md](../PORTALS.md) with filled, skipped, no-value, and manual fields. Keep sanitized HTML fixtures free of personal data, credentials, tokens, and application IDs. See [../e2e/README.md](../e2e/README.md). Add E2E coverage in `e2e/extension.e2e.mjs` with a sanitized fixture under `e2e/fixtures/`.
 
 ---
 
@@ -489,7 +492,7 @@ Use the following checks when changing a mapping:
 1. **E2E first** with sanitized fixtures and no real credentials.
 2. Cover real Copy then Autofill with no saves.
 3. Assert existing values preserved, blocked and manual fields unchanged, repeats without harmful duplication, mapped vs generic activation, Clear and expiry, and document Attach only on safe fixtures.
-4. Existing `npm test` remains a supporting check, not a reason to grow unit coverage.
+4. Existing `npm test` remains as a supporting check. Prefer E2E for new coverage.
 
 Safari checklist material: [../e2e/safari/README.md](../e2e/safari/README.md).
 
@@ -541,9 +544,3 @@ function isCrmFileUrl(value, sourceOrigin) { /* see config/allowlist.js */ }
 ```js
 response = await fetch(url, { credentials: "same-origin", redirect: "error", cache: "no-store" });
 ```
-
----
-
-## Older documentation
-
-Some older guides describe Safari support without the current `documentId` restriction. For browser support, follow the current source and verified acceptance results. A successful package build alone does not prove that a browser can fill forms or attach documents.

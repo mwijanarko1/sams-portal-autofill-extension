@@ -4,7 +4,7 @@
 **System:** Ellucian Banner Self-Service Admissions RELEASE 8.7.2
 **Login used for inventory:** Admissions Login at
 `/pls/prod/bwskalog.P_DispLoginNon` (Login ID + PIN)
-**Inventory date:** 2026-10-23 (full re-inventory; supersedes PR #1's 2026-09 inventory)
+**Inventory date:** 2026-10-23 (full re-inventory; supersedes the 2026-09 inventory)
 **Config:** `config/portals/greenwich.js`
 **Raw captures:** not in this repository (they can contain applicant-like data); this document records the inventory by result.
 

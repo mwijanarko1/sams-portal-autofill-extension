@@ -64,11 +64,12 @@ See [safari/README.md](safari/README.md) and the
 - `src/engine/engine.js`: scan, match, format, and fill engine
 - `src/portal-fill.js`: page handler that accepts student values only from the popup, over a port bound to the selected page
 - `src/background.js`: session cache and expiry alarm
+- `src/popup-motion.js`: popup animation helper
 - `scripts/build.mjs`: development and production packaging for the `chrome` (default) and `safari` targets
 - `scripts/package-safari.mjs`: unsigned macOS app build and embedded-resource check
 - `safari/`: macOS containing app and Safari extension target, no copied extension code
 - `test/`, `e2e/`: unit/DOM tests, Chromium loaded-extension E2E, Safari fixture checklist
-- `docs/`: handover, staff and deployment guides, [CODEBASE_MAP.md](docs/CODEBASE_MAP.md), Safari architecture, per-portal field maps in `docs/portal-maps/` (including the CRM Profile-tab map [CRM-LEAD-PROFILE.md](docs/portal-maps/CRM-LEAD-PROFILE.md)), and Chrome Web Store drafts in `docs/store-submission/`. Word (`.docx`) copies of the README, portal matrix and the guides in `docs/` are in `docs/docx/`; regenerate with `pandoc <file>.md -o docs/docx/<file>.docx` after editing a Markdown source
+- `docs/`: handover ([USER-HANDOVER.md](docs/USER-HANDOVER.md) for staff, [TECHNICAL-HANDOVER.md](docs/TECHNICAL-HANDOVER.md) for engineers and IT), staff and deployment guides, [CODEBASE_MAP.md](docs/CODEBASE_MAP.md), Safari architecture, per-portal field maps in `docs/portal-maps/` (including the CRM Profile-tab map [CRM-LEAD-PROFILE.md](docs/portal-maps/CRM-LEAD-PROFILE.md)), and Chrome Web Store drafts in `docs/store-submission/`. Word (`.docx`) copies of the README, portal matrix and the guides in `docs/` are in `docs/docx/`; regenerate with `pandoc <file>.md -o docs/docx/<file>.docx` after editing a Markdown source
 
 No extension login, licence server, AI inference, backend writes, automatic document upload, or automatic irreversible actions are included.
 

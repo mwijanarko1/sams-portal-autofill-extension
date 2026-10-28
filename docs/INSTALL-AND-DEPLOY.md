@@ -15,14 +15,14 @@ Enablement steps and resource ownership are in [safari/README.md](../safari/READ
 
 ## Production package (Chrome)
 
-1. Confirm the Campora origin in `config/allowlist.js` (`camporaOrigins`) is still the intended production host. It is configured together with the Greenwich, Bangor and Greater Manchester origins, so the production allowlist gate passes today; a first Campora-to-Bangor no-save sample passed, but full live Campora acceptance is still required.
-2. Complete and verify all three portal configs and fixtures.
+1. Confirm the origins in `config/allowlist.js` (SAMS CRM, Campora in `camporaOrigins`, and the Greenwich, Bangor and Greater Manchester portals) are the intended production hosts. The production build refuses to run if the Campora list is empty or fewer than three portal origins are set.
+2. Run the no-save live checks in [e2e/README.md](../e2e/README.md) for the portals SAMS relies on.
 3. Set the release version in `manifest.json`, `package.json`, and the Safari Xcode `MARKETING_VERSION`.
 4. Run `npm test && npm run build:prod`.
 5. Inspect `dist/chrome/manifest.json` and the generated `dist/sams-portal-autofill-prod.zip`.
 6. Upload the zip to SAMS's Chrome Web Store developer account as an unlisted item, or deploy the extension ID through Chrome enterprise force-install policy.
 
-The production build rejects an incomplete Campora or portal allowlist. It never includes localhost or `<all_urls>`. Each build target cleans only its own `dist` paths, so a Chrome build does not delete Safari output.
+The production build rejects an incomplete Campora or portal allowlist (`scripts/build.mjs`). It never includes localhost or `<all_urls>`. Each build target cleans only its own `dist` paths, so a Chrome build does not delete Safari output.
 
 Chrome Web Store submission also needs a SAMS-owned privacy policy URL, data-use disclosures, and host-permission justification. Store and device-management fees are SAMS costs. Local drafts of the policy text, permission justifications, listing, reviewer instructions and image inventory are in [store-submission/STORE-SUBMISSION-PACK.md](store-submission/STORE-SUBMISSION-PACK.md); they are not hosted, reviewed or submitted.
 

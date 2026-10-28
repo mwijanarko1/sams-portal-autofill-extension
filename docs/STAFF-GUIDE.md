@@ -7,7 +7,7 @@ Supported browsers for staff use are decided by SAMS release policy. Development
 3. Confirm the student name shown in the extension.
 4. Sign into the university's application portal yourself and open the form step you want to prepare.
 5. Open the extension from the browser toolbar on that page and select **Autofill this page**. Repeat on each wizard step. Only the page you opened it on is filled.
-6. To attach documents from the CRM, keep SAMS CRM open in a tab and select **Attach CRM documents** on the portal page. Choose a document for each upload field (suggested matches are marked, never chosen for you) and select **Attach**. Some portals upload the file as soon as it is attached, so pick carefully.
+6. To attach documents from the CRM, keep SAMS CRM open in a tab and select **Attach CRM documents** on the portal page. Choose a document for each upload field (suggested matches are marked, never chosen for you) and select **Attach**. Some portals upload the file as soon as it is attached, so pick carefully. **Show on page** scrolls to and outlines an upload field without changing it; if the portal hides its file input behind its own widget, attach the file in the portal yourself. Documents are listed from SAMS CRM only, so attach Campora documents manually.
 7. Review the summary and every portal field. Complete all fields listed for manual review.
 8. Save, continue, pay, confirm, declare, and submit yourself. Autofill never performs these actions.
 9. Select **Clear** when finished. A copied student is also cleared after 30 minutes of inactivity, a browser restart, or an extension reload/update.

@@ -32,7 +32,7 @@ During supervised access:
 2. Add the smallest config change needed.
 3. Run Copy and Autofill with a test student.
 4. Record filled, skipped, no-value, and manual fields in `PORTALS.md`.
-5. Save sanitized HTML with no student data, credentials, tokens, or application IDs under `fixtures/<portal>/` (committed warranty fixtures) and keep synthetic coverage in `e2e/fixtures/` / `test/fixtures/` as appropriate.
+5. Save sanitized HTML with no student data, credentials, tokens, or application IDs under `e2e/fixtures/` (or `test/fixtures/` for CRM reader pages).
 6. Add a regression test before moving to the next step.
 
 The engine fills inputs, selects, textareas, radio inputs, scoped listbox options, and explicit split-date control groups. Checkboxes and file inputs stay manual. Existing values remain untouched. The click guard rejects buttons, links, and controls whose accessible text contains submit, pay, send, delete, confirm, declare, agree, next, save, or continue.
