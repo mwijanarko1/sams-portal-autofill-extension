@@ -1,6 +1,6 @@
 # Staff quick guide
 
-This is a one-page summary. The full guide is [USER-HANDOVER.md](USER-HANDOVER.md).
+This is a one-page summary. The full guide is [USER-HANDOVER.md](USER-HANDOVER.md). Chrome install steps are in [INSTALLATION.md](INSTALLATION.md).
 
 Install only a SAMS-approved package on staff computers. SAMS decides which browsers are supported.
 

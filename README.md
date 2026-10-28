@@ -59,7 +59,7 @@ Production build:
 npm run build:prod
 ```
 
-This writes `dist/chrome` and `dist/sams-portal-autofill-prod.zip`. The production manifest allows only the SAMS CRM, Campora, and the three portal origins. It has no localhost entry and no `<all_urls>`. Each GitHub release has the production zip attached. See [docs/INSTALL-AND-DEPLOY.md](docs/INSTALL-AND-DEPLOY.md) for the release steps.
+This writes `dist/chrome` and `dist/sams-portal-autofill-prod.zip`. The production manifest allows only the SAMS CRM, Campora, and the three portal origins. It has no localhost entry and no `<all_urls>`. Each GitHub release has the production zip attached. Staff install steps are in [docs/INSTALLATION.md](docs/INSTALLATION.md). Release packaging steps are in [docs/INSTALL-AND-DEPLOY.md](docs/INSTALL-AND-DEPLOY.md).
 
 ## Safari for macOS (development only)
 

@@ -1,6 +1,6 @@
 # SAMS Portal Autofill: how to use it
 
-This guide is for staff who already have the extension installed. It shows how to copy one student from SAMS CRM or Campora and fill a university application draft. It does not cover installation.
+This guide is for staff who already have the extension installed. It shows how to copy one student from SAMS CRM or Campora and fill a university application draft. For Chrome install from a GitHub release, see [INSTALLATION.md](INSTALLATION.md).
 
 **What the extension does.** It copies visible student details and a list of CRM documents into temporary browser memory. Then it fills empty fields on a university form page. You save, continue, pay, declare, and submit yourself.
 
