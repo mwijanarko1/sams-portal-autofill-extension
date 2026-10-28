@@ -654,8 +654,9 @@ if (!globalThis.__SAMS_CRM_READER_LOADED__) {
     if (ukOnly) return { line, postcode: ukOnly[1].toUpperCase(), country: "" };
     // Only accept a postcode-shaped candidate; a word such as "United" is not a
     // postcode and must not turn "United Kingdom" into postcode/country garbage.
-    const generic = tail.match(/^(\d{4,6}(?:-\d{4})?)\s+(.+)$/);
-    return generic ? { line, postcode: generic[1], country: generic[2] } : null;
+    // A single token with a digit is a postcode, so alphanumeric codes (drf577) split too.
+    const generic = tail.match(/^(\d{4,6}(?:-\d{4})?|[A-Za-z0-9-]{3,10})\s+(.+)$/);
+    return generic && /\d/.test(generic[1]) ? { line, postcode: generic[1], country: generic[2] } : null;
   }
 
   function readSidebar(root, fields) {
@@ -677,7 +678,18 @@ if (!globalThis.__SAMS_CRM_READER_LOADED__) {
       .find((cell) => visible(cell) && normalizeLabel(cell.textContent) === "current city");
     const city = clean(currentCity?.nextElementSibling?.textContent);
     const present = pick(".only_present_address_div .hover_for_edit_pre_address")?.innerText;
-    setField(fields, "permanentAddress", pick(".only_home_address_div .hover_for_edit_address")?.innerText);
+    // The home line is split by the same city anchor. A home line that does not hold the city
+    // stays one joined line, so a different home city is never invented.
+    const home = pick(".only_home_address_div .hover_for_edit_address")?.innerText;
+    const homeSplit = splitAddress(home, city);
+    if (homeSplit) {
+      setField(fields, "permanentAddress", homeSplit.line);
+      setField(fields, "permanentCity", city);
+      setField(fields, "permanentPostcode", homeSplit.postcode);
+      setField(fields, "permanentCountry", homeSplit.country);
+    } else {
+      setField(fields, "permanentAddress", home);
+    }
     const split = splitAddress(present, city);
     if (split) {
       setField(fields, "location", split.line);
