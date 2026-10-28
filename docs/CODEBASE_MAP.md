@@ -138,9 +138,9 @@ Safari testing is manual. Playwright WebKit and `npm run test:e2e` cannot test t
 | Need | Start here |
 |---|---|
 | Staff usage | [USER-HANDOVER.md](USER-HANDOVER.md), [STAFF-GUIDE.md](STAFF-GUIDE.md) |
-| Staff Chrome install from GitHub Releases | [INSTALLATION.md](INSTALLATION.md) |
+| Staff Chrome and Safari install from GitHub Releases | [INSTALLATION.md](INSTALLATION.md) |
 | Security, storage, and IT duties | [TECHNICAL-HANDOVER.md](TECHNICAL-HANDOVER.md) |
-| Install, release, Safari packaging | [INSTALL-AND-DEPLOY.md](INSTALL-AND-DEPLOY.md) |
+| Build, release, Safari packaging | [../README.md](../README.md), [../safari/README.md](../safari/README.md) |
 | Architecture and mapping how-to | [TECHNICAL-AND-MAPPING.md](TECHNICAL-AND-MAPPING.md) |
 | Portal status | [../PORTALS.md](../PORTALS.md) |
 | Field maps | [portal-maps/](portal-maps/) |

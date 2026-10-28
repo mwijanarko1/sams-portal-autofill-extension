@@ -4,7 +4,7 @@ This guide is for engineers, IT administrators, and security reviewers who maint
 
 - Staff steps: [USER-HANDOVER.md](USER-HANDOVER.md)
 - File layout: [CODEBASE_MAP.md](CODEBASE_MAP.md)
-- Install and release: [INSTALL-AND-DEPLOY.md](INSTALL-AND-DEPLOY.md)
+- Install and release: [INSTALLATION.md](INSTALLATION.md) and the [README](../README.md)
 - Portal status: [../PORTALS.md](../PORTALS.md)
 
 The statements below describe the current source. A live CRM-to-portal test can show different results.
@@ -429,7 +429,7 @@ Use a current Node.js and npm. Run `npm ci` to install the locked development de
 | `npm run build:safari:app` | Unsigned Safari app |
 | `npm run safari:fixtures` | Local fixture server for the Safari checklist |
 
-**Production build.** `config/allowlist.js` lists the SAMS CRM origin, the Campora origin, and three portal origins. `scripts/build.mjs` builds the production packages from them. If the Campora list is empty or fewer than three portal origins are set, the build stops. Do not bypass that gate. The root `manifest.json` is a template. The build writes `host_permissions` into the manifest under `dist/`. Never edit `dist/` by hand. After a rebuild, reload the extension and the tested page. Version changes and distribution follow [INSTALL-AND-DEPLOY.md](INSTALL-AND-DEPLOY.md).
+**Production build.** `config/allowlist.js` lists the SAMS CRM origin, the Campora origin, and three portal origins. `scripts/build.mjs` builds the production packages from them. If the Campora list is empty or fewer than three portal origins are set, the build stops. Do not bypass that gate. The root `manifest.json` is a template. The build writes `host_permissions` into the manifest under `dist/`. Never edit `dist/` by hand. After a rebuild, reload the extension and the tested page. Version changes and distribution follow the release steps in the [README](../README.md).
 
 **E2E browser.** The Chromium E2E runner uses Helium on macOS by default. Set `SAMS_E2E_BROWSER` to use another Chromium. See [../e2e/README.md](../e2e/README.md) before you run it on another computer. Live checks need approved test access. Never put credentials in this guide or in fixtures.
 

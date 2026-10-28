@@ -404,7 +404,7 @@ Repository:
 - [Codebase map](CODEBASE_MAP.md)
 - [README](../README.md)
 - [Technical and mapping guide](TECHNICAL-AND-MAPPING.md)
-- [Install and deploy](INSTALL-AND-DEPLOY.md)
+- [Install guide](INSTALLATION.md)
 - [Safari build and enablement](../safari/README.md)
 - [Safari checklist](../e2e/safari/README.md)
 - [Portal status](../PORTALS.md)

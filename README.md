@@ -59,7 +59,7 @@ Production build:
 npm run build:prod
 ```
 
-This writes `dist/chrome` and `dist/sams-portal-autofill-prod.zip`. The production manifest allows only the SAMS CRM, Campora, and the three portal origins. It has no localhost entry and no `<all_urls>`. Each GitHub release has the production zip attached. Staff install steps are in [docs/INSTALLATION.md](docs/INSTALLATION.md). Release packaging steps are in [docs/INSTALL-AND-DEPLOY.md](docs/INSTALL-AND-DEPLOY.md).
+This writes `dist/chrome` and `dist/sams-portal-autofill-prod.zip`. The production manifest allows only the SAMS CRM, Campora, and the three portal origins. It has no localhost entry and no `<all_urls>`. Each GitHub release has the production zip attached. Staff install steps are in [docs/INSTALLATION.md](docs/INSTALLATION.md). To release, set the version in `manifest.json`, `package.json`, and the Safari Xcode `MARKETING_VERSION`, run `npm test && npm run build:prod`, then attach the zip to a GitHub release. The Safari package is `dist/safari-webextension` zipped, built with `npm run build:safari:prod`. SAMS owns Chrome Web Store upload, Chrome force-install policy, and Safari signing.
 
 ## Safari for macOS (development only)
 

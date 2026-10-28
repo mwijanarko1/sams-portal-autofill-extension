@@ -122,7 +122,7 @@ Prerequisites: a SAMS Apple developer team, production bundle identifiers (curre
 
 ## 6. Controlled distribution preparation
 
-Baseline already documented in [INSTALL-AND-DEPLOY.md](../INSTALL-AND-DEPLOY.md): upload to SAMS's Chrome Web Store developer account as an unlisted item, or deploy by Chrome enterprise force-install policy. This was not changed.
+Baseline already documented in the [README](../../README.md): upload to SAMS's Chrome Web Store developer account as an unlisted item, or deploy by Chrome enterprise force-install policy. This was not changed.
 
 Choices that belong to SAMS:
 
