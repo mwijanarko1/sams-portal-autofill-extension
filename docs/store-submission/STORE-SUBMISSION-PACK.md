@@ -1,6 +1,6 @@
 # Store submission pack (draft)
 
-Status date: 2026-10-22, extension version `0.1.0`. Everything here is draft text prepared locally from the current source. It is not submitted, not legally reviewed and not approved by SAMS. See [RELEASE-STATUS.md](../RELEASE-STATUS.md) for what is still open.
+Status date: 2026-10-22, extension version `0.1.0`. Everything here is draft text prepared locally from the current source. It is not submitted, not legally reviewed and not approved by SAMS.
 
 Not provided or invented here: the final app-store publisher identity, an extension support contact, a store account, and legal approval. They appear below as `TBD`. The public website privacy policy URL is known (section 1), but the page does not explicitly describe the extension and the draft addendum is not published or approved.
 

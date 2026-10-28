@@ -71,7 +71,7 @@ Production packaging still rejects an empty Campora list or fewer than three por
 | `e2e/` | Loaded-extension Chromium E2E + opt-in live smoke. |
 | `e2e/fixtures/` | Synthetic CRM/Bangor/Greenwich HTML for E2E and Safari checklist. |
 | `e2e/safari/` | Safari fixture server and manual acceptance checklist. |
-| `docs/` | Handover, staff, deploy, technical, Safari architecture, release status, this map. |
+| `docs/` | Handover, staff, deploy, technical, Safari architecture, this map. |
 | `docs/portal-maps/` | Per-portal field inventories (Greenwich, Bangor, Greater Manchester), the Campora source map and the SAMS CRM Profile-tab map. |
 | `docs/store-submission/` | Chrome Web Store and privacy-policy drafts for SAMS, with store image drafts. |
 | `PORTALS.md` | Portal verification matrix (current status). |
@@ -126,7 +126,7 @@ Safari runtime acceptance is manual. Playwright WebKit and `npm run test:e2e` do
 
 ### Production gate
 
-`npm run build:prod` and `npm run build:safari:prod` still refuse an empty Campora list or fewer than three portal origins. The Campora origin and the three portal origins are now configured, so the automated gate passes; live CRM-to-portal journeys, Campora live autofill, Safari runtime acceptance and signing/distribution remain open. Campora's profile map is in [portal-maps/CAMPORA.md](portal-maps/CAMPORA.md). Current status: [RELEASE-STATUS.md](RELEASE-STATUS.md).
+`npm run build:prod` and `npm run build:safari:prod` still refuse an empty Campora list or fewer than three portal origins. The Campora origin and the three portal origins are now configured, so the automated gate passes; live CRM-to-portal journeys, Campora live autofill, Safari runtime acceptance and signing/distribution remain open. Campora's profile map is in [portal-maps/CAMPORA.md](portal-maps/CAMPORA.md).
 
 ## Navigation: where guidance lives
 
@@ -142,7 +142,6 @@ Safari runtime acceptance is manual. Playwright WebKit and `npm run test:e2e` do
 | Chromium E2E and live smoke rules | `e2e/README.md` |
 | Per-portal field inventories | `docs/portal-maps/` |
 | CRM lead lists, lead types, Profile-tab field map | `docs/portal-maps/CRM-LEAD-PROFILE.md` |
-| What is verified, what is open, and who owns it | `docs/RELEASE-STATUS.md` |
 | Handover (technical, staff) | `docs/TECHNICAL-HANDOVER.md`, `docs/USER-HANDOVER.md` |
 | Chrome Web Store and privacy-policy drafts | `docs/store-submission/` |
 | This map | `docs/CODEBASE_MAP.md` |

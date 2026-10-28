@@ -24,7 +24,7 @@ Enablement steps and resource ownership are in [safari/README.md](../safari/READ
 
 The production build rejects an incomplete Campora or portal allowlist. It never includes localhost or `<all_urls>`. Each build target cleans only its own `dist` paths, so a Chrome build does not delete Safari output.
 
-Chrome Web Store submission also needs a SAMS-owned privacy policy URL, data-use disclosures, and host-permission justification. Store and device-management fees are SAMS costs. Local drafts of the policy text, permission justifications, listing, reviewer instructions and image inventory are in [store-submission/STORE-SUBMISSION-PACK.md](store-submission/STORE-SUBMISSION-PACK.md); they are not hosted, reviewed or submitted. Open items: [RELEASE-STATUS.md](RELEASE-STATUS.md).
+Chrome Web Store submission also needs a SAMS-owned privacy policy URL, data-use disclosures, and host-permission justification. Store and device-management fees are SAMS costs. Local drafts of the policy text, permission justifications, listing, reviewer instructions and image inventory are in [store-submission/STORE-SUBMISSION-PACK.md](store-submission/STORE-SUBMISSION-PACK.md); they are not hosted, reviewed or submitted.
 
 ## Updates
 

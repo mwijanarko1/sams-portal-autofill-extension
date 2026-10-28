@@ -10,7 +10,7 @@ Universities without a saved mapping use shared matching. It fills title, name, 
 
 ## Verification scope
 
-Verified: `npm test` (135 tests), the loaded-extension `npm run test:e2e` suite (50 tests, synthetic pages), the production build, and one supervised live Campora-to-Bangor no-save run. Live runners (`npm run test:e2e:live`, `npm run test:e2e:documents:live`) and the Safari acceptance checklist are included for SAMS to run against Greenwich, Greater Manchester and installed Safari; no results for those are recorded here. The Chrome Web Store account, privacy-policy publication and Safari signing belong to SAMS. Details, owners and portal status are in [docs/RELEASE-STATUS.md](docs/RELEASE-STATUS.md) and [PORTALS.md](PORTALS.md). The codebase map is [docs/CODEBASE_MAP.md](docs/CODEBASE_MAP.md).
+Verified: `npm test` (135 tests), the loaded-extension `npm run test:e2e` suite (50 tests, synthetic pages), the production build, and one supervised live Campora-to-Bangor no-save run. Live runners (`npm run test:e2e:live`, `npm run test:e2e:documents:live`) and the Safari acceptance checklist are included for SAMS to run against Greenwich, Greater Manchester and installed Safari; no results for those are recorded here. The Chrome Web Store account, privacy-policy publication and Safari signing belong to SAMS. Portal status is in [PORTALS.md](PORTALS.md). The codebase map is [docs/CODEBASE_MAP.md](docs/CODEBASE_MAP.md).
 
 ## Development build
 
@@ -68,7 +68,7 @@ See [safari/README.md](safari/README.md) and the
 - `scripts/package-safari.mjs`: unsigned macOS app build and embedded-resource check
 - `safari/`: macOS containing app and Safari extension target, no copied extension code
 - `test/`, `e2e/`: unit/DOM tests, Chromium loaded-extension E2E, Safari fixture checklist
-- `docs/`: handover, staff and deployment guides, [CODEBASE_MAP.md](docs/CODEBASE_MAP.md), [RELEASE-STATUS.md](docs/RELEASE-STATUS.md), Safari architecture, per-portal field maps in `docs/portal-maps/` (including the CRM Profile-tab map [CRM-LEAD-PROFILE.md](docs/portal-maps/CRM-LEAD-PROFILE.md)), and Chrome Web Store drafts in `docs/store-submission/`
+- `docs/`: handover, staff and deployment guides, [CODEBASE_MAP.md](docs/CODEBASE_MAP.md), Safari architecture, per-portal field maps in `docs/portal-maps/` (including the CRM Profile-tab map [CRM-LEAD-PROFILE.md](docs/portal-maps/CRM-LEAD-PROFILE.md)), and Chrome Web Store drafts in `docs/store-submission/`. Word (`.docx`) copies of the README, portal matrix and the guides in `docs/` are in `docs/docx/`; regenerate with `pandoc <file>.md -o docs/docx/<file>.docx` after editing a Markdown source
 
 No extension login, licence server, AI inference, backend writes, automatic document upload, or automatic irreversible actions are included.
 
