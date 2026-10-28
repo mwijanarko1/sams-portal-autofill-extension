@@ -8,7 +8,9 @@ Version `0.1.0`. The Chrome extension, CRM page reader (SAMS CRM and Campora APP
 
 Universities without a saved mapping use shared matching. It fills title, name, date of birth, gender, nationality, email, one phone number, address line 1, town, county, postcode, country, and passport number only where one control clearly asks for that value. Account, password, payment, declaration, referee, emergency-contact, agent, education, and employment fields, split dates, radio groups, search pickers, and duplicate fields stay manual. Opening the toolbar grants one-time page access where supported. On other HTTPS university websites, **Allow this website** requests access to that exact origin only. The optional `https://*/*` declaration lets staff choose a site; it does not grant blanket access. Only the selected page's own-origin frames receive student values. CRM Copy is restricted to approved SAMS CRM or Campora origins.
 
-Not yet done: complete live CRM-to-portal acceptance for every portal, Safari runtime acceptance and signing, and the SAMS-owned store and privacy-policy steps. Details and the owner of each open item are in [docs/RELEASE-STATUS.md](docs/RELEASE-STATUS.md). Portal status is in [PORTALS.md](PORTALS.md); the codebase map is [docs/CODEBASE_MAP.md](docs/CODEBASE_MAP.md).
+## Verification scope
+
+Verified: `npm test` (135 tests), the loaded-extension `npm run test:e2e` suite (50 tests, synthetic pages), the production build, and one supervised live Campora-to-Bangor no-save run. Live runners (`npm run test:e2e:live`, `npm run test:e2e:documents:live`) and the Safari acceptance checklist are included for SAMS to run against Greenwich, Greater Manchester and installed Safari; no results for those are recorded here. The Chrome Web Store account, privacy-policy publication and Safari signing belong to SAMS. Details, owners and portal status are in [docs/RELEASE-STATUS.md](docs/RELEASE-STATUS.md) and [PORTALS.md](PORTALS.md). The codebase map is [docs/CODEBASE_MAP.md](docs/CODEBASE_MAP.md).
 
 ## Development build
 
