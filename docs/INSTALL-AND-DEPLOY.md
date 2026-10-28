@@ -2,7 +2,7 @@
 
 ## Development
 
-Run `npm test && npm run build`, then load `dist/chrome` as an unpacked extension from `chrome://extensions`.
+Run `npm ci` once to install the locked dependencies (Node.js and npm required), then `npm test && npm run build`, then load `dist/chrome` as an unpacked extension from `chrome://extensions`.
 
 Safari development uses the same shared source:
 

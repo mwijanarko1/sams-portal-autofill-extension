@@ -12,9 +12,20 @@ Universities without a saved mapping use shared matching. It fills title, name, 
 
 Verified: `npm test` (135 tests), the loaded-extension `npm run test:e2e` suite (50 tests, synthetic pages), the production build, and one supervised live Campora-to-Bangor no-save run. Live runners (`npm run test:e2e:live`, `npm run test:e2e:documents:live`) and the Safari acceptance checklist are included for SAMS to run against Greenwich, Greater Manchester and installed Safari; no results for those are recorded here. The Chrome Web Store account, privacy-policy publication and Safari signing belong to SAMS. Portal status is in [PORTALS.md](PORTALS.md). The codebase map is [docs/CODEBASE_MAP.md](docs/CODEBASE_MAP.md).
 
+## Setup
+
+Requirements: [Node.js](https://nodejs.org/) with npm (developed and tested on Node 26; other versions are untested) and the `zip` command (preinstalled on macOS and most Linux). Install the locked dependencies once after cloning:
+
+```bash
+npm ci
+```
+
+The only dependency is `playwright-core`, used by `npm test` and `npm run test:e2e`. `npm run build` and `npm run build:prod` use only Node built-ins. Use `npm install` only when you intend to change dependencies and the lockfile.
+
 ## Development build
 
 ```bash
+npm ci   # first time only
 npm test
 npm run build
 ```
