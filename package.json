@@ -11,6 +11,7 @@
     "test": "node --test test/*.test.js",
     "test:e2e": "node --test --test-concurrency=1 e2e/extension.e2e.mjs",
     "test:e2e:live": "node e2e/live.mjs",
+    "test:e2e:documents:live": "node e2e/documents.live.mjs",
     "safari:fixtures": "node e2e/safari/serve-fixtures.mjs"
   },
   "devDependencies": {

@@ -458,6 +458,8 @@ function connectFrame(tabId, frame) {
   }
   let pending = null;
   let open = true;
+  // The port holds one pending reply, so a second request waits for the first instead of replacing its handler.
+  let queue = Promise.resolve();
   port.onMessage.addListener((response) => {
     const request = pending;
     pending = null;
@@ -474,7 +476,7 @@ function connectFrame(tabId, frame) {
     frameId: frame.frameId,
     documentId: frame.documentId,
     request(message) {
-      return new Promise((resolve) => {
+      const sent = queue.then(() => new Promise((resolve) => {
         if (!open) return resolve({ error: FRAME_NO_RESPONSE });
         pending = { resolve };
         try {
@@ -483,7 +485,9 @@ function connectFrame(tabId, frame) {
           pending = null;
           resolve({ error: FRAME_NO_RESPONSE });
         }
-      });
+      }));
+      queue = sent;
+      return sent;
     },
     close() {
       if (open) port.disconnect();
@@ -602,8 +606,8 @@ function acceptsDocument(accept, crmDocument) {
   });
 }
 
-function suggestedFor(label, crmDocument) {
-  const text = label.toLowerCase();
+function suggestedFor(upload, crmDocument) {
+  const text = `${upload.label} ${upload.context}`.toLowerCase();
   return Boolean(GROUP_HINTS[crmDocument.group]?.test(text) || TYPE_HINTS[crmDocument.documentType]?.test(text));
 }
 
@@ -633,9 +637,26 @@ function setUploadStatus(status, type, text) {
   status.textContent = text;
 }
 
-async function attachToUpload(frame, upload, picker, button, status) {
+// Show finds the field on the page without changing it; Attach assigns the chosen file. Both reach
+// the page through the frame's one-at-a-time port, and a row's buttons stay off while either waits.
+async function showUpload(frame, upload, row) {
+  row.setBusy(true);
+  setUploadStatus(row.status, "", "Finding this field on the page...");
+  try {
+    const response = await frame.request({ action: "showUpload", key: upload.key });
+    const reason = response && response.error;
+    if (response && response.shown) setUploadStatus(row.status, "", "Highlighted on the page for a few seconds.");
+    else if (response && response.manual) setUploadStatus(row.status, "", response.manual);
+    else setUploadStatus(row.status, "failed", reason && reason !== FRAME_NO_RESPONSE ? reason : `${FRAME_NO_RESPONSE} The page may have changed: scan again.`);
+  } finally {
+    row.setBusy(false);
+  }
+}
+
+async function attachToUpload(frame, upload, row) {
+  const { picker, status } = row;
   picker.setDisabled(true);
-  button.disabled = true;
+  row.setBusy(true);
   setUploadStatus(status, "", "Attaching...");
   try {
     // The worker cache is authoritative: Clear, expiry, or a new Copy must win over this popup's rows.
@@ -647,10 +668,11 @@ async function attachToUpload(frame, upload, picker, button, status) {
     const file = await fetchDocument(crmDocument);
     const response = await frame.request({ action: "attachDocument", key: upload.key, file });
     if (!response || response.error) throw new Error((response && response.error) || FRAME_NO_RESPONSE);
+    row.attached = true;
     const touched = await runtimeMessage({ action: "touchStudentCache" });
     cache = touched.cache || null;
     renderCache();
-    setUploadStatus(status, "done", `Attached ${response.name}. Review the portal: it may upload the file straight away.`);
+    setUploadStatus(status, "done", `Attached ${response.name}. The browser assigned the file to this field, but the portal may not have accepted or uploaded it. Review the portal before continuing.`);
   } catch (error) {
     const message = error.message || String(error);
     if (!cache) {
@@ -658,8 +680,9 @@ async function attachToUpload(frame, upload, picker, button, status) {
       return;
     }
     setUploadStatus(status, "failed", message);
-    picker.setDisabled(false);
-    button.disabled = !picker.value;
+    if (!row.attached) picker.setDisabled(false);
+  } finally {
+    row.setBusy(false);
   }
 }
 
@@ -768,12 +791,23 @@ function createPicker({ label, options, placeholder }) {
   };
 }
 
+let uploadRowCount = 0;
+
 function renderUploadRow({ frame, upload }) {
   const row = document.createElement("div");
   row.className = "upload-row";
+  const head = document.createElement("div");
+  head.className = "upload-head";
   const label = document.createElement("div");
   label.className = "upload-label";
+  label.id = `upload-label-${++uploadRowCount}`;
   label.textContent = upload.label;
+  const show = document.createElement("button");
+  show.type = "button";
+  show.className = "show";
+  show.textContent = "Show on page";
+  show.setAttribute("aria-describedby", label.id);
+  head.append(label, show);
   const controls = document.createElement("div");
   controls.className = "upload-controls";
   const compatible = cache.documents.filter((item) => acceptsDocument(upload.accept, item));
@@ -782,7 +816,7 @@ function renderUploadRow({ frame, upload }) {
     placeholder: "Choose a CRM document",
     options: compatible.map((item) => ({
       value: item.key,
-      text: `${item.groupLabel} · ${documentFileName(item)}${suggestedFor(upload.label, item) ? " (suggested)" : ""}`,
+      text: `${item.groupLabel} · ${documentFileName(item)}${suggestedFor(upload, item) ? " (suggested)" : ""}`,
     })),
   });
   uploadPickers.push(picker);
@@ -790,9 +824,23 @@ function renderUploadRow({ frame, upload }) {
   button.type = "button";
   button.className = "attach";
   button.textContent = "Attach";
-  button.disabled = true;
   const status = document.createElement("div");
   status.className = "upload-status";
+  const state = {
+    picker,
+    status,
+    attached: false,
+    busy: false,
+    setBusy(busy) {
+      state.busy = busy;
+      state.sync();
+    },
+    sync() {
+      show.disabled = state.busy;
+      button.disabled = state.busy || state.attached || !picker.value;
+    },
+  };
+  state.sync();
   if (upload.hasFile) {
     picker.setDisabled(true);
     status.textContent = "This field already has a file. Remove it in the portal first, then scan again.";
@@ -800,10 +848,18 @@ function renderUploadRow({ frame, upload }) {
     picker.setDisabled(true);
     status.textContent = "No CRM document matches this field's accepted file types.";
   }
-  picker.onChange(() => { button.disabled = !picker.value; });
-  button.addEventListener("click", () => attachToUpload(frame, upload, picker, button, status));
+  picker.onChange(state.sync);
+  show.addEventListener("click", () => showUpload(frame, upload, state));
+  button.addEventListener("click", () => attachToUpload(frame, upload, state));
   controls.append(picker.root, button);
-  row.append(label, controls, status);
+  row.append(head);
+  if (upload.context) {
+    const context = document.createElement("div");
+    context.className = "upload-context";
+    context.textContent = upload.context;
+    row.append(context);
+  }
+  row.append(controls, status);
   return row;
 }
 
@@ -826,7 +882,9 @@ async function scanUploads() {
     }));
     await refreshCache();
     if (!cache || !cache.documents.length) throw new Error("No copied CRM documents are available. Copy from CRM again.");
-    const entries = listed.flatMap((item) => item.entries || []);
+    // Fields the page never names are numbered across all frames so each stays distinct.
+    const entries = listed.flatMap((item) => item.entries || [])
+      .map((entry, index) => ({ ...entry, upload: { ...entry.upload, label: entry.upload.label || `Upload field ${index + 1}` } }));
     const failures = listed.filter((item) => item.failure).map((item) => item.failure);
     if (!entries.length) {
       closeUploads();
@@ -834,7 +892,7 @@ async function scanUploads() {
         setStatus("error", "No file upload fields could be read on this page.");
         addList("Frames not scanned", failures);
       } else {
-        setStatus("info", "No file upload fields found on this page.");
+        setStatus("info", "No file upload fields found on this page. If this portal uses its own uploader, attach the documents there yourself.");
       }
       return;
     }
