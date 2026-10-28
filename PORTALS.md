@@ -12,6 +12,8 @@ This page shows what the extension supports for each portal and what has been te
 
 Notes:
 
+- **Approved answer rules, 2026-10-28.** Nationality now supplies Manchester British-passport/EU answers and Bangor passport nation. Current residence supplies Manchester application location. Greenwich legal name and referee contacts, separate permanent/present addresses, Manchester past-date completion and Bangor UK-specific refusal answers are mapped. Agency Name is SAMS Global; agency city/email remain manual. These changes have [synthetic extension coverage](docs/portal-maps/APPROVED-RULES-VERIFICATION.md), not a new live run. See the [complete rules and exclusions](docs/portal-maps/APPROVED-RULES.md).
+
 - **Greenwich.** Programme fills in three passes: intake, then programme, then mode. Split dates cover the applicant address, the qualification award date, and the education attendance dates.
 - **Greater Manchester.** Qualification name, subject, grade, and the typed statement need a two-pass reveal. Staff answer the conditional questions first and then run Autofill again.
 - **Bangor.** The Programme section opens only after Personal is saved. The extension never saves, so Programme stays untested unless the draft is already unlocked.
@@ -21,7 +23,7 @@ Notes:
 Copy reads two approved sources:
 
 - **SAMS CRM** (`https://app.samscrm.co.uk`). The reader uses the lead header, the Applications tab (stage panels when mounted, otherwise the visible form), and the Profile tab (all ten sections). It works for direct, sub-agent, and converted leads. The layout is the same: `/agent/leads/full-profile/<id>`. Profile values win when both tabs give the same key. The full field map is in [CRM-LEAD-PROFILE.md](docs/portal-maps/CRM-LEAD-PROFILE.md).
-- **Campora APPLY** (`https://v-sams-backend.samsapply.co.uk`, route `/applyuser/show/<id>/profile`). The Profile tab loads when it is opened. The reader opens it, reads only the keys that the engine and portal maps use, and restores the previous tab. It does not map reference records, status flags, student quality, or the level badge. Campora documents are not listed or fetched. Staff attach them manually. The full map is in [CAMPORA.md](docs/portal-maps/CAMPORA.md).
+- **Campora APPLY** (`https://v-sams-backend.samsapply.co.uk`, route `/applyuser/show/<id>/profile`). The Profile tab loads when it is opened. The reader opens it, reads only the keys that the engine and portal maps use, and restores the previous tab. It includes separate Home/Present Address text, reference contacts and refusal evidence; it does not map unrelated status flags, student quality or the level badge. Missing address components are not guessed. Campora documents are not listed or fetched. Staff attach them manually. The full map is in [CAMPORA.md](docs/portal-maps/CAMPORA.md).
 
 ## Live test result
 

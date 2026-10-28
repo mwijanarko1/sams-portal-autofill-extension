@@ -4,6 +4,8 @@ last_verified: 2026-10-25
 
 # Campora APPLY CRM source
 
+Reader update: 2026-10-28. Home Address, reference contacts and refusal evidence now have consumers in the [approved portal rules](APPROVED-RULES.md). The original inventory and live result below are historical, not a new acceptance run.
+
 Supervised first-pass inventory of Campora APPLY as a second Copy source. This records the
 origin, profile route, DOM map and deliberate omissions. It is not live CRM-to-portal
 acceptance.
@@ -47,7 +49,9 @@ Each `table.list_table` follows its section's `.main_title`.
 | Test Score | `.test_score_level` plus the score/`Overall` cell |
 | Work Experience | Company Name, Designation, Duration (start and end dates; open-ended records keep start only) |
 | Passport Details | Passport Number, Duration (issue and expiry only) |
-| References, Visa History, Visa Refusal | Not read: no consumed key, and a prior visa type is not the current visa type |
+| References | Name, Phone, Email; only the first saved record |
+| Visa Refusal | Country from a recognised, visible section table when available; summary Yes/No alone is not UK-specific evidence |
+| Visa History | Not read: a prior visa type is not the current visa type |
 
 Study Gap and Previous Study Abroad expose Yes/No radios in the sampled record; their flags
 have no consumer and are not read.
@@ -80,11 +84,15 @@ enter the fill engine's heuristic matching.
 | Marital Status | `maritalStatus` | |
 | Funding | `funding` | |
 | Visa Type | `visaType` | Summary value only |
+| Prev Visa Refusal | `hasVisaRefusal` | Summary Yes/No; Yes alone cannot answer the UK question |
+| Visa Refusal table | `visaRefusalCountry` | Read only when a recognised visible table supplies the country |
+| References table | `referenceName`, `referencePhone`, `referenceEmail` | Referee contacts, never applicant contacts |
 | Contact No | `phone` | Dial code and number are joined |
 | Email | `email` | |
 | Emergency contact rows | `emergencyName`, `emergencyPhone`, `emergencyEmail`, `emergencyRelationship` | Scoped to the emergency block |
 | Emergency contact name | `emergencyFirstName`, `emergencyLastName` | Derived from `emergencyName` |
 | Present Address | `location` | Free text |
+| Home Address | `permanentAddress` | Separate free text; no inferred city/postcode/country |
 | Education History | `institutionName`, `degree`, `major`, `grade`, `studyDates`, `startDate`, `endDate`, `studyStartYear`, `studyEndYear` | First record only |
 | Test Score | `englishTestName`, `testDate`, `overallScore`, `listeningScore`, `readingScore`, `writingScore`, `speakingScore` | First saved test only |
 | Work Experience | `cvCurrentEmployer`, `cvCurrentJobTitle`, `cvWorkStartDate`, `cvWorkEndDate` | First record only; open-ended `- N/A` keeps the start date |
@@ -99,8 +107,7 @@ values are intentionally left alone:
 
 - Funding **Status**: ambiguous between sponsor status and self-funded status.
 - **Country of App**: the applicant's country, not a study destination.
-- **Visa Needed**, **Visa History** and **Prev Visa Refusal**: flags have no consumer; the
-  summary `visaType` is the only visa value read.
+- **Visa Needed** and **Visa History**: no direct portal consumer. The current visa type remains the summary `visaType`; a prior visa must not replace it. **Prev Visa Refusal** now feeds the approved UK-refusal rule.
 - Summary **Passport Expiry**: a relative string such as `11 months 1 day Left`, not a date.
   The Passport Details table supplies the real issue and expiry dates.
 - **Student Quality**, **Level badge** and the per-section Yes/No radios: visible but not
@@ -108,9 +115,7 @@ values are intentionally left alone:
 - **City, postcode and country**: shown only in the edit form
   (`apply_profile_address_info_edit`), not in the visible summary. They are left for manual
   entry rather than guessed from the free-text address.
-- **Home Address**: no portal consumer; only Present Address maps to `location`.
-- **Reference records**, **passport Comments/Status**, work duration text and prior-visa
-  tables: no consumer or unsupported semantics.
+- **Reference organisation/address/text**, **passport Comments/Status**, raw work duration text and prior-visa history tables: no consumer or unsupported semantics. Reference name, phone and email and the Home Address now have explicit consumers.
 - Application Status, University Ref, Student Decision, Agent, document statuses, tasks,
   remarks, timelines and uploaded documents.
 - Campora documents are not listed or fetched. `src/crm-documents.js` only matches the SAMS
@@ -122,6 +127,7 @@ values are intentionally left alone:
   manual review.
 - Education, test, work and passport records keep only the first saved entry, matching the
   existing single-value cache contract.
+- Reference contacts and refusal country also keep one record. Missing structured address components prevent automatic same-address answers. Refusal-table support is source-shape based; the recorded Campora fixture has no saved refusal and therefore proves only its explicit No path. No new live refusal record was inspected.
 - A lead with several applications must have the intended application open; the Application
   tab values belong to the current `apply_id`.
 - Only one live Campora run is recorded (see "Live result"). It does not cover Greenwich, Manchester, several samples, or a field-by-field value check.

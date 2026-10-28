@@ -27,6 +27,8 @@ Install only a SAMS-approved package on staff computers. SAMS decides which brow
 
 Greenwich, Bangor, and Greater Manchester have saved mappings.
 
+The [approved rules](portal-maps/APPROVED-RULES.md) add selected passport/citizenship, referee and address answers. Check them before saving: nationality stands in for passport/citizenship, and current residence stands in for application location. Home/permanent uses CRM permanent details; correspondence/mailing uses present details. Greenwich references use the reference person, never the student. Manchester Agency Name is SAMS Global; agency city/email stay manual. Completed is Yes only for a definitely past education end date. Unsupported and missing answers remain manual.
+
 Other universities use shared matching. It fills a field only when one control clearly asks for one of these values: name, date of birth, gender, nationality, email, phone, address, postcode, country, or passport number. You complete the other fields yourself. These fields always stay manual: account, payment, declaration, referee, emergency contact, agent, education, and employment.
 
 Autofill does not overwrite a field that has a value. If a value is wrong, clear it in the portal. Then run Autofill again.

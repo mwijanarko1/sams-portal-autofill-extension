@@ -197,6 +197,12 @@ A saved mapping does not cover every field. Check each page and complete missing
 
 ### Values that need extra care
 
+- **Approved rules from 2026-10-28.** Manchester British-passport and EU-citizenship answers and Bangor passport nation follow recognised nationality. This is an approved assumption, not proof of passport ownership; the UK is not in the EU. Manchester applying from within the UK follows current residence. Unknown or conflicting source data stays manual.
+- **Addresses.** Greenwich Permanent and Manchester Home Address use explicit CRM permanent details. Mailing/correspondence uses present details. There is no fallback between them. Same-address questions need both complete addresses. A joined Campora address does not supply missing city/postcode/country.
+- **Identity and references.** Greenwich Full Legal Name combines given, middle and family names. Referee name/email/phone come from the CRM reference person, never the applicant. Other referee details remain manual.
+- **Agency and completion.** Manchester Agency Name is SAMS Global; agency city/email and IDs remain manual. Completed becomes Yes only when the recorded education end date is definitely past; no grade is required. A current/future/missing date does not imply No.
+- **UK visa refusal.** Bangor uses a UK-specific refusal record for Yes, or explicit no-refusal history for No. A refusal in another country, missing country or conflicting record stays manual. The number of refusals stays manual. See the [full contract](portal-maps/APPROVED-RULES.md).
+
 - **Country of birth.** On Greenwich, Greater Manchester, and Bangor, the extension can fill country of birth from nationality. This happens when the CRM has no separate birth country. The two are not always the same. Check the real country of birth and correct the form.
 - **Residence.** The extension can fill residence from the CRM address country. Check that it answers the portal's residence question. A separate CRM value takes precedence.
 - **Greenwich intake.** The intake month and year can come from the CRM start month and year. A copied intake takes precedence. Check the selected intake before you choose or confirm the course.
@@ -209,7 +215,7 @@ The extension calculates these fallback values for the mapped page. They do not 
 
 Open one application tab. Wait until its controls appear. Then run Autofill. When you switch tabs, the visible form changes. Repeat Autofill on each page that you want to prepare.
 
-Some qualification name, subject, and grade boxes appear only after you choose a category such as Other. Make those choices yourself, when they are accurate. Then run Autofill again. The typed personal statement appears after you choose not to upload a statement. The correspondence email appears only after you answer the correspondence-address question. Do not change an application answer just to show an Autofill target. Hidden or unanswered fields can stay manual.
+Some qualification name, subject, and grade boxes appear only after you choose a category such as Other. Make those choices yourself, when they are accurate. Then run Autofill again. The typed personal statement appears after you choose not to upload a statement. Those choices, English-test reveal branches and Bangor starting term remain manual. For two complete addresses, the extension can answer Manchester's correspondence question and make one follow-up scan to fill the revealed present address and email. If data is incomplete or controls load slowly, check the answer yourself and run Autofill again. Do not change an application answer just to show an Autofill target.
 
 ---
 

@@ -17,6 +17,8 @@ For Safari enablement and resource ownership, see [safari/README.md](../safari/R
 
 ## Production package (Chrome)
 
+After applying the [approved mapping rules](portal-maps/APPROVED-RULES.md), run the extension regressions before rebuilding. `npm run build:prod` refreshes the unpacked Chrome folder and production zip. `npm run build:safari:app -- prod` builds production Safari resources and an unsigned local app with an embedded-resource hash check. These commands do not publish, sign, install or approve a release. Reload an existing unpacked extension and portal page after rebuilding; reload clears the copied student, so Copy again. See [verification status](portal-maps/APPROVED-RULES-VERIFICATION.md).
+
 1. Check the origins in `config/allowlist.js`: SAMS CRM, Campora (`camporaOrigins`), and the Greenwich, Bangor, and Greater Manchester portals. Confirm that each one is the correct production host. The production build stops if the Campora list is empty or if fewer than three portal origins are set.
 2. Run the no-save live checks in [e2e/README.md](../e2e/README.md) for the portals that SAMS uses.
 3. Set the release version in `manifest.json`, `package.json`, and the Safari Xcode `MARKETING_VERSION`.

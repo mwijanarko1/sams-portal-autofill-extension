@@ -40,6 +40,10 @@ A label that names anything else keeps the control manual. An autocomplete purpo
 
 ### Portal files
 
+The [approved rules](portal-maps/APPROVED-RULES.md) define which assumptions can replace a block. `withDerivedKeys` computes only keys mapped by the active portal; cached CRM data stays unchanged. `COUNTRIES` and `EU_COUNTRIES` in `config/synonyms.js` resolve recognised names/demonyms conservatively. Greenwich reused address IDs and referee contacts are form-scoped, including negative scopes that also reject controls without a form. Manchester `revealingKeys` permits one bounded follow-up scan after a correspondence answer reveals controls. It never selects a save/navigation control.
+
+Permanent address values must not fall back to present address values. Compare complete ordered components, not unordered word sets. Refusal flags need UK-specific country evidence for Yes, and qualification completion needs a definitely past end date. Read the contract before changing these rules; unsupported application questions remain manual.
+
 Each file in `config/portals/` holds the exact origins of one portal. It also holds page matchers, selector overrides, extra synonyms, split-date maps, and blocked controls. Put a synonym in `config/synonyms.js` only when all portals share it. Portal-specific maps apply on the production origins only. Localhost fixture pages use the generic registry.
 
 ### Work on a new portal

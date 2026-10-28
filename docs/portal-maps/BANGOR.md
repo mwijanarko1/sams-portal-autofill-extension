@@ -1,5 +1,7 @@
 # Bangor University portal field map
 
+Mapping update: 2026-10-28. Passport nation now follows nationality, and UK visa refusal uses UK-specific evidence or an explicit no-refusal-history value. See [approved rules](APPROVED-RULES.md). Inventory and historical live checks below keep their original dates; the new rules have synthetic extension coverage.
+
 **Origin:** `https://apps.bangor.ac.uk`
 **Login used for inventory:** agent apply account at `/apply/account/login/?next=/apply/agent/`
 **Inventory date:** 2026-10-23 (full re-inventory; supersedes 2026-10-08)
@@ -64,7 +66,7 @@ both the visible and the revealed controls.
 | `#id_passport_expiry_date_day` | Passport expiry date | select | `passportExpiryDate` | Split date |
 | `#id_passport_expiry_date_month` | Passport expiry date | select | `passportExpiryDate` | Split date |
 | `#id_passport_expiry_date_year` | Passport expiry date | select | `passportExpiryDate` | Split date |
-| `#id_passport_issue_nation` | Passport nation of issue | select (215) | — | Manual: not the same value as issuing authority |
+| `#id_passport_issue_nation` | Passport nation of issue | select (215) | `passportIssueNation` | Derived from recognised nationality under the approved passport assumption |
 | `european_settlement` | EU Settlement Scheme / Indefinite Leave to Remain? | radio | — | Manual: application answer |
 | `#id_european_settlement_file` | EUSS or Leave to Remain evidence | file | — | Manual: document attach |
 | `dependent_visa` | In the UK on a Dependent's Visa? | radio | — | Manual: application answer |
@@ -80,7 +82,7 @@ both the visible and the revealed controls.
 | `#id_visa_end_month` | Valid to | select | `visaEndDate` | Split date |
 | `#id_visa_end_year` | Valid to | select | `visaEndDate` | Split date |
 | `#id_visa_file` | Copy of visa | file | — | Manual: document attach |
-| `refused_visa` | Ever been refused a UK visa? | radio | — | Manual: application answer |
+| `refused_visa` | Ever been refused a UK visa? | radio | `ukVisaRefusal` | UK refusal gives Yes; explicit no-refusal history gives No; unknown or conflicting evidence stays manual |
 | `#id_refused_visa_count` | How many times refused? | select (6) | — | Manual: no CRM key |
 | `#id_refused_visa_file` | Evidence of visa refusal | file | — | Manual: document attach |
 | `course_incomplete` | Registration suspended or discontinued? | radio | — | Manual: application answer |
@@ -236,7 +238,7 @@ accepts that, ISO dates and `YYYY-MM`. Live CRM values are what matter here.
 | Disability, residency, previous-Bangor, Language questions | Application answers with no CRM source |
 | Funding awarded / admission-offer questions | Application answers; blocked by radio `name` because the live ids are `id_awarded_0/1` and `id_admission_offer_required_0/1` |
 | Scholarship name/authority/country/amount/value | Scholarship-specific values |
-| Passport nation of issue | Not equivalent to issuing authority |
+| UK refusal with a non-UK/unknown country or conflicting evidence | No supported answer; refusal count also stays manual |
 | Study level, visa number, refusal count, course withdrawal fields | No CRM keys |
 | Restricted-admissions part-time, starting term, point of entry, academic contact | Application choices or Bangor-specific people; no CRM keys |
 | Research project Title input (`input#id_title`) | Free-text project title; the salutation override is scoped to `select#id_title` |

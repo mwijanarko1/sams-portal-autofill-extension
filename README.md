@@ -108,6 +108,8 @@ pandoc docs/NAME.md -o docs/docx/NAME.docx
 
 ## Tests
 
+The [approved portal rules](docs/portal-maps/APPROVED-RULES.md) describe the 2026-10-28 changes: nationality-based passport/citizenship answers, SAMS Global agency name, legal name, referee contacts, permanent versus correspondence addresses, qualification completion and UK-specific refusal evidence. The new browser regressions run through real popup Copy and Autofill. These assumptions need staff review; unknown answers stay manual. See [verification results](docs/portal-maps/APPROVED-RULES-VERIFICATION.md).
+
 - `npm test` runs the unit and DOM tests.
 - `npm run test:e2e` loads the extension in a visible Chromium browser and tests it on synthetic pages.
 - `npm run test:e2e:live` and `npm run test:e2e:documents:live` test real CRM and portal pages without saving. They need credentials and an approved browser profile. See [e2e/README.md](e2e/README.md).

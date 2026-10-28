@@ -1,5 +1,7 @@
 # University of Greenwich portal field map
 
+Mapping update: 2026-10-28. See [approved answer rules](APPROVED-RULES.md) for legal name, referee contacts and permanent/mailing address changes. Historical inventory and live-check dates below are unchanged. The new rules have synthetic extension coverage, not a new live run.
+
 **Origin:** `https://nelson.gre.ac.uk`
 **System:** Ellucian Banner Self-Service Admissions RELEASE 8.7.2
 **Login used for inventory:** Admissions Login at
@@ -47,7 +49,7 @@ control is in `blockedControls` and is never written, even when a synonym matche
 | `#mname` | Middle Name | text | `middleName` | Mapped |
 | `#lname` | Family Name | text | `familyName` | Mapped |
 | `#plname` | Previous Name (first + middle + family) | text | `previousName` | Mapped |
-| `#ud50` | Full Legal Name | text | — | Blocked: no CRM key (not a name-part field) |
+| `#ud50` | Full Legal Name | text | `fullLegalName` | Joins available given, middle and family names |
 | `#ud135` | Passport Number (Non EU applicants only) | text | `passportNumber` | Mapped |
 | `input[name='ud1']` | Previously applied to Greenwich? | radio (Y/N) | — | Blocked: application answer |
 | `#ud2` | Previous 9 digit ID / student number | text | — | Blocked: no CRM key |
@@ -72,19 +74,19 @@ control is in `blockedControls` and is never written, even when a synonym matche
 
 | Control | Label | Type | CRM key | Status |
 |---|---|---|---|---|
-| `#addr1` | Address Line 1 | text | `location` | Mapped |
+| `#addr1` | Address Line 1 | text | `permanentAddress` | Mapped on the permanent form only |
 | `#addr2` | Address Line 2 | text | — | Blocked: no CRM key |
 | `#addr3` | Address Line 3 | text | — | Blocked: no CRM key |
-| `#zip` | Postcode / Zipcode | text | `postcode` | Mapped |
-| `#city` | City / Town | text | `city` | Mapped |
-| `#natn` | Country | select (249) | `countryName` | Mapped |
+| `#zip` | Postcode / Zipcode | text | `permanentPostcode` | Mapped on the permanent form only |
+| `#city` | City / Town | text | `permanentCity` | Mapped on the permanent form only |
+| `#natn` | Country | select (249) | `permanentCountry` | Mapped on the permanent form only |
 | `#hometelno` | Home Telephone No. | text | `phone` | Mapped |
 | `#mobiletelno` | Mobile Telephone No. | text | `phone` | Mapped |
-| `#addrflag` | Mailing address same as permanent? | radio (Y/N) | — | Blocked: application answer |
+| `#addrflag` | Mailing address same as permanent? | radio (Y/N) | `mailingSameAsPermanent` | Derived only from two complete addresses; permanent form only |
 
 ### Referee Details
 
-All 14 controls are blocked: the referee is a different person from the CRM applicant.
+Three contacts now map to the CRM reference person on the referee form: `#ud17` uses `referenceName`, `#ud18` uses `referenceEmail`, and `#ud25` uses `referencePhone`. Applicant details never substitute for missing reference details. The other 11 controls remain blocked. All reference contacts stay blocked outside the expected form.
 
 | Control | Label |
 |---|---|
@@ -104,6 +106,8 @@ All 14 controls are blocked: the referee is a different person from the CRM appl
 | `#ud30` | Reference text (max 2000) |
 
 ### Mailing Address
+
+The present-address keys below apply only to `bwskaadr.P_ProcAppAddr2`. The current URL can still name the previous page. This form action follows the inventoried display route and needs supervised live confirmation; an unknown form stays manual. It never falls back to permanent address data.
 
 | Control | Label | Type | CRM key | Status |
 |---|---|---|---|---|
@@ -126,7 +130,7 @@ Twenty identical rows. Each row has five controls:
 |---|---|---|---|
 | Row 1 (`#ud91*`) | Level, Subject, Grade | `degree`, `major`, `grade` | Mapped |
 | Row 1 date (`#ud91month`, `#ud91year`) | Date Awarded / Expected | `endDate`; `graduationYear` fallback | Split date |
-| Rows 2-20 (`#ud92*`..`#ud110*`) | Level, Subject, Grade, Month, Year | — | Blocked: CRM holds one qualification |
+| Rows 2-20 (`#ud92*`..`#ud110*`) | Level, Subject, Grade, Month, Year | None | Blocked: the extension copies one qualification |
 
 ### Statistical Information
 
@@ -223,13 +227,13 @@ Employment / Supporting Info. The page and form patterns keep the two uses apart
 
 | Control | Reason |
 |---|---|
-| Full Legal Name, previous student number, agent ID | No CRM keys |
+| Previous student number, agent ID | No matching university/agency source |
 | Address Line 2/3 | No CRM keys |
 | Full/Part Time | Application answer |
-| Referee block | Different person |
+| Unsupported referee fields | No reference address, organisation, fax or reference-text source |
 | Disability, care status, parents' HE, UK entry dates | Sensitive or application-specific |
 | Confidential contact name/password | Nominated access |
-| Qualification rows 2-20 | CRM holds one qualification |
+| Qualification rows 2-20 | The extension copies one qualification, even when CRM contains more |
 | Institution address on Previous Education | Must not take the applicant address |
 | Teacher-training subject | No CRM key |
 | Signature checkboxes, Continue/Submit | Draft-only policy |

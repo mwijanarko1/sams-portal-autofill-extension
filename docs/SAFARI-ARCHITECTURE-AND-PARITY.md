@@ -6,6 +6,8 @@ Status: a macOS development build exists. It has a shared Safari build, a contai
 
 Test results and live portal results are in [CODEBASE_MAP.md](CODEBASE_MAP.md) and [../PORTALS.md](../PORTALS.md).
 
+The [2026-10-28 answer rules](portal-maps/APPROVED-RULES.md) use shared JavaScript and portal configs, including form-scoped referee/address selectors and Manchester's bounded conditional rescan. Chrome and Safari packages must embed the same mapping source. Chromium E2E and missing-API compatibility checks are supporting cross-platform evidence, not native Safari acceptance. See [current verification](portal-maps/APPROVED-RULES-VERIFICATION.md) before rollout.
+
 ## Contents
 
 - [1. Recommendation and SAMS decisions](#1-recommendation-and-sams-decisions)

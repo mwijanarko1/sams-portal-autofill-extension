@@ -269,6 +269,12 @@ Mapped Autofill calls `withDerivedKeys` before matching. It adds a missing key o
 | `currentDomicile` | `countryName` | Greenwich Area of Permanent Residence and Manchester Country of residence |
 | `preferredIntake` | `preferredStartMonth` plus `preferredStartYear`, when both exist | Greenwich Programme month and year |
 
+The [approved 2026-10-28 rules](portal-maps/APPROVED-RULES.md) also cover Manchester British/EU passport answers, application location, agency name, correspondence comparison and qualification completion; Greenwich full legal name and mailing-same; and Bangor passport nation and UK visa refusal. Country resolution rejects unknown/ambiguous names. Completion checks whole-date/month/year boundaries. UK refusal Yes needs a UK record; explicit no-refusal history can supply No unless contradicted. None of these values is written to the CRM cache.
+
+Greenwich reused address IDs and reference contacts are scoped to known form actions. Negative scopes reject unexpected forms and controls without a form. Present fields target correspondence/mailing; explicit permanent fields target home/permanent. Campora now exposes its existing Home Address and reference contacts to these consumers, without inventing missing address components. It can copy a refusal country from a recognised visible refusal table; a summary Yes alone is insufficient.
+
+Manchester `revealingKeys` configures a single 300 ms follow-up scan after a filled correspondence answer. Revealed controls can fill in the same action. If that scan fails or controls arrive later, the first-pass report stands and staff may need another Autofill pass. The other unapproved conditional workflows remain manual. See [verification evidence](portal-maps/APPROVED-RULES-VERIFICATION.md) and the loaded-extension E2E cases.
+
 Nationality does not prove the country of birth. The address country does not match every portal's legal definition of domicile. Staff must check these answers and correct the portal when the fallback is wrong.
 
 `valueMaps` maps a normalised CRM value to an ordered array of allowed portal option labels.
@@ -499,7 +505,7 @@ else globalThis.SAMS_PORTALS[index] = config;
 }
 ```
 
-The engine supports these properties: `id`, `name`, `origins`, `pageMatchers`, `selectorOverrides`, `phoneKeepsDialPrefix`, `extraSynonyms`, `valueMaps`, `splitDates`, and `blockedControls`. The engine ignores other keys. Use `valueMaps` for reviewed translations from a CRM value to a portal option. The object keys must match the output of the engine's `normalize` function. Each value must be an array of exact option labels. A source value that the map does not support stays manual. See [Derived values and portal option maps](#derived-values-and-portal-option-maps) and the Greenwich config.
+The engine supports these properties: `id`, `name`, `origins`, `pageMatchers`, `selectorOverrides`, `phoneKeepsDialPrefix`, `extraSynonyms`, `valueMaps`, `splitDates`, `blockedControls`, and `revealingKeys`. The engine ignores other keys. Use `valueMaps` for reviewed translations from a CRM value to a portal option. The object keys must match the output of the engine's `normalize` function. Each value must be an array of exact option labels. A source value that the map does not support stays manual. See [Derived values and portal option maps](#derived-values-and-portal-option-maps) and the Greenwich config.
 
 The example lists the split-date selectors in `blockedControls`. This keeps them out of the normal matcher. `fillSplitDates` fills those selects separately. Use selectors that match only the intended date on the intended page. Add a `form` condition when a portal keeps the URL of the previous step after a save. Check that the selected controls are visible, editable date selects. Do not use a selector that also matches an employer date or a referee date.
 

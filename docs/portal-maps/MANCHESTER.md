@@ -1,5 +1,7 @@
 # University of Greater Manchester portal field map
 
+Mapping update: 2026-10-28. See [approved rules](APPROVED-RULES.md). The inventory and historical live checks below retain their original dates. New answers have synthetic loaded-extension coverage, not a new live run.
+
 **Origin:** `https://evision.bolton.ac.uk`
 **Login used for inventory:** agent IPP login at
 `/urd/sits.urd/run/siw_ipp_lgn.login?process=siw_ipp_app&code1=0994-D&code2=0010`
@@ -70,23 +72,23 @@ control is in `blockedControls` and is never written, even when it matches a syn
 
 | Control | Label | Type | CRM key | Status |
 |---|---|---|---|---|
-| `#IPR_CODC` | Country | select (257) | `countryName` | Mapped |
-| `#IPR_HAPC` | Postcode | text | `postcode` | Mapped |
+| `#IPR_CODC` | Country | select (257) | `permanentCountry` | Mapped |
+| `#IPR_HAPC` | Postcode | text | `permanentPostcode` | Mapped |
 | `#PCOD_HA` | Postcode lookup | button | — | Blocked (button) |
-| `#IPR_HAD1` | Address Line 1 | text | `location` | Mapped |
+| `#IPR_HAD1` | Address Line 1 | text | `permanentAddress` | Mapped |
 | `#IPR_HAD2` | Address Line 2 | text | — | Blocked: no CRM key |
-| `#IPR_HAD3` | City | text | `city` | Mapped |
-| `#IPR_HAD4` | County | text | `state` | Mapped when CRM exposes a county |
+| `#IPR_HAD3` | City | text | `permanentCity` | Mapped |
+| `#IPR_HAD4` | County | text | None | Blocked: no permanent-county source |
 | `#IPR_HAT3` | Mobile | text | `phone` | Mapped |
 | `#IPR_HTEL` | Home Telephone | text | `phone` | Mapped (second ranked target) |
-| `#IPQ_OA_CORADD` | Add a correspondence address? | select (3) | — | Blocked: application answer |
-| `#IPR_COD2` | Correspondence Country | select (257) | — | Blocked: must not take home country |
-| `#IPR_CAPC` | Correspondence Postcode | text | — | Blocked |
+| `#IPQ_OA_CORADD` | Add a correspondence address? | select (3) | `addCorrespondenceAddress` | Derived only from two complete addresses |
+| `#IPR_COD2` | Correspondence Country | select (257) | `countryName` | Mapped: present country |
+| `#IPR_CAPC` | Correspondence Postcode | text | `postcode` | Mapped: present postcode |
 | `#PCOD_CA` | Correspondence postcode lookup | button | — | Blocked (button) |
-| `#IPR_CAD1` | Correspondence Address Line 1 | text | — | Blocked |
+| `#IPR_CAD1` | Correspondence Address Line 1 | text | `location` | Mapped: present address |
 | `#IPR_CAD2` | Correspondence Address Line 2 | text | — | Blocked |
-| `#IPR_CAD3` | Correspondence City | text | — | Blocked |
-| `#IPR_CAD4` | Correspondence County | text | — | Blocked |
+| `#IPR_CAD3` | Correspondence City | text | `city` | Mapped: present city |
+| `#IPR_CAD4` | Correspondence County | text | `state` | Mapped only if present county is copied |
 | `#IPR_CAT3` | Correspondence Mobile | text | — | Blocked |
 | `#IPR_CAT1` | Correspondence Home Telephone | text | — | Blocked |
 | `#IPR_CAEM` | Correspondence Email | email | `email` | Mapped when the correspondence block is shown |
@@ -112,7 +114,7 @@ Row 1:
 | `#IPQ_OA_QEQEN1` | Qualification Name | text | `degree` | Mapped; revealed by Select Qualification = Other |
 | `#IPQ_OA_QESUC1` | Select Subject | select (24) | — | Blocked: subject category list |
 | `#IPQ_OA_QESUN1` | Subject | text | `major` | Mapped; revealed by Select Subject = Other |
-| `#IPQ_OA_QCOM1` | Completed | select (3) | — | Blocked: application answer |
+| `#IPQ_OA_QCOM1` | Completed | select (3) | `qualificationCompleted` | Yes only for a definitely past education end date |
 | `#IPQ_OA_QGRD1` | Select Grade | select (2, Other only) | — | Blocked; revealed only when Completed = Yes |
 | `#IPQ_OA_QGRDN1` | Grade | text | `grade` | Mapped; revealed by Select Grade = Other |
 | `#IPQ_OA_QENDD1_DAY` | Expected Completion Date | select | `endDate` | Split date |
@@ -121,7 +123,7 @@ Row 1:
 | certificate upload | Please upload your certificates | file | — | Manual: document attach |
 | transcript upload | Please upload your transcript | file | — | Manual: document attach |
 
-Row 2 repeats the same controls and is blocked (CRM holds one qualification):
+Row 2 repeats the same controls and is blocked because the extension copies one qualification, even when the CRM has more:
 `#IPQ_OA_QUINS2`, `#IPQ_OA_QTYP2`, `#IPQ_OA_QEQEC2`, `#IPQ_OA_QEQEN2`, `#IPQ_OA_QESUC2`,
 `#IPQ_OA_QESUN2`, `#IPQ_OA_QCOM2`, `#IPQ_OA_QGRD2`, `#IPQ_OA_QGRDN2`,
 `#IPQ_OA_QENDD2_DAY`, `#IPQ_OA_QENDD2_MONTH`, `#IPQ_OA_QENDD2_YEAR`, plus row 2's upload and
@@ -168,7 +170,7 @@ scored or filled safely.
 | `#IPQ_OA_VOLDET` | Experience details | textarea | — | Blocked: conditional |
 | `#IPQ_OA_PRONO1` | Professional registration number | text | — | Blocked: no CRM key |
 
-Prior employment rows 1-3 are blocked (CRM holds one current employer):
+Prior employment rows 1-3 are blocked because the extension copies one employer, even when the CRM has more:
 `#IPQ_OA_PREMP1/2/3`, `#IPQ_OA_PRJOB1/2/3`, `#IPQ_OA_PRMOA1/2/3`,
 `#IPQ_OA_PRAPPD1/2/3_DAY/MONTH/YEAR`, `#IPQ_OA_PRENDD1/2/3_DAY/MONTH/YEAR`,
 `#add-e-2/3/4`.
@@ -185,15 +187,15 @@ Prior employment rows 1-3 are blocked (CRM holds one current employer):
 
 | Control | Label | Type | CRM key | Status |
 |---|---|---|---|---|
-| `#IPQ_OA_UKPPT` | Do you hold a British passport? | select (4) | — | Blocked: application answer |
+| `#IPQ_OA_UKPPT` | Do you hold a British passport? | select (4) | `holdsBritishPassport` | Approved nationality assumption; unknown stays manual |
 | `#IPQ_OA_RESIDENCE` | Lived outside the UK in the last 3 years? | select (3) | — | Blocked: conditional |
-| `#IPQ_OA_EUPPT` | Citizen of an EU country? | select (3) | — | Blocked: application answer |
+| `#IPQ_OA_EUPPT` | Citizen of an EU country? | select (3) | `holdsEuPassport` | Derived from recognised nationality; UK is not EU |
 | `#IPQ_OA_AGNAGL` | Agent group | select (5) | — | Blocked: agency attribution |
 | `#IPQ_OA_AGNAGL2` | Agent | select (26) | — | Blocked: agency attribution |
-| `#IPQ_OA_AGNNAM` | Agency Name | text | — | Blocked: agency attribution |
+| `#IPQ_OA_AGNNAM` | Agency Name | text | `agencyName` | Fixed SAMS Global; existing value stays |
 | `#IPQ_OA_AGNCIT` | Agency City | text | — | Blocked: agency attribution |
 | `#IPQ_OA_AGNEML` | Agency Email | email | — | Blocked: agency attribution |
-| `#IPQ_OA_INUK` | Applying from within the UK? | select (3) | — | Blocked: conditional |
+| `#IPQ_OA_INUK` | Applying from within the UK? | select (3) | `applyingFromWithinUk` | Derived from current residence, not nationality |
 | `#IPQ_OA_CURRVISA` | Immigration documents | select (5) | — | Blocked: no CRM key for this wording |
 | `#IPQ_OA_OTHVISA` | Please specify | text | — | Blocked: conditional |
 | `#IPQ_OA_UKPREV` | Previously studied in the UK? | select (3) | — | Blocked: no CRM key |
@@ -226,8 +228,7 @@ during the first scan, so they fill on a second Autofill pass:
    and `#IPQ_OA_QGRDN1` then fill from `degree`, `major` and `grade`.
 2. Personal Statement: set `#IPQ_OA_PS_NEEDED` to **No**, then run Autofill again to fill
    `#IPQ_OA_PS`.
-3. Correspondence address: set `#IPQ_OA_CORADD` to **Yes** to reveal the correspondence block,
-   including `#IPR_CAEM`.
+3. Correspondence address: two complete addresses now determine `#IPQ_OA_CORADD`. A one-time rescan fills revealed present-address controls, including `#IPR_CAEM`. Incomplete addresses or slowly loaded controls can still require a manual answer and another Autofill pass.
 
 Verified live on 2026-10-23: after choosing those options, a second Autofill filled
 `degree` → `#IPQ_OA_QEQEN1`, `major` → `#IPQ_OA_QESUN1`, `grade` → `#IPQ_OA_QGRDN1`.
@@ -247,14 +248,14 @@ Verified live on 2026-10-23: after choosing those options, a second Autofill fil
 | Control | Reason |
 |---|---|
 | Third forename, Known as, Address Line 2 | No CRM keys |
-| County (`#IPR_HAD4`) | Mapped to `state`; fills only when the CRM exposes a county |
+| Home County (`#IPR_HAD4`) | No permanent-county source; present `state` belongs to correspondence |
 | Care, disability, criminal conviction | Sensitive declarations with no CRM source |
 | Qualification/Subject/Grade category dropdowns | Category lists, not the CRM values; choosing Other reveals the mapped free-text fields |
-| Completed / Full-time / Part-time / APL / voluntary work | Application answers with no CRM key |
+| Full-time / Part-time / APL / voluntary work | Application answers with no CRM key |
 | English score branches | Conditional; score select options are empty until a test is chosen |
-| Passport, visa, UK-residence and agent fields | Application answers; no passport number field on this course |
-| Correspondence address block | Must not take home address/phone |
-| Qualification row 2, prior employment rows | CRM holds one qualification and one employer |
+| Remaining passport, visa, residence-history and agent fields | No approved source or rule; approved exceptions are listed above |
+| Unsupported correspondence line 2 and telephone fields | No separate correspondence source; never substitute home data |
+| Qualification row 2, prior employment rows | The extension copies one qualification and employer, even when CRM has more |
 | File uploads | Manual / CRM document attach |
 | Save, Save and continue, Submit, declaration | Draft-only / submission policy |
 

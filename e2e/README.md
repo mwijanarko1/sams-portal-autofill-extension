@@ -19,6 +19,14 @@ Synthetic HTTPS pages stand in for the CRM and the portals:
 
 Browser routing supplies the fixture HTML and blocks all other HTTP requests. The tests use no live credentials and no applicant data.
 
+### Approved-rule regressions
+
+The `Approved rules:` cases in `extension.e2e.mjs` cover the [2026-10-28 contract](../docs/portal-maps/APPROVED-RULES.md). They use `*-approved-mapping.html` fixtures and the existing Campora asynchronous Profile fixture. Both approved CRM origins are present in the test manifest. Campora's standalone reader harness is removed for this runner, so only the installed extension performs Copy.
+
+Coverage includes nationality/UK/EU distinctions, unknown and ambiguous inputs, fixed agency name, separate home and correspondence addresses, conditional correspondence reveal, legal name, reference isolation, missing/incomplete addresses, reordered street numbers, past versus current/future education dates, UK-specific refusal records from both CRM layouts, existing values, cache immutability, repeat fills and no Save/Submit clicks. A synthetic Campora refusal table verifies the recognised table shape, not the existence of a live refusal record.
+
+Screenshots from representative passing states are written under `tmp/approved-rules-evidence/`. They show appearance; the assertions prove interaction behaviour. Native Safari and authenticated live portal checks remain separate. See the [verification record](../docs/portal-maps/APPROVED-RULES-VERIFICATION.md).
+
 ### What the tests cover
 
 - CRM Copy and portal Autofill on Bangor and Greenwich. Targeted checks of the Manchester Personal Details mapping. These are not a complete Manchester tab journey.

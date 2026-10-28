@@ -4,6 +4,8 @@ SAMS Portal Autofill is a Chrome Manifest V3 extension. A Safari Web Extension b
 
 ## System overview
 
+The [approved answer contract](portal-maps/APPROVED-RULES.md) documents the 2026-10-28 mappings and exclusions. `config/synonyms.js` owns the recognised-country and EU tables; `src/engine/engine.js` owns country resolution, ordered address comparison, definitely-past completion and derived answers. Portal configs own exact targets and form scopes. `src/crm-reader.js` now exposes Campora home address, referee contacts and refusal evidence to those targets. Synthetic extension tests and their evidence are described in [APPROVED-RULES-VERIFICATION.md](portal-maps/APPROVED-RULES-VERIFICATION.md).
+
 ```text
 popup.html / popup.js
   |  checks the origin, injects scripts, shows the cache and results

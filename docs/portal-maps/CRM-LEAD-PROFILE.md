@@ -1,5 +1,7 @@
 # SAMS CRM lead management and the Profile tab
 
+Portal-consumer update: 2026-10-28. Explicit permanent address fields now feed home/permanent controls; present address fields feed correspondence/mailing. Reference name, email and phone feed Greenwich's referee form. Nationality, residence, education end date and refusal records support the [approved derived answers](APPROVED-RULES.md). Source extraction still keeps one saved record per section.
+
 Inventory date: **2026-10-23**. Source of truth for the mapping is [`config/crm-source.js`](../../config/crm-source.js) and [`src/crm-reader.js`](../../src/crm-reader.js). This note records what the live CRM actually shows, so a future maintainer can re-check coverage without guessing labels.
 
 The extension reads **visible CRM values only**. Copy never writes, saves, submits or changes a lead. The only clicks are the profile tab strip and the read-only stage toggles, which load a panel without sending a write.

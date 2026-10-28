@@ -33,6 +33,8 @@ The deployment targets are the packager defaults (the app inherits macOS 27.0, t
 
 ## Resource ownership
 
+The [approved portal rules](../docs/portal-maps/APPROVED-RULES.md) are shared with Chrome. Rebuild after mapping updates; do not copy an old app over fresh resources. For a production-host-only unsigned local package, use `npm run build:safari:app -- prod`. Packaging parity and Chromium compatibility do not prove native Safari behaviour; see the [verification record](../docs/portal-maps/APPROVED-RULES-VERIFICATION.md).
+
 ```text
 shared source --scripts/build.mjs--> dist/safari-webextension --Xcode references--> .appex Resources
 ```
