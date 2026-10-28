@@ -136,7 +136,7 @@ if (!globalThis.__SAMS_PORTAL_FILL_LOADED__) {
     if (!input || !input.isConnected || input.disabled) return { error: "This upload field changed. Scan the page again." };
     const anchor = visibleAnchor(input);
     if (!anchor) {
-      return { manual: "Cannot show this field: the portal hides its file input behind its own upload widget. Find the upload control in the portal and attach the document there manually." };
+      return { manual: "Cannot show this field: the portal hides it. Attach the document in the portal." };
     }
     clearHighlight();
     highlight = { anchor, saved: OUTLINE.map((property) => [property, anchor.style.getPropertyValue(property), anchor.style.getPropertyPriority(property)]) };

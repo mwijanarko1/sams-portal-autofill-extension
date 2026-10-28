@@ -47,11 +47,12 @@
     .action-row { display: flex; gap: 8px; }
     .action-row > button { flex: 1 1 0; min-width: 0; margin: 0; padding-inline: 8px; }
     #siteAccessHint { overflow-wrap: anywhere; }
-    #documentsCard .meta { margin: 0 0 6px; }
     .upload-row { padding: 8px 0; border-top: 1px solid #eef2ff; }
+    #uploadGeneral { padding-bottom: 8px; border-bottom: 1px solid #eef2ff; }
+    .upload-row:first-child { border-top: 0; }
+    .upload-row:last-child { padding-bottom: 0; }
     .upload-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
     .upload-label { flex: 1; min-width: 0; color: #312e81; font-weight: 700; overflow-wrap: anywhere; }
-    .upload-context { margin-top: 2px; color: #64748b; font-size: 11px; overflow-wrap: anywhere; }
     .upload-controls { display: flex; gap: 6px; margin-top: 6px; }
     .upload-choice-wrap { position: relative; flex: 1; min-width: 0; }
     button.upload-choice { display: flex; align-items: center; justify-content: space-between; gap: 6px; width: 100%; margin: 0; padding: 6px 8px; border: 1px solid #d4d4d8; border-radius: 7px; background: white; color: #312e81; font: inherit; font-weight: 400; text-align: left; cursor: pointer; }
@@ -145,7 +146,7 @@
       </div>
     </section>
     <section id="documentsCard" class="card" hidden>
-      <p class="meta">Choose a CRM document for each upload field, or use Show on page to find it. Some portals upload the file as soon as it is attached.</p>
+      <div id="uploadGeneral"></div>
       <div id="uploadFields"></div>
     </section>
     <section id="statusArea" aria-live="polite"></section>

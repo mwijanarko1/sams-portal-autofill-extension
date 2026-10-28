@@ -17,6 +17,7 @@ const copiedDocumentsSummary = document.getElementById("copiedDocumentsSummary")
 const copiedDocumentsList = document.getElementById("copiedDocumentsList");
 const btnDocuments = document.getElementById("btnDocuments");
 const documentsCard = document.getElementById("documentsCard");
+const uploadGeneral = document.getElementById("uploadGeneral");
 const uploadFields = document.getElementById("uploadFields");
 let cache = null;
 let expiryTimer = null;
@@ -26,6 +27,9 @@ let siteAccessRevision = 0;
 // key keeps pointing at the exact input that was scanned.
 let uploadFrames = [];
 let uploadPickers = [];
+let uploadRows = [];
+// The document staff chose once for every field. A row's own choice overrides it.
+let generalPicker = null;
 let scannedCopiedAt = 0;
 const MIME_TYPES = {
   pdf: "application/pdf",
@@ -584,6 +588,9 @@ function closeUploads() {
   uploadPickers.forEach((picker) => picker.destroy && picker.destroy());
   uploadFrames = [];
   uploadPickers = [];
+  uploadRows = [];
+  generalPicker = null;
+  uploadGeneral.replaceChildren();
   uploadFields.replaceChildren();
   documentsCard.hidden = true;
 }
@@ -641,11 +648,11 @@ function setUploadStatus(status, type, text) {
 // the page through the frame's one-at-a-time port, and a row's buttons stay off while either waits.
 async function showUpload(frame, upload, row) {
   row.setBusy(true);
-  setUploadStatus(row.status, "", "Finding this field on the page...");
+  setUploadStatus(row.status, "", "");
   try {
     const response = await frame.request({ action: "showUpload", key: upload.key });
     const reason = response && response.error;
-    if (response && response.shown) setUploadStatus(row.status, "", "Highlighted on the page for a few seconds.");
+    if (response && response.shown) setUploadStatus(row.status, "", "Highlighted on the page.");
     else if (response && response.manual) setUploadStatus(row.status, "", response.manual);
     else setUploadStatus(row.status, "failed", reason && reason !== FRAME_NO_RESPONSE ? reason : `${FRAME_NO_RESPONSE} The page may have changed: scan again.`);
   } finally {
@@ -663,7 +670,7 @@ async function attachToUpload(frame, upload, row) {
     await refreshCache();
     if (!cache) throw new Error("No copied student is available. Copy from CRM again before attaching documents.");
     if (cache.copiedAt !== scannedCopiedAt) throw new Error("A different student was copied. Scan the page again.");
-    const crmDocument = cache.documents.find((item) => item.key === picker.value);
+    const crmDocument = cache.documents.find((item) => item.key === row.chosenKey());
     if (!crmDocument) throw new Error("This document is no longer available. Copy from CRM again.");
     const file = await fetchDocument(crmDocument);
     const response = await frame.request({ action: "attachDocument", key: upload.key, file });
@@ -672,7 +679,7 @@ async function attachToUpload(frame, upload, row) {
     const touched = await runtimeMessage({ action: "touchStudentCache" });
     cache = touched.cache || null;
     renderCache();
-    setUploadStatus(status, "done", `Attached ${response.name}. The browser assigned the file to this field, but the portal may not have accepted or uploaded it. Review the portal before continuing.`);
+    setUploadStatus(status, "done", `Attached ${response.name}. Check the portal accepted it.`);
   } catch (error) {
     const message = error.message || String(error);
     if (!cache) {
@@ -787,6 +794,7 @@ function createPicker({ label, options, placeholder }) {
       if (disabled) close();
     },
     onChange(handler) { notify = handler; },
+    setPlaceholder(text) { if (!selected) valueText.textContent = text; },
     destroy() { document.removeEventListener("click", onDocumentClick); },
   };
 }
@@ -802,6 +810,7 @@ function renderUploadRow({ frame, upload }) {
   label.className = "upload-label";
   label.id = `upload-label-${++uploadRowCount}`;
   label.textContent = upload.label;
+  if (upload.context) label.title = upload.context;
   const show = document.createElement("button");
   show.type = "button";
   show.className = "show";
@@ -835,31 +844,32 @@ function renderUploadRow({ frame, upload }) {
       state.busy = busy;
       state.sync();
     },
+    // The row's own choice wins. Otherwise the general choice applies when this field accepts it.
+    chosenKey() {
+      if (picker.value) return picker.value;
+      const general = generalPicker && cache && cache.documents.find((item) => item.key === generalPicker.value);
+      return general && acceptsDocument(upload.accept, general) ? general.key : "";
+    },
     sync() {
       show.disabled = state.busy;
-      button.disabled = state.busy || state.attached || !picker.value;
+      button.disabled = state.busy || state.attached || upload.hasFile || !state.chosenKey();
+      picker.setPlaceholder(!picker.value && state.chosenKey() ? "Using the choice above" : "Choose a CRM document");
     },
   };
+  uploadRows.push(state);
   state.sync();
   if (upload.hasFile) {
     picker.setDisabled(true);
-    status.textContent = "This field already has a file. Remove it in the portal first, then scan again.";
+    status.textContent = "Already has a file. Remove it in the portal, then scan again.";
   } else if (!compatible.length) {
     picker.setDisabled(true);
-    status.textContent = "No CRM document matches this field's accepted file types.";
+    status.textContent = "No CRM document matches this field's file types.";
   }
   picker.onChange(state.sync);
   show.addEventListener("click", () => showUpload(frame, upload, state));
   button.addEventListener("click", () => attachToUpload(frame, upload, state));
   controls.append(picker.root, button);
-  row.append(head);
-  if (upload.context) {
-    const context = document.createElement("div");
-    context.className = "upload-context";
-    context.textContent = upload.context;
-    row.append(context);
-  }
-  row.append(controls, status);
+  row.append(head, controls, status);
   return row;
 }
 
@@ -897,10 +907,18 @@ async function scanUploads() {
       return;
     }
     scannedCopiedAt = cache.copiedAt;
+    generalPicker = createPicker({
+      label: "any upload field",
+      placeholder: "Choose a document for any field",
+      options: cache.documents.map((item) => ({ value: item.key, text: `${item.groupLabel} · ${documentFileName(item)}` })),
+    });
+    uploadPickers.push(generalPicker);
+    generalPicker.onChange(() => uploadRows.forEach((row) => row.sync()));
+    uploadGeneral.replaceChildren(generalPicker.root);
     uploadFields.replaceChildren(...entries.map(renderUploadRow));
     documentsCard.hidden = false;
     setStatus(failures.length ? "warning" : "info",
-      `${entries.length} upload fields found. Choose a document for each field you want to attach, then review the portal.`);
+      `${entries.length} upload ${entries.length === 1 ? "field" : "fields"} found.`);
     addList("Frames not scanned", failures);
   } catch (error) {
     closeUploads();

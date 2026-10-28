@@ -101,7 +101,7 @@ async function openPopup(worker, page) {
   const ids = ["btnCopy", "btnAutofill", "btnClear", "studentCard", "studentName", "studentMeta", "statusArea",
     "copiedDetails", "copiedDetailsSummary", "copiedFields", "copiedSearch", "copiedEmpty",
     "copiedDocuments", "copiedDocumentsSummary", "copiedDocumentsList",
-    "btnDocuments", "documentsCard", "uploadFields", "btnSiteAccess", "siteAccessHint"];
+    "btnDocuments", "documentsCard", "uploadGeneral", "uploadFields", "btnSiteAccess", "siteAccessHint"];
   const elements = Object.fromEntries(ids.map((id) => [id, element()]));
   const calls = { injected: [], sent: [], connected: [], injectTargets: [] };
   const workerActions = [];
