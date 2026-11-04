@@ -81,9 +81,10 @@
     .document-text { flex: 1; min-width: 0; }
     .document-name { color: #312e81; font-size: 12px; overflow-wrap: anywhere; }
     .document-group { color: #64748b; }
-    #copiedFields { max-height: 260px; overflow-y: auto; }
+    #copiedFields { max-height: 260px; overflow-y: auto; padding-right: 12px; }
     #copiedSearch { width: 100%; margin-top: 8px; padding: 6px 8px; border: 1px solid #e0e7ff; border-radius: 7px; font: inherit; }
-    .field-row[hidden] { display: none; }
+    .field-group[hidden], .field-row[hidden] { display: none; }
+    .field-group-title { margin: 8px 0 0; padding: 4px 0 0; color: #4f46e5; font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
     .field-row { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-top: 1px solid #eef2ff; }
     .field-row:first-of-type { margin-top: 6px; }
     .field-text { flex: 1; min-width: 0; }

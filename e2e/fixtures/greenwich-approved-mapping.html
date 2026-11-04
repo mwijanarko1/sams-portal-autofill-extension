@@ -9,6 +9,8 @@
     const heading = document.getElementById("heading");
     const content = document.getElementById("content");
     const form = document.createElement("form");
+    form.name = "myform";
+    form.method = "post";
     if (kind === "name") {
       heading.textContent = "Name";
       form.action = "bwskanam.P_ProcAppName";
@@ -19,9 +21,17 @@
       form.innerHTML = '<label>Name of Referee <input id="ud17"></label><label>E-mail Address <input id="ud18" type="email"></label><label>Telephone Number <input id="ud25"></label><label>Organisation Name <input id="ud27"></label>';
     } else {
       heading.textContent = kind === "permanent" ? "Permanent Address" : "Mailing Address";
-      form.action = `bwskaadr.P_ProcAppAddr${kind === "permanent" ? "1" : "2"}`;
-      form.innerHTML = '<label>Address Line 1 <input id="addr1"></label><label>City <input id="city"></label><label>Postcode <input id="zip"></label><label>Country <select id="natn"><option value="">Please select</option><option value="GB">United Kingdom</option><option value="BD">Bangladesh</option><option value="CA">Canada</option></select></label><fieldset><legend>Mailing address same as permanent?</legend><label><input id="addrflag" name="addrflag" type="radio" value="Y">Yes</label><label><input name="addrflag" type="radio" value="N">No</label></fieldset>';
+      form.action = "bwskaadr.P_ProcAppAddr1";
+      form.innerHTML = '<label>Address Line 1 <input id="addr1"></label><label>Address Line 2 <input id="addr2"></label><label>Address Line 3 <input id="addr3"></label><label>City <input id="city"></label><label>Postcode <input id="zip"></label><label>Country <select id="natn"><option value="">Please select</option><option value="GB">United Kingdom</option><option value="BD">Bangladesh</option><option value="CA">Canada</option></select></label><fieldset><legend>Mailing address same as permanent?</legend><label><input id="addrflag" name="addrflag" type="radio" value="Y">Yes</label><label><input name="addrflag" type="radio" value="N">No</label></fieldset>';
+      form.insertAdjacentHTML("afterbegin", `<input type="hidden" name="wsct" value="${kind === "permanent" ? "ADDR1" : "ADDR2"}">`);
+      if (kind === "permanent") form.insertAdjacentHTML("beforeend", '<label>Mobile Telephone No. <input id="mobiletelno"></label>');
       if (kind === "mailing") form.querySelector("fieldset").remove();
+      if (kind === "institution") {
+        heading.textContent = "Previous institution address";
+        form.action = "bwskapcl.P_ProcAppPrvCollege";
+        form.querySelector("fieldset").remove();
+        form.querySelector("input[name='wsct']").remove();
+      }
     }
     form.insertAdjacentHTML("beforeend", '<button type="submit">Continue</button>');
     if (kind.startsWith("unscoped")) content.append(...form.childNodes);

@@ -31,6 +31,8 @@ const config = {
     nationality: ["#id_nationality"],
     ethnicity: ["#id_ethnicity"],
     location: ["#id_address1"],
+    addressLine2: ["#id_address2"],
+    addressLine3: ["#id_address3"],
     city: ["#id_city"],
     countryName: ["#id_nation"],
     postcode: ["#id_postcode"],
@@ -188,11 +190,7 @@ const config = {
     // Language: "English or Welsh" is not the same question as the CRM key
     "input[name='first_language_english_or_welsh']",
     "input[name='welsh_comms']",
-    // Contact lines 2/3 and state have no CRM key
-    "#id_address2",
-    "input[name='address2']",
-    "#id_address3",
-    "input[name='address3']",
+    // State has no CRM key
     "#id_state",
     "select[name='state']",
     // Finance: scholarship detail only appears for sponsored/scholarship funding

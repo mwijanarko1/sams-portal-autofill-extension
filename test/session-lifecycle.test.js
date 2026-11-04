@@ -246,7 +246,7 @@ test("worker rejects malformed or unapproved profiles and keeps the valid cache"
     { ...studentB, fields: { givenName: "Bilal", familyName: 7 } },
     { ...studentB, fields: { givenName: "Bilal", "family-name": "Khan" } },
     { ...studentB, fields: { givenName: "Bilal", familyName: "x".repeat(4001) } },
-    { ...studentB, fields: Object.fromEntries(Array.from({ length: 201 }, (_, i) => [`field${i}`, "x"])) },
+    { ...studentB, fields: Object.fromEntries(Array.from({ length: 401 }, (_, i) => [`field${i}`, "x"])) },
   ];
   for (const profile of malformed) {
     assert.deepEqual(await worker.send({ action: "cacheStudent", profile }),

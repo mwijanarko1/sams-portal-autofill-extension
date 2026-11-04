@@ -614,7 +614,17 @@ const GENERIC_FIELDS = {
   dateOfBirth: { aliases: ["date of birth", "dob", "birth date", "birthdate", "dateofbirth"], controls: ["text", "date"] },
   gender: { aliases: ["gender", "sex", "legal sex"], controls: ["select", "text"] },
   nationality: { aliases: ["nationality", "citizenship", "country of citizenship", "country of nationality"], controls: ["select", "text"] },
-  email: { aliases: ["email", "email address", "e mail", "e mail address", "emailaddress"], controls: ["text"] },
+  email: {
+    aliases: ["email", "email address", "e mail", "e mail address", "emailaddress",
+      "applicant email", "applicant email address", "applicant e mail", "applicant e mail address",
+      "applicant s email", "applicant s email address", "applicants email", "applicants email address",
+      "student email", "student email address", "student e mail", "student e mail address",
+      "personal email", "personal email address", "personal e mail", "personal e mail address",
+      "primary email", "primary email address", "primary e mail", "primary e mail address",
+      "preferred email", "preferred email address", "contact email", "contact email address",
+      "your e mail", "your e mail address"],
+    controls: ["text"],
+  },
   phone: {
     aliases: ["phone", "phone number", "phonenumber", "telephone", "telephone number", "mobile", "mobile number",
       "mobile phone", "mobile phone number", "mobile telephone", "mobile telephone number", "contact number"],

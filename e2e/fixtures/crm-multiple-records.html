@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Synthetic SAMS CRM multiple records</title>
+  <style>[hidden] { display: none; } td, th { padding: 4px; }</style>
+</head>
+<body>
+  <main data-sams-profile>
+    <h1>Student Profile</h1>
+    <form>
+      <h2 class="main_title">Personal Information</h2>
+      <label>Given Name <input value="Aisha"></label>
+      <label>Family Name <input value="Rahman"></label>
+      <label>Primary Email <input value="aisha.rahman@example.com"></label>
+    </form>
+    <nav>
+      <button class="nav-link active" data-pane="applications">Applications</button>
+      <button class="nav-link" data-pane="profile">Profile</button>
+    </nav>
+    <div id="applications" class="tab_content_components">
+      <ul id="stages">
+        <li class="btn_collapse_education">Education History</li>
+        <li class="btn_collapse_work">Work Experience</li>
+        <li class="btn_collapse_test">Test Score</li>
+      </ul>
+      <section class="collapse_common"></section>
+    </div>
+    <div id="profile" class="tab_content_components" hidden>
+      <div class="row"><h2 class="main_title">Personal Information</h2></div>
+      <div class="row">
+        <h2 class="main_title">Education History</h2>
+        <table id="education-records">
+          <thead><tr><th>Institution</th><th>Subject</th><th>Result</th><th>Duration</th></tr></thead>
+          <tbody>
+            <tr><td><strong>First Synthetic College</strong><br><span class="label_badge_light">Bachelor</span></td><td>Computer Science</td><td>First</td><td>September 2020 - June 2024</td></tr>
+            <tr><td><strong>Second Synthetic College</strong><br><span class="label_badge_light">Diploma</span></td><td>Applied Mathematics</td><td>Merit</td><td>September 2018 - June 2020</td></tr>
+            <tr><td><strong>Third Synthetic College</strong><br><span class="label_badge_light">Certificate</span></td><td>Physics</td><td>Distinction</td><td>January 2017 - July 2018</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="row">
+        <h2 class="main_title">Work Experience</h2>
+        <table id="work-records">
+          <thead><tr><th>Company Name</th><th>Designation</th><th>Duration</th></tr></thead>
+          <tbody>
+            <tr><td>First Synthetic Employer</td><td>Analyst</td><td>01 Jul 2024 - 30 Jun 2025</td></tr>
+            <tr><td>Second Synthetic Employer</td><td>Researcher</td><td>02 Jul 2022 - 29 Jun 2023</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="row">
+        <h2 class="main_title">Test Score</h2>
+        <table id="test-records">
+          <tbody>
+            <tr><td><span class="test_score_level">IELTS</span><br><span class="test_date">Test Date: 01 Mar 2025</span></td><td><strong>7.5</strong><br>Overall</td><td><strong>8</strong><br>Listening</td><td></td><td><strong>7</strong><br>Writing</td><td><strong>6.5</strong><br>Speaking</td></tr>
+            <tr><td><span class="test_score_level">PTE</span><br><span class="test_date">Test Date: 02 Apr 2025</span></td><td><strong>72</strong><br>Overall</td><td><strong>73</strong><br>Listening</td><td><strong>74</strong><br>Reading</td><td><strong>75</strong><br>Writing</td><td><strong>76</strong><br>Speaking</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+  <script>
+    // Applications lists mirror the summary. Copy must not collapse them into one record.
+    const panels = new Map();
+    const panel = (name, title) => {
+      const section = document.createElement("section");
+      section.innerHTML = `<h2 class="main_title">${title}</h2><h3 class="title_in_border">${title}</h3>`;
+      panels.set(name, section);
+      return section;
+    };
+    const education = panel("education", "Education History");
+    document.querySelectorAll("#education-records tbody tr").forEach((row) => {
+      const entry = document.createElement("div");
+      entry.className = "single_part";
+      entry.innerHTML = `<div class="progress-lbl">${row.querySelector("strong").textContent}</div><span>${row.cells[3].textContent}</span><span>${row.cells[1].textContent} (${row.cells[2].textContent})</span><span class="label_badge_light">${row.querySelector(".label_badge_light").textContent}</span>`;
+      education.append(entry);
+    });
+    const work = panel("work", "Work Experience");
+    document.querySelectorAll("#work-records tbody tr").forEach((row) => {
+      const entry = document.createElement("div");
+      entry.className = "single_part";
+      entry.innerHTML = `<div class="progress-lbl">${row.cells[0].textContent}</div><span>${row.cells[2].textContent}</span><span>${row.cells[1].textContent}</span>`;
+      work.append(entry);
+    });
+    const tests = panel("test", "Test Score");
+    document.querySelectorAll("#test-records tbody tr").forEach((row) => {
+      const entry = document.createElement("div");
+      entry.className = "single_part";
+      entry.innerHTML = `<div class="progress-lbl">${row.querySelector(".test_score_level").textContent}</div><span>${row.querySelector(".test_date").textContent.replace(":", "")}</span>`;
+      [...row.cells].slice(1).forEach((cell) => {
+        const value = cell.querySelector("strong")?.textContent;
+        if (!value) return;
+        const label = cell.textContent.slice(value.length).trim();
+        const score = document.createElement("div");
+        score.className = "col";
+        score.innerHTML = `${label}<br>${value}`;
+        entry.append(score);
+      });
+      tests.append(entry);
+    });
+    document.querySelectorAll("#stages li").forEach((toggle) => {
+      toggle.addEventListener("click", () => {
+        const key = toggle.className.replace("btn_collapse_", "");
+        document.querySelector(".collapse_common").replaceChildren(...panels.get(key).cloneNode(true).childNodes);
+      });
+    });
+    document.querySelectorAll("nav .nav-link").forEach((tab) => {
+      tab.addEventListener("click", () => {
+        document.querySelectorAll("nav .nav-link").forEach((item) => item.classList.toggle("active", item === tab));
+        document.querySelectorAll(".tab_content_components").forEach((pane) => { pane.hidden = pane.id !== tab.dataset.pane; });
+      });
+    });
+  </script>
+</body>
+</html>

@@ -161,8 +161,6 @@ test("bangor blocks DOB splits, chat widget, files, and finance name", () => {
     { id: "id_scholarship_name", name: "scholarship_name", type: "select-one" },
     { id: "id_medi_code", name: "medi_code", type: "select-one" },
     { id: "id_european_settlement_0", name: "european_settlement", type: "radio" },
-    { id: "id_address2", name: "address2", type: "text" },
-    { id: "id_address3", name: "address3", type: "text" },
     { id: "id_state", name: "state", type: "select-one" },
     { id: "id_awarded_0", name: "awarded", type: "radio" },
     { id: "id_admission_offer_required_0", name: "admission_offer_required", type: "radio" },
@@ -183,6 +181,11 @@ test("bangor blocks DOB splits, chat widget, files, and finance name", () => {
     true,
     "id_forename should remain fillable"
   );
+  const cfg = ctx.SAMS_PORTALS.find((portal) => portal.id === "bangor");
+  for (const [key, id] of [["addressLine2", "id_address2"], ["addressLine3", "id_address3"]]) {
+    sameJson(cfg.selectorOverrides[key], [`#${id}`]);
+    assert.equal(ctx.SAMS_ENGINE.isFillable(fakeEl({ id })), true, `${id} is mapped, not blocked`);
+  }
 });
 
 test("bangor allowlist includes the confirmed origin", () => {

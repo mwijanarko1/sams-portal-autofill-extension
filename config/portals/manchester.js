@@ -31,10 +31,12 @@ const config = {
     // Home address takes the CRM permanent address. The correspondence address takes the CRM
     // present address, and the CRM state is a present-address county. Neither falls back to the other.
     permanentAddress: ["#IPR_HAD1"],
+    permanentAddressLine2: ["#IPR_HAD2"],
     permanentCity: ["#IPR_HAD3"],
     permanentPostcode: ["#IPR_HAPC"],
     permanentCountry: ["#IPR_CODC"],
     location: ["#IPR_CAD1"],
+    addressLine2: ["#IPR_CAD2"],
     city: ["#IPR_CAD3"],
     state: ["#IPR_CAD4"],
     postcode: ["#IPR_CAPC"],
@@ -168,11 +170,9 @@ const config = {
     // No CRM key
     "#IPR_FNM3",
     "#IPR_FUSD",
-    "#IPR_HAD2",
     // CRM state is a present-address county, so the home county stays manual
     "#IPR_HAD4",
-    // Correspondence line 2 and phones have no source; student phone stays on the home phones
-    "#IPR_CAD2",
+    // Correspondence phones have no source; student phone stays on the home phones
     "#IPR_CAT3",
     "#IPR_CAT1",
     // Sensitive / no CRM key

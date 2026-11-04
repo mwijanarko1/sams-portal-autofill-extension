@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Synthetic Bangor contacts</title></head>
+<body>
+  <h1>Contact details</h1>
+  <form>
+    <label>Address Line 1 <input id="id_address1" name="address1"></label>
+    <label>Address Line 2 <input id="id_address2" name="address2"></label>
+    <label>Address Line 3 <input id="id_address3" name="address3"></label>
+    <label>City <input id="id_city" name="city"></label>
+    <label>Postcode <input id="id_postcode" name="postcode"></label>
+    <button type="submit">Save and continue</button>
+  </form>
+  <script>
+    window.activity = { clicks: 0, submissions: 0, changes: [] };
+    document.addEventListener("submit", (event) => { event.preventDefault(); activity.submissions++; });
+    document.addEventListener("click", (event) => { if (event.target.closest("button, a")) activity.clicks++; });
+    document.addEventListener("change", (event) => activity.changes.push(event.target.id));
+  </script>
+</body>
+</html>

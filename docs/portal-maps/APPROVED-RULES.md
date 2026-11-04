@@ -24,13 +24,15 @@ These are approved application assumptions, not proof of passport ownership, cit
 | Manchester Home Address and Greenwich Permanent Address | Explicit `permanentAddress`, `permanentCity`, `permanentPostcode`, `permanentCountry` |
 | Manchester Correspondence Address and Greenwich Mailing Address | Present `location`, `city`, `postcode`, `countryName` |
 
+The CRM keeps one comma-joined street line. A portal with extra address line controls gets it split at the commas: the first part fills line 1, the next parts fill lines 2 and 3, and surplus parts are joined into the last line the portal has. A line with no comma stays whole on line 1. Bangor and Greenwich have three lines, Manchester has two. Greenwich lines 2 and 3 fill only inside the Permanent and Mailing forms.
+
 Never substitute one address kind for the other. Manchester present county can fill correspondence county; there is no permanent-county source. Student phone and email remain separate contact values.
 
 Infer same-address answers only when both addresses have a line, city, postcode and recognised country. Compare ordered address components with case/whitespace and postcode-spacing normalisation. Reordered house numbers are not the same address. A joined sidebar address that cannot be compared safely stays manual.
 
 For equal addresses, Greenwich mailing-same is Yes and Manchester add-correspondence is No. For different complete addresses, the answers reverse. Incomplete addresses do not establish equality or inequality. Manchester makes one bounded rescan after revealing correspondence fields, so synchronously revealed fields can fill in the same Autofill action. Slowly loaded fields may need another pass.
 
-Greenwich reused address IDs are scoped to the expected form actions, not the previous page URL. Referee contacts are scoped to the referee form. A control outside a known form stays blocked. The mailing form action `bwskaadr.P_ProcAppAddr2` follows the inventoried display route, but needs confirmation on the real portal. An unrecognised form stays manual rather than falling back to the other address kind.
+Greenwich reused address IDs are scoped by the form's hidden `wsct` value (`ADDR1` Permanent, `ADDR2` Mailing), because both pages post to the same action; the previous page URL is not used. Referee contacts are scoped to the referee form. A control outside a known form stays blocked. A live check on 2026-11-04 confirmed the Mailing page posts to `bwskaadr.P_ProcAppAddr1`. An unrecognised form stays manual rather than falling back to the other address kind.
 
 Campora Home Address is copied as free text to `permanentAddress`, and its References table supplies the reference contacts. Present Address stays `location`. The visible summary has no separate city, postcode or country, so the reader does not invent those components or a same-address answer. The Campora refusal summary supplies the general flag; a recognised refusal table can supply a country. A summary Yes alone does not prove a UK refusal.
 

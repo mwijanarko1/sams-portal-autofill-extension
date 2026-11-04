@@ -11,7 +11,7 @@ const windowSize = { width: 425, height: 325 };
 
 for (const textScale of [1, 1.5]) {
   test(`containing-app help keeps every element reachable at 425x325 with ${textScale * 100}% text and an error shown`, async () => {
-    const browser = await chromium.launch({ executablePath: browserPath, headless: true });
+    const browser = await chromium.launch({ executablePath: browserPath, chromiumSandbox: true, headless: true });
     try {
       const page = await browser.newPage({ viewport: windowSize });
       await page.goto(helpPage);

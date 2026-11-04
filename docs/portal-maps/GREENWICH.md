@@ -75,8 +75,8 @@ control is in `blockedControls` and is never written, even when a synonym matche
 | Control | Label | Type | CRM key | Status |
 |---|---|---|---|---|
 | `#addr1` | Address Line 1 | text | `permanentAddress` | Mapped on the permanent form only |
-| `#addr2` | Address Line 2 | text | — | Blocked: no CRM key |
-| `#addr3` | Address Line 3 | text | — | Blocked: no CRM key |
+| `#addr2` | Address Line 2 | text | `permanentAddressLine2` | Mapped on the Permanent form only |
+| `#addr3` | Address Line 3 | text | `permanentAddressLine3` | Mapped on the Permanent form only |
 | `#zip` | Postcode / Zipcode | text | `permanentPostcode` | Mapped on the permanent form only |
 | `#city` | City / Town | text | `permanentCity` | Mapped on the permanent form only |
 | `#natn` | Country | select (249) | `permanentCountry` | Mapped on the permanent form only |
@@ -107,13 +107,13 @@ Three contacts now map to the CRM reference person on the referee form: `#ud17` 
 
 ### Mailing Address
 
-The present-address keys below apply only to `bwskaadr.P_ProcAppAddr2`. The current URL can still name the previous page. This form action follows the inventoried display route and needs supervised live confirmation; an unknown form stays manual. It never falls back to permanent address data.
+The present-address keys below apply only to the Mailing form. A live check on 2026-11-04 showed that the Mailing page posts to `bwskaadr.P_ProcAppAddr1`, the same action as Permanent, so the action cannot tell them apart. The hidden `wsct` input does: `ADDR1` on Permanent, `ADDR2` on Mailing. The current URL can still name the previous page. An unknown form stays manual. It never falls back to permanent address data.
 
 | Control | Label | Type | CRM key | Status |
 |---|---|---|---|---|
 | `#addr1` | Address Line 1 | text | `location` | Mapped |
-| `#addr2` | Address Line 2 | text | — | Blocked: no CRM key |
-| `#addr3` | Address Line 3 | text | — | Blocked: no CRM key |
+| `#addr2` | Address Line 2 | text | `addressLine2` | Mapped on the Mailing form only |
+| `#addr3` | Address Line 3 | text | `addressLine3` | Mapped on the Mailing form only |
 | `#zip` | Postcode / Zipcode | text | `postcode` | Mapped |
 | `#city` | City / Town | text | `city` | Mapped |
 | `#natn` | Country | select (249) | `countryName` | Mapped |
@@ -228,7 +228,7 @@ Employment / Supporting Info. The page and form patterns keep the two uses apart
 | Control | Reason |
 |---|---|
 | Previous student number, agent ID | No matching university/agency source |
-| Address Line 2/3 | No CRM keys |
+| Address Line 2/3 outside the Permanent and Mailing forms | Blocked: institution address |
 | Full/Part Time | Application answer |
 | Unsupported referee fields | No reference address, organisation, fax or reference-text source |
 | Disability, care status, parents' HE, UK entry dates | Sensitive or application-specific |

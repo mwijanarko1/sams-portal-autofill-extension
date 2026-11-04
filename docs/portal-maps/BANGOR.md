@@ -151,8 +151,8 @@ supervisor field and a free-text project title.
 | Control | Label | Type | CRM key | Status |
 |---|---|---|---|---|
 | `#id_address1` | Address line 1 | text **required** | `location` | Mapped |
-| `#id_address2` | Address line 2 | text | — | Manual: no CRM key |
-| `#id_address3` | Address line 3 | text | — | Manual: no CRM key |
+| `#id_address2` | Address line 2 | text | `addressLine2` | Mapped: split from `location` at commas |
+| `#id_address3` | Address line 3 | text | `addressLine3` | Mapped: split from `location` at commas |
 | `#id_city` | Postal town / city | text **required** | `city` | Mapped |
 | `#id_nation` | Country | select (215) **required** | `countryName` | Mapped |
 | `#id_state` | State | select (80) | — | Manual: hidden unless the country requires it; no CRM key |
@@ -232,7 +232,7 @@ accepts that, ISO dates and `YYYY-MM`. Live CRM values are what matter here.
 | Control | Reason |
 |---|---|
 | Preferred name | No CRM key |
-| Address line 2/3, State | No CRM keys; explicitly blocked |
+| State | No CRM key; explicitly blocked |
 | Institution country (education) | Applicant residence must not be copied into it |
 | Responsibilities (employment) | No CRM key |
 | Disability, residency, previous-Bangor, Language questions | Application answers with no CRM source |

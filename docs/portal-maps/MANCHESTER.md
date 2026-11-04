@@ -76,7 +76,7 @@ control is in `blockedControls` and is never written, even when it matches a syn
 | `#IPR_HAPC` | Postcode | text | `permanentPostcode` | Mapped |
 | `#PCOD_HA` | Postcode lookup | button | — | Blocked (button) |
 | `#IPR_HAD1` | Address Line 1 | text | `permanentAddress` | Mapped |
-| `#IPR_HAD2` | Address Line 2 | text | — | Blocked: no CRM key |
+| `#IPR_HAD2` | Address Line 2 | text | `permanentAddressLine2` | Mapped: split from `permanentAddress` at commas |
 | `#IPR_HAD3` | City | text | `permanentCity` | Mapped |
 | `#IPR_HAD4` | County | text | None | Blocked: no permanent-county source |
 | `#IPR_HAT3` | Mobile | text | `phone` | Mapped |
@@ -86,7 +86,7 @@ control is in `blockedControls` and is never written, even when it matches a syn
 | `#IPR_CAPC` | Correspondence Postcode | text | `postcode` | Mapped: present postcode |
 | `#PCOD_CA` | Correspondence postcode lookup | button | — | Blocked (button) |
 | `#IPR_CAD1` | Correspondence Address Line 1 | text | `location` | Mapped: present address |
-| `#IPR_CAD2` | Correspondence Address Line 2 | text | — | Blocked |
+| `#IPR_CAD2` | Correspondence Address Line 2 | text | `addressLine2` | Mapped: split from `location` at commas |
 | `#IPR_CAD3` | Correspondence City | text | `city` | Mapped: present city |
 | `#IPR_CAD4` | Correspondence County | text | `state` | Mapped only if present county is copied |
 | `#IPR_CAT3` | Correspondence Mobile | text | — | Blocked |
@@ -254,7 +254,7 @@ Verified live on 2026-10-23: after choosing those options, a second Autofill fil
 | Full-time / Part-time / APL / voluntary work | Application answers with no CRM key |
 | English score branches | Conditional; score select options are empty until a test is chosen |
 | Remaining passport, visa, residence-history and agent fields | No approved source or rule; approved exceptions are listed above |
-| Unsupported correspondence line 2 and telephone fields | No separate correspondence source; never substitute home data |
+| Unsupported correspondence telephone fields | No separate correspondence source; never substitute home data |
 | Qualification row 2, prior employment rows | The extension copies one qualification and employer, even when CRM has more |
 | File uploads | Manual / CRM document attach |
 | Save, Save and continue, Submit, declaration | Draft-only / submission policy |

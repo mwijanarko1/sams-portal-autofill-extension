@@ -35,7 +35,7 @@ const student = {
 
 let browser;
 test.before(async () => {
-  browser = await chromium.launch({ executablePath: browserPath, headless: true });
+  browser = await chromium.launch({ executablePath: browserPath, chromiumSandbox: true, headless: true });
 });
 test.after(() => browser && browser.close());
 

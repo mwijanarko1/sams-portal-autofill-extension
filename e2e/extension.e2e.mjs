@@ -18,6 +18,7 @@ const statisticalUrl = "https://nelson.gre.ac.uk/pls/prod/bwskaper.P_DispAppPers
 const employmentUrl = "https://nelson.gre.ac.uk/pls/prod/bwskaess.P_DispAppEssay";
 const employmentAfterSaveUrl = "https://nelson.gre.ac.uk/pls/prod/bwskanam.P_ProcAppName";
 const mappingCrmUrl = "https://app.samscrm.co.uk/agent/leads/full-profile/e2e-portal-mapping/";
+const multipleRecordsCrmUrl = "https://app.samscrm.co.uk/agent/leads/full-profile/e2e-multiple-records/";
 const mappingStatisticalUrl = `${statisticalUrl}?e2e=mapping`;
 const mappingEmploymentUrl = `${employmentUrl}?e2e=mapping`;
 const mappingProgrammeUrl = "https://nelson.gre.ac.uk/pls/prod/bwskapln.P_DispAppPlan?e2e=mapping";
@@ -25,8 +26,10 @@ const mappingRefereeUrl = "https://nelson.gre.ac.uk/pls/prod/bwskaudf.P_DispAppU
 const mappingManchesterUrl = "https://evision.bolton.ac.uk/urd/sits.urd/run/SIW_IPP_USR.start_url?e2e=mapping";
 const approvedManchesterUrl = "https://evision.bolton.ac.uk/urd/sits.urd/run/SIW_IPP_USR.start_url?e2e=approved";
 const approvedBangorUrl = "https://apps.bangor.ac.uk/apply/international/?e2e=approved";
+const addressBangorUrl = "https://apps.bangor.ac.uk/apply/contacts/?e2e=address-lines";
 const approvedCamporaUrl = "https://v-sams-backend.samsapply.co.uk/applyuser/show/999999/profile?e2e=approved";
 const approvedGreenwichUrl = (kind) => `https://nelson.gre.ac.uk/pls/prod/bwskaadr.P_ProcAppAddr1?e2e=approved&kind=${kind}`;
+const greenwichAddressDisplayUrl = (kind) => `https://nelson.gre.ac.uk/pls/prod/bwskaadr.P_DispAppAddr${kind === "permanent" ? "1" : "2"}?appno=1&wsct=${kind === "permanent" ? "ADDR1" : "ADDR2"}&e2e=approved&kind=${kind}`;
 const documentCrmUrl = "https://app.samscrm.co.uk/agent/leads/full-profile/424242/";
 const documentsPortalUrl = "https://apps.bangor.ac.uk/apply/documents/";
 const documentsFrameUrl = "https://apps.bangor.ac.uk/apply/documents-frame/";
@@ -117,6 +120,7 @@ const genericFixtures = new Map([
   ["/apply/heading-frames", "generic-heading-frames.html"],
   ["/apply/heading-ref", "generic-heading-child.html"],
   ["/apply/heading-app", "generic-heading-child.html"],
+  ["/apply/email-labels", "generic-email-labels.html"],
 ]);
 const evidenceDir = join(root, "tmp/general-portal-evidence");
 const portalCases = [
@@ -160,7 +164,9 @@ before(async () => {
   const extensionPath = join(run, "extension");
   await mkdir(extensionPath);
   for (const path of ["config", "src", "popup.html", "popup.js", "sams-logo.svg", "icon16.png", "icon48.png", "icon128.png"]) {
-    await cp(join(root, path), join(extensionPath, path), { recursive: true });
+    // Optional preserved production snapshot for fail-before evidence. The popup stays current.
+    const sourceRoot = ["config", "src"].includes(path) ? process.env.SAMS_E2E_SOURCE_ROOT || root : root;
+    await cp(join(sourceRoot, path), join(extensionPath, path), { recursive: true });
   }
   // Test staging is not a production package and never replaces dist or a login profile.
   const manifest = JSON.parse(await readFile(join(root, "manifest.json"), "utf8"));
@@ -170,6 +176,7 @@ before(async () => {
   await writeFile(join(extensionPath, "config/build-mode.js"), 'globalThis.SAMS_BUILD_MODE = "prod";\n');
   context = await chromium.launchPersistentContext(join(run, "profile"), {
     executablePath,
+    chromiumSandbox: true,
     channel: "chromium",
     headless: process.env.SAMS_E2E_HEADLESS === "1",
     ignoreDefaultArgs: ["--disable-extensions"],
@@ -189,6 +196,7 @@ before(async () => {
     [statisticalAfterSaveUrl, "greenwich-personal.html"], [statisticalUrl, "greenwich-personal.html"],
     [employmentUrl, "greenwich-employment.html"], [employmentAfterSaveUrl, "greenwich-employment.html"],
     [mappingCrmUrl, "crm-portal-mapping.html"],
+    [multipleRecordsCrmUrl, "crm-multiple-records.html"],
     [mappingStatisticalUrl, "greenwich-statistical-mapping.html"],
     [mappingEmploymentUrl, "greenwich-job-mapping.html"],
     [mappingProgrammeUrl, "greenwich-programme-mapping.html"],
@@ -196,9 +204,11 @@ before(async () => {
     [mappingManchesterUrl, "manchester-personal-mapping.html"],
     [approvedManchesterUrl, "manchester-approved-mapping.html"],
     [approvedBangorUrl, "bangor-approved-mapping.html"],
+    [addressBangorUrl, "bangor-address-lines.html"],
     [approvedCamporaUrl, "../../test/fixtures/campora-profile.html"],
-    ...["name", "referee", "unscoped-referee", "permanent", "mailing", "unscoped-address"].map((kind) =>
+    ...["name", "referee", "unscoped-referee", "permanent", "mailing", "unscoped-address", "institution"].map((kind) =>
       [approvedGreenwichUrl(kind), "greenwich-approved-mapping.html"]),
+    ...["permanent", "mailing"].map((kind) => [greenwichAddressDisplayUrl(kind), "greenwich-approved-mapping.html"]),
     [documentsPortalUrl, "portal-documents.html"], [documentsFrameUrl, "portal-documents-frame.html"],
     [noDocumentsUrl, "portal-no-documents.html"],
     ...portalCases.map((portal) => [portal.url, portal.fixture]),
@@ -333,13 +343,13 @@ async function clear() {
   assert.equal(await popup.locator("#btnAutofill").isDisabled(), true);
 }
 
-async function copyStudent(url = crmUrl, prepare, expected = { name: "Aisha Rahman", email: "aisha.rahman@example.com" }) {
+async function copyStudent(url = crmUrl, prepare, expected = { name: "Aisha Rahman", email: "aisha.rahman@example.com" }, timeout = 5000) {
   const crm = await openPage(url);
   if (prepare) await prepare(crm);
   await activate(crm);
   await popup.locator("#btnCopy").click();
   try {
-    await popup.locator("#statusArea .success").waitFor();
+    await popup.locator("#statusArea .success").waitFor({ timeout });
   } catch (error) {
     throw new Error(`Copy did not succeed: ${(await popup.locator("#statusArea").innerText()).slice(0, 600)}`, { cause: error });
   }
@@ -610,7 +620,7 @@ for (const kind of ["unscoped-referee", "unscoped-address"]) {
     const page = await openPage(approvedGreenwichUrl(kind));
     const profile = await copyApprovedStudent(differentAddresses);
     await autofillMappingPage(page);
-    const selector = kind === "unscoped-referee" ? "#ud17, #ud18, #ud25, #ud27" : "#addr1, #city, #zip, #natn";
+    const selector = kind === "unscoped-referee" ? "#ud17, #ud18, #ud25, #ud27" : "#addr1, #addr2, #addr3, #city, #zip, #natn";
     assert.ok((await page.locator(selector).evaluateAll((inputs) => inputs.map((input) => input.value))).every((value) => value === ""));
     assert.equal(await page.locator("input[name='addrflag']:checked").count(), 0);
     await assertRepeatUnchanged(page, profile);
@@ -641,6 +651,142 @@ async function autofillMappingPage(page) {
   await popup.locator("#statusArea .success").waitFor();
   const { clicks, submissions } = await page.evaluate(() => activity);
   assert.deepEqual({ clicks, submissions }, { clicks: 0, submissions: 0 }, "Autofill must not click or submit the portal");
+}
+
+const streetLineCases = [
+  { name: "two parts", address: "67 Bihn St, New Cairo", lines: ["67 Bihn St", "New Cairo", ""] },
+  { name: "four parts", address: "67 Bihn St, Building 4, New Cairo, District 9", lines: ["67 Bihn St", "Building 4", "New Cairo, District 9"] },
+  { name: "no comma", address: "67 Bihn St", lines: ["67 Bihn St", "", ""] },
+];
+
+const inputValues = (page, selectors) => Promise.all(selectors.map((selector) => page.locator(selector).inputValue()));
+
+for (const scenario of streetLineCases) {
+  test(`Address lines: Bangor ${scenario.name} through real Copy and Autofill`, { timeout: 20000 }, async () => {
+    const page = await openPage(addressBangorUrl);
+    const profile = await copyApprovedStudent({ location: scenario.address, city: "Cairo", postcode: "11835" });
+    await autofillMappingPage(page);
+    assert.deepEqual(await inputValues(page, ["#id_address1", "#id_address2", "#id_address3", "#id_city", "#id_postcode"]),
+      [...scenario.lines, "Cairo", "11835"]);
+    await assertRepeatUnchanged(page, profile);
+    assert.deepEqual(await inputValues(page, ["#id_address1", "#id_address2", "#id_address3"]), scenario.lines);
+  });
+
+  test(`Address lines: Manchester ${scenario.name} includes newly revealed correspondence`, { timeout: 20000 }, async () => {
+    const page = await openPage(approvedManchesterUrl);
+    assert.equal(await page.locator("#correspondence").isVisible(), false);
+    const profile = await copyApprovedStudent({ ...differentAddresses,
+      location: scenario.address, permanentAddress: `Home ${scenario.address}`,
+    });
+    await autofillMappingPage(page);
+    const line2 = scenario.lines.slice(1).filter(Boolean).join(", ");
+    assert.equal(await page.locator("#IPQ_OA_CORADD").inputValue(), "Y");
+    assert.equal(await page.locator("#correspondence").isVisible(), true);
+    assert.deepEqual(await inputValues(page, ["#IPR_CAD1", "#IPR_CAD2", "#IPR_HAD1", "#IPR_HAD2"]),
+      [scenario.lines[0], line2, `Home ${scenario.lines[0]}`, line2]);
+    assert.deepEqual(await inputValues(page, ["#IPR_CAD3", "#IPR_CAPC", "#IPR_HAD3", "#IPR_HAPC"]), ["London", "SW1A 1AA", "Dhaka", "1205"]);
+    await assertRepeatUnchanged(page, profile);
+    assert.deepEqual(await inputValues(page, ["#IPR_CAD1", "#IPR_CAD2", "#IPR_HAD1", "#IPR_HAD2"]),
+      [scenario.lines[0], line2, `Home ${scenario.lines[0]}`, line2]);
+  });
+
+  for (const kind of ["permanent", "mailing"]) {
+    test(`Address lines: Greenwich ${kind} ${scenario.name} through real Copy and Autofill`, { timeout: 20000 }, async () => {
+      const page = await openPage(greenwichAddressDisplayUrl(kind));
+      assert.equal(await page.locator("form").getAttribute("action"), "bwskaadr.P_ProcAppAddr1");
+      assert.equal(await page.locator("form").getAttribute("method"), "post");
+      assert.equal(await page.locator("form").getAttribute("name"), "myform");
+      assert.equal(await page.locator("input[name='wsct']").inputValue(), kind === "permanent" ? "ADDR1" : "ADDR2");
+      assert.equal(await page.locator("#mobiletelno").count(), kind === "permanent" ? 1 : 0);
+      assert.equal(await page.locator("#addrflag").count(), kind === "permanent" ? 1 : 0);
+      const profile = await copyApprovedStudent({ ...differentAddresses,
+        [kind === "permanent" ? "permanentAddress" : "location"]: scenario.address,
+      });
+      await autofillMappingPage(page);
+      const expected = [...scenario.lines, ...(kind === "permanent" ? ["Dhaka", "1205", "BD"] : ["London", "SW1A 1AA", "GB"])];
+      assert.deepEqual(await inputValues(page, ["#addr1", "#addr2", "#addr3", "#city", "#zip", "#natn"]), expected,
+        `${kind} uses only its own CRM address, including city, postcode and country`);
+      if (kind === "permanent") assert.equal(await page.locator("input[name='addrflag']:checked").inputValue(), "N");
+      await assertRepeatUnchanged(page, profile);
+      assert.deepEqual(await inputValues(page, ["#addr1", "#addr2", "#addr3", "#city", "#zip", "#natn"]), expected);
+      if (scenario.name === "two parts") await captureApprovedEvidence(page, `greenwich-${kind}-address-lines`);
+    });
+  }
+}
+
+for (const kind of ["permanent", "mailing"]) {
+  test(`Address lines: Greenwich ${kind} stays empty when only the other CRM address exists`, { timeout: 20000 }, async () => {
+    const page = await openPage(greenwichAddressDisplayUrl(kind));
+    const fields = kind === "mailing"
+      ? { permanentAddress: "34 Permanent Road, Building 4, Dhaka, District 9", permanentCity: "Dhaka", permanentPostcode: "1205", permanentCountry: "Bangladesh" }
+      : { location: "67 Bihn St, New Cairo", city: "London", postcode: "SW1A 1AA", countryName: "United Kingdom" };
+    const profile = await copyApprovedStudent(fields);
+    for (const key of kind === "mailing" ? ["location", "city", "postcode", "countryName"] : ["permanentAddress", "permanentCity", "permanentPostcode", "permanentCountry"]) {
+      assert.equal(profile.fields[key], undefined, `Copy has no ${key} to fill`);
+    }
+    await autofillMappingPage(page);
+    const selectors = ["#addr1", "#addr2", "#addr3", "#city", "#zip", "#natn"];
+    assert.deepEqual(await inputValues(page, selectors), ["", "", "", "", "", ""], "The other address must never be a fallback");
+    assert.equal(await page.locator("input[name='addrflag']:checked").count(), 0);
+    await assertRepeatUnchanged(page, profile);
+    assert.deepEqual(await inputValues(page, selectors), ["", "", "", "", "", ""]);
+  });
+}
+
+test("Address lines: Greenwich institution address stays manual", { timeout: 20000 }, async () => {
+  const page = await openPage(approvedGreenwichUrl("institution"));
+  const profile = await copyApprovedStudent({ ...differentAddresses,
+    location: "67 Bihn St, New Cairo", permanentAddress: "34 Home Road, Building 4, Dhaka, District 9",
+  });
+  await autofillMappingPage(page);
+  assert.deepEqual(await inputValues(page, ["#addr1", "#addr2", "#addr3", "#city", "#zip", "#natn"]), ["", "", "", "", "", ""]);
+  await assertRepeatUnchanged(page, profile);
+  assert.deepEqual(await inputValues(page, ["#addr1", "#addr2", "#addr3", "#city", "#zip", "#natn"]), ["", "", "", "", "", ""]);
+});
+
+const identicalCommaAddresses = { ...differentAddresses, location: "67 Bihn St, New Cairo", permanentAddress: "67 Bihn St, New Cairo",
+  permanentCity: "London", permanentPostcode: "SW1A 1AA", permanentCountry: "United Kingdom" };
+
+test("Address lines: comma splitting preserves derived same-address answers", { timeout: 20000 }, async () => {
+  const manchester = await openPage(approvedManchesterUrl);
+  const greenwich = await openPage(approvedGreenwichUrl("permanent"));
+  const profile = await copyApprovedStudent(identicalCommaAddresses);
+  await autofillMappingPage(manchester);
+  assert.equal(await manchester.locator("#IPQ_OA_CORADD").inputValue(), "N");
+  assert.equal(await manchester.locator("#correspondence").isVisible(), false);
+  assert.deepEqual(await inputValues(manchester, ["#IPR_HAD1", "#IPR_HAD2", "#IPR_CAD1", "#IPR_CAD2"]), ["67 Bihn St", "New Cairo", "", ""]);
+  await assertRepeatUnchanged(manchester, profile);
+  await autofillMappingPage(greenwich);
+  assert.equal(await greenwich.locator("input[name='addrflag']:checked").inputValue(), "Y");
+  assert.deepEqual(await inputValues(greenwich, ["#addr1", "#addr2", "#addr3"]), ["67 Bihn St", "New Cairo", ""]);
+  await assertRepeatUnchanged(greenwich, profile);
+  assert.deepEqual(await inputValues(greenwich, ["#addr1", "#addr2", "#addr3"]), ["67 Bihn St", "New Cairo", ""]);
+});
+
+for (const answer of ["Y", "N"]) {
+  test(`Address lines: existing same-address answers ${answer} and existing line values survive`, { timeout: 20000 }, async () => {
+    const manchester = await openPage(approvedManchesterUrl);
+    const greenwich = await openPage(approvedGreenwichUrl("permanent"));
+    await manchester.locator("#IPQ_OA_CORADD").selectOption(answer);
+    await greenwich.locator(`input[name='addrflag'][value='${answer}']`).check();
+    await manchester.locator("#IPR_HAD2").fill("Existing home line 2");
+    await greenwich.locator("#addr3").fill("Existing permanent line 3");
+    const fields = answer === "Y" ? identicalCommaAddresses : { ...differentAddresses,
+      location: "67 Bihn St, New Cairo", permanentAddress: "34 Home Road, Dhaka, District 9",
+    };
+    const profile = await copyApprovedStudent(fields);
+    await autofillMappingPage(manchester);
+    assert.equal(await manchester.locator("#IPQ_OA_CORADD").inputValue(), answer, "Existing correspondence answer is not recomputed");
+    assert.equal(await manchester.locator("#correspondence").isVisible(), answer === "Y");
+    assert.equal(await manchester.locator("#IPR_HAD2").inputValue(), "Existing home line 2");
+    if (answer === "Y") assert.deepEqual(await inputValues(manchester, ["#IPR_CAD1", "#IPR_CAD2"]), ["67 Bihn St", "New Cairo"]);
+    else assert.deepEqual(await inputValues(manchester, ["#IPR_CAD1", "#IPR_CAD2"]), ["", ""]);
+    await assertRepeatUnchanged(manchester, profile);
+    await autofillMappingPage(greenwich);
+    assert.equal(await greenwich.locator("input[name='addrflag']:checked").inputValue(), answer, "Existing mailing-same answer is not recomputed");
+    assert.equal(await greenwich.locator("#addr3").inputValue(), "Existing permanent line 3");
+    await assertRepeatUnchanged(greenwich, profile);
+  });
 }
 
 const selectedText = (page, selector) => page.locator(`${selector} option:checked`).textContent();
@@ -851,6 +997,190 @@ for (const portal of portalCases) {
     await crm.close();
   });
 }
+
+const educationRecords = [
+  { institutionName: "First Synthetic College", degree: "Bachelor", major: "Computer Science", grade: "First",
+    studyDates: "September 2020 - June 2024", startDate: "September 2020", endDate: "June 2024", studyStartYear: "2020", studyEndYear: "2024" },
+  { institutionName: "Second Synthetic College", degree: "Diploma", major: "Applied Mathematics", grade: "Merit",
+    studyDates: "September 2018 - June 2020", startDate: "September 2018", endDate: "June 2020", studyStartYear: "2018", studyEndYear: "2020" },
+  { institutionName: "Third Synthetic College", degree: "Certificate", major: "Physics", grade: "Distinction",
+    studyDates: "January 2017 - July 2018", startDate: "January 2017", endDate: "July 2018", studyStartYear: "2017", studyEndYear: "2018" },
+];
+const workRecords = [
+  { cvCurrentEmployer: "First Synthetic Employer", cvCurrentJobTitle: "Analyst", cvWorkDates: "01 Jul 2024 - 30 Jun 2025",
+    cvWorkStartDate: "2024-07-01", cvWorkEndDate: "2025-06-30" },
+  { cvCurrentEmployer: "Second Synthetic Employer", cvCurrentJobTitle: "Researcher", cvWorkDates: "02 Jul 2022 - 29 Jun 2023",
+    cvWorkStartDate: "2022-07-02", cvWorkEndDate: "2023-06-29" },
+];
+const scoreRecords = [
+  { englishTestName: "IELTS", testDate: "2025-03-01", overallScore: "7.5", listeningScore: "8", writingScore: "7", speakingScore: "6.5" },
+  { englishTestName: "PTE", testDate: "2025-04-02", overallScore: "72", listeningScore: "73", readingScore: "74", writingScore: "75", speakingScore: "76" },
+];
+
+// Tabbed Profile Copy includes the reader's overlay grace period and DOM settle.
+const copyRecordsStudent = (prepare) => copyStudent(multipleRecordsCrmUrl, prepare, undefined, 15000);
+
+function assertCopiedRecords(fields, records) {
+  for (const [index, record] of records.entries()) {
+    const suffix = index ? String(index + 1) : "";
+    for (const [key, value] of Object.entries(record)) {
+      assert.equal(fields[key + suffix], value, `Copy preserves ${key + suffix} from record ${index + 1}`);
+      if (!index) assert.equal(Object.hasOwn(fields, `${key}1`), false, "Record 1 keeps the original plain keys");
+    }
+  }
+}
+
+test("CRM records: Profile Copy preserves education, work and separate IELTS/PTE scores", { timeout: 25000 }, async () => {
+  const crm = await copyRecordsStudent();
+  const { fields } = await cache();
+  assert.equal(Object.hasOwn(fields, "readingScore"), false, "IELTS must not borrow the following PTE reading score");
+  assertCopiedRecords(fields, educationRecords);
+  assertCopiedRecords(fields, workRecords);
+  assertCopiedRecords(fields, scoreRecords);
+  assert.equal(Object.hasOwn(fields, "cvCurrentEmployer3"), false);
+  assert.equal(Object.hasOwn(fields, "englishTestName3"), false);
+  assert.equal(await crm.locator(".nav-link.active").textContent(), "Applications", "Copy restores the original tab");
+});
+
+test("CRM records: Campora Copy preserves two education and work records", { timeout: 20000 }, async () => {
+  await copyStudent(approvedCamporaUrl, (crm) => crm.evaluate(() => {
+    const content = document.querySelector("#camporaProfile").content;
+    const education = content.querySelector("#sub_lead_education_history_div tbody");
+    const secondEducation = education.rows[0].cloneNode(true);
+    secondEducation.querySelector("strong").textContent = "Second Campora College";
+    secondEducation.querySelector(".label_badge_light").textContent = "Diploma";
+    secondEducation.cells[1].textContent = "Applied Mathematics";
+    secondEducation.cells[2].textContent = "Merit";
+    secondEducation.cells[3].textContent = "Sep 2017 - Jun 2019";
+    education.append(secondEducation);
+    const workTitle = [...content.querySelectorAll(".main_title")].find((title) => title.textContent === "Work Experience");
+    const work = workTitle.closest(".row").querySelector("tbody");
+    const secondWork = work.rows[0].cloneNode(true);
+    secondWork.cells[0].textContent = "Second Campora Employer";
+    secondWork.cells[1].textContent = "Researcher";
+    secondWork.cells[2].textContent = "02 Jul 2020 - 29 Jun 2022";
+    secondWork.querySelector("[id]")?.removeAttribute("id");
+    work.append(secondWork);
+    // Prior visas remain excluded, even when several saved records are visible.
+    const visas = content.querySelector("#visaHistoryTable");
+    visas.hidden = false;
+    visas.tBodies[0].append(visas.tBodies[0].rows[0].cloneNode(true));
+  }), { name: "Test Student", email: "test.student@example.com" });
+  const { fields } = await cache();
+  assertCopiedRecords(fields, [
+    { institutionName: "Synthetic College", degree: "Bachelor Degree", major: "BSc Synthetic Science", grade: "3.50",
+      studyDates: "Sep 2019 - Jun 2023", startDate: "Sep 2019", endDate: "Jun 2023", studyStartYear: "2019", studyEndYear: "2023" },
+    { institutionName: "Second Campora College", degree: "Diploma", major: "Applied Mathematics", grade: "Merit",
+      studyDates: "Sep 2017 - Jun 2019", startDate: "Sep 2017", endDate: "Jun 2019", studyStartYear: "2017", studyEndYear: "2019" },
+  ]);
+  assertCopiedRecords(fields, [
+    { cvCurrentEmployer: "Synthetic Ltd", cvCurrentJobTitle: "Analyst", cvWorkStartDate: "2023-07-01" },
+    { cvCurrentEmployer: "Second Campora Employer", cvCurrentJobTitle: "Researcher", cvWorkStartDate: "2020-07-02", cvWorkEndDate: "2022-06-29" },
+  ]);
+  assert.equal(Object.hasOwn(fields, "cvWorkEndDate"), false, "An open-ended first job must not borrow the second job's end date");
+  assert.equal(fields.visaType, "Student Visa", "Prior visas never replace the current summary visa");
+  assert.ok(!Object.keys(fields).some((key) => /^visa(?:Type2|Country|Purpose|Dates|StartDate|EndDate)/.test(key)));
+});
+
+test("CRM records: Copied details groups and orders numbered education rows with an exact count", { timeout: 25000 }, async () => {
+  await copyRecordsStudent();
+  const { fields } = await cache();
+  await popup.bringToFront();
+  await popup.locator("#copiedDetailsSummary").click();
+  assert.equal(await popup.locator("#copiedDetailsSummary").textContent(), `Copied details (${Object.keys(fields).length})`);
+  assert.equal(await popup.locator("#copiedFields .field-row:visible").count(), Object.keys(fields).length);
+  const education = popup.locator("#copiedFields .field-group").filter({
+    has: popup.getByRole("heading", { name: "Education history", exact: true }),
+  });
+  assert.equal(await education.count(), 1, "All saved education records share one section heading");
+  const labels = ["Institution name", "Degree", "Major", "Grade", "Study dates", "Start date", "End date", "Study start year", "Study end year"];
+  assert.deepEqual(await education.locator(".field-row:visible .field-label").allTextContents(),
+    ["", " 2", " 3"].flatMap((suffix) => labels.map((label) => label + suffix)), "Every record 1 field precedes record 2, then record 3");
+  assert.deepEqual(await education.locator(".field-row:visible .field-value").allTextContents(),
+    educationRecords.flatMap((record) => Object.values(record)));
+  assert.equal(await popup.locator("#copiedFields .field-group").filter({
+    has: popup.getByRole("heading", { name: "Other", exact: true }),
+  }).locator(".field-row").filter({ hasText: "Second Synthetic College" }).count(), 0);
+});
+
+test("CRM records: Greenwich Autofill uses record 1 and hides extra records from unmatched fields", { timeout: 25000 }, async () => {
+  const qualifications = await openPage(portalCases[1].url);
+  const employment = await openPage(mappingEmploymentUrl);
+  await copyRecordsStudent();
+  const profile = await copiedProfile();
+  assert.equal(profile.fields.institutionName2, "Second Synthetic College", "Copy must contain the extra records before testing Fill");
+  for (const page of [qualifications, employment]) {
+    await autofillMappingPage(page);
+    const unmatched = popup.locator("#statusArea details").filter({
+      has: popup.locator(".summary-title", { hasText: "CRM fields not matched on this page" }),
+    });
+    assert.equal(await unmatched.count(), 1, "The unmatched list still reports legitimate record 1 fields");
+    const labels = await unmatched.locator("li").allTextContents();
+    assert.ok(labels.length > 0);
+    assert.ok(!labels.some((label) => / [2-5]$/.test(label)), "Numbered CRM records must not be shown as unmatched");
+    assert.ok(!labels.includes("Institution name 2"));
+    assert.ok(labels.includes(page === qualifications ? "Cv current employer" : "Institution name"));
+    await assertRepeatUnchanged(page, profile);
+  }
+  assert.deepEqual(await inputValues(qualifications, ["#ud91qualtype", "#ud91subject", "#ud91grade"]), ["B", "Computer Science", "Existing grade"]);
+  assert.deepEqual(await inputValues(qualifications, ["#ud92qualtype", "#ud92subject", "#ud92grade", "#ud92year"]), ["", "", "", ""], "Extra education rows remain manual");
+  assert.deepEqual(await inputValues(employment, ["#ud11", "#ud16"]), ["First Synthetic Employer", "Analyst"]);
+});
+
+test("CRM records: Profile Copy caps seven saved education records at five", { timeout: 25000 }, async () => {
+  const crm = await copyRecordsStudent((crm) => crm.evaluate(() => {
+    const body = document.querySelector("#education-records tbody");
+    for (let record = 4; record <= 7; record++) {
+      const row = body.rows[0].cloneNode(true);
+      row.querySelector("strong").textContent = `Synthetic College ${record}`;
+      row.cells[1].textContent = `Synthetic Subject ${record}`;
+      body.append(row);
+    }
+  }));
+  assert.equal(await crm.locator("#education-records tbody tr").count(), 7, "The source really contains seven records");
+  const { fields } = await cache();
+  assertCopiedRecords(fields, educationRecords);
+  assertCopiedRecords(fields, [
+    ...educationRecords,
+    ...Array.from({ length: 2 }, (_, index) => ({ ...educationRecords[0],
+      institutionName: `Synthetic College ${index + 4}`, major: `Synthetic Subject ${index + 4}` })),
+  ]);
+  assert.ok(!Object.keys(fields).some((key) => /[67]$/.test(key)), "Neither record 6 nor record 7 may enter the cache");
+});
+
+test("CRM records: a single-record Profile keeps plain keys without numbered duplicates", { timeout: 25000 }, async () => {
+  await copyRecordsStudent((crm) => crm.evaluate(() => {
+    document.querySelectorAll("#profile tbody").forEach((body) => [...body.rows].slice(1).forEach((row) => row.remove()));
+    // Remove the saved Applications entries too, so both views describe one student record.
+    document.querySelectorAll("#stages li").forEach((toggle) => {
+      toggle.click();
+      const panel = document.querySelector(".collapse_common").cloneNode(true);
+      panel.querySelectorAll(".single_part").forEach((entry, index) => { if (index) entry.remove(); });
+      const replacement = toggle.cloneNode(true);
+      replacement.addEventListener("click", () => document.querySelector(".collapse_common").replaceChildren(...panel.cloneNode(true).childNodes));
+      toggle.replaceWith(replacement);
+    });
+    document.querySelector(".collapse_common").replaceChildren();
+  }));
+  const { fields } = await cache();
+  assertCopiedRecords(fields, [educationRecords[0]]);
+  assertCopiedRecords(fields, [workRecords[0]]);
+  assertCopiedRecords(fields, [scoreRecords[0]]);
+  assert.deepEqual(Object.keys(fields).filter((key) => /\d$/.test(key)), [], "Single saved records must not produce numbered aliases");
+  assert.equal(Object.hasOwn(fields, "readingScore"), false);
+});
+
+test("CRM records: in-place Copy captures all saved education, work and test list entries", { timeout: 15000 }, async () => {
+  await copyRecordsStudent((crm) => crm.evaluate(() => {
+    document.querySelector("nav").remove();
+    document.querySelector("#profile").remove();
+  }));
+  const { fields } = await cache();
+  assertCopiedRecords(fields, educationRecords);
+  assertCopiedRecords(fields, workRecords.map(({ cvWorkDates, ...record }) => record));
+  assertCopiedRecords(fields, scoreRecords);
+  assert.equal(Object.hasOwn(fields, "readingScore"), false, "Separate list entries must not mix IELTS and PTE scores");
+});
 
 test("Copied details list every CRM field and copy one value", { timeout: 15000 }, async () => {
   await clear();
@@ -1274,6 +1604,35 @@ test("Unmapped university: a single-frame page reports shared matching", { timeo
   await page.close();
   await crm.close();
 });
+
+for (const label of ["Applicant email", "Applicant's email address", "Student email", "Personal email", "Primary email address", "Contact email", "Email (applicant)", "Preferred email address", "Your e mail"]) {
+  test(`Email labels: generic ${label} fills only the applicant email`, { timeout: 20000 }, async () => {
+    const page = await openPage(`${genericOrigin}/apply/email-labels?label=${encodeURIComponent(label)}`);
+    const crm = await copyStudent();
+    const profile = await copiedProfile();
+    const toolbar = await openToolbarPopup(page);
+    try {
+      const status = await toolbar.autofill();
+      assert.match(status[0].text, /1 fields filled using shared matching/);
+      assert.deepEqual(await controlValues(page.mainFrame()), {
+        field_01: "aisha.rahman@example.com", field_02: "", field_03: "", field_04: "", field_05: "",
+      }, "Confirmation, verification, re-entry, and emergency contact emails stay manual");
+      const first = await page.evaluate(() => activity);
+      assert.deepEqual(first, { clicks: 0, submissions: 0, changes: ["field_01"] });
+      const repeat = await toolbar.autofill();
+      assert.match(repeat[0].text, /0 fields filled using shared matching/);
+      assert.deepEqual(await page.evaluate(() => activity), first);
+      assert.deepEqual(await controlValues(page.mainFrame()), {
+        field_01: "aisha.rahman@example.com", field_02: "", field_03: "", field_04: "", field_05: "",
+      });
+      assert.deepEqual(await copiedProfile(), profile);
+      assert.deepEqual(toolbar.errors, []);
+    } finally {
+      await toolbar.close();
+    }
+    await crm.close();
+  });
+}
 
 test("Unmapped university: outer Referee/Applicant headings gate neutral same-origin iframes", { timeout: 20000 }, async () => {
   await clear();

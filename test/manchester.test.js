@@ -102,7 +102,7 @@ test("manchester selector overrides target known personal and contact ids", () =
   assert.ok(cfg.splitDates.some((spec) => spec.key === "graduationYear"));
 });
 
-test("manchester blocks auth, save, DOB splits, unsupported correspondence, and row 2 quals", () => {
+test("manchester blocks auth, save, DOB splits, and row 2 quals while mapping address lines", () => {
   const ctx = loadManchester("/urd/sits.urd/run/SIW_IPP_USR.start_url");
   assert.equal(typeof ctx.SAMS_ENGINE.isFillable, "function");
   const blocked = [
@@ -111,7 +111,6 @@ test("manchester blocks auth, save, DOB splits, unsupported correspondence, and 
     { id: "but_save", name: "", type: "button" },
     { id: "but_save_and_cont", name: "", type: "button" },
     { id: "IPR_DOB_DAY", name: "", type: "select-one" },
-    { id: "IPR_CAD2", name: "", type: "text" },
     { id: "IPQ_OA_QUINS2", name: "", type: "text" },
     { id: "IPQ_OA_AGREE", name: "", type: "checkbox" },
   ];
@@ -133,6 +132,11 @@ test("manchester blocks auth, save, DOB splits, unsupported correspondence, and 
       true,
       `${id} is a CRM-mapped control and must stay fillable`
     );
+  }
+  const cfg = ctx.SAMS_PORTALS.find((portal) => portal.id === "greater-manchester");
+  for (const [key, id] of [["addressLine2", "IPR_CAD2"], ["permanentAddressLine2", "IPR_HAD2"]]) {
+    sameJson(cfg.selectorOverrides[key], [`#${id}`]);
+    assert.equal(ctx.SAMS_ENGINE.isFillable(fakeEl({ id })), true, `${id} is mapped, not blocked`);
   }
 });
 

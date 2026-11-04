@@ -76,6 +76,21 @@ if (!globalThis.__SAMS_CRM_READER_LOADED__) {
     if (key && value && !fields[key]) fields[key] = /date/i.test(key) && !/Dates$/.test(key) ? isoDate(value) || value : value;
   }
 
+  // A section can hold several saved records (two schools, three jobs). The first record
+  // keeps the plain keys that portals map. Records 2 to MAX_RECORDS are stored under the same
+  // key with the record number appended (institutionName2), so Copy keeps all of them.
+  const MAX_RECORDS = 5;
+  function readRecords(rows, readRow, fields) {
+    rows.slice(0, MAX_RECORDS).forEach((row, index) => {
+      if (!index) return readRow(row, fields);
+      const record = {};
+      readRow(row, record);
+      Object.entries(record).forEach(([key, value]) => {
+        if (!fields[`${key}${index + 1}`]) fields[`${key}${index + 1}`] = value;
+      });
+    });
+  }
+
   function contextFor(element) {
     let node = element.parentElement;
     for (let depth = 0; node && depth < 6; depth++, node = node.parentElement) {
@@ -227,11 +242,16 @@ if (!globalThis.__SAMS_CRM_READER_LOADED__) {
 
   // ─── Applications tab: expanded stage forms and list entries ─────────
 
-  // Expanded CRM sections list saved records as .single_part entries; the first entry is copied.
-  function readListEntries(panel, fields) {
+  // Expanded CRM sections list saved records as .single_part entries. The Profile tab lists the
+  // same records, so the Applications pass copies the first entry only (all: false) and the
+  // in-place pass for layouts without a Profile tab copies every entry.
+  function readListEntries(panel, fields, all = false) {
     const heading = normalizeLabel(panel.querySelector(".title_in_border, .title_in_borders")?.textContent);
-    const entry = Array.from(panel.querySelectorAll(".single_part")).find(visible);
-    if (!entry) return;
+    const entries = Array.from(panel.querySelectorAll(".single_part")).filter(visible);
+    readRecords(all ? entries : entries.slice(0, 1), (entry, out) => readListEntry(heading, entry, out), fields);
+  }
+
+  function readListEntry(heading, entry, fields) {
     const title = Array.from(entry.querySelectorAll(".progress-lbl")).find(visible)?.textContent;
     const spans = Array.from(entry.querySelectorAll("span")).filter(visible)
       .map((span) => span.textContent.replace(/\s+/g, " ").trim()).filter(Boolean);
@@ -571,11 +591,17 @@ if (!globalThis.__SAMS_CRM_READER_LOADED__) {
   }
 
   function readTestScoreTable(table, fields) {
-    // Only the first saved test is the primary one. Scanning every row mixed an
-    // IELTS overall score with a following PTE reading score.
-    const row = Array.from(table.querySelectorAll("tbody tr"))
-      .find((entry) => visible(entry) && entry.querySelector(".test_score_level"));
-    if (!row) return false;
+    // Each saved test is read on its own: the first keeps the plain keys and later tests get
+    // a record number. Scanning every row into one record mixed an IELTS overall score with
+    // a following PTE reading score.
+    const rows = Array.from(table.querySelectorAll("tbody tr"))
+      .filter((entry) => visible(entry) && entry.querySelector(".test_score_level"));
+    if (!rows.length) return false;
+    readRecords(rows, readTestScoreRow, fields);
+    return true;
+  }
+
+  function readTestScoreRow(row, fields) {
     setField(fields, "englishTestName", row.querySelector(".test_score_level")?.textContent);
     setField(fields, "testDate", row.querySelector(".test_date")?.textContent?.replace(/^test date\s*:\s*/i, ""));
     const scoreKeys = {
@@ -593,7 +619,6 @@ if (!globalThis.__SAMS_CRM_READER_LOADED__) {
         if (key) setField(fields, key, lines[index]);
       }
     });
-    return true;
   }
 
   function readProfileTable(table, sectionName, fields) {
@@ -616,25 +641,25 @@ if (!globalThis.__SAMS_CRM_READER_LOADED__) {
       });
       return;
     }
-    const row = rows[0];
-    if (!row) return;
     const keys = SECTION_TABLE_KEYS[sectionName] || {};
-    const cells = Array.from(row.querySelectorAll(":scope > td"));
-    headers.forEach((header, index) => {
-      const key = keys[header];
-      const cell = cells[index];
-      if (!key || !cell || !visible(cell)) return;
-      const text = clean(cell.innerText);
-      if (sectionName === "education history" && header === "institution") {
-        const institution = Array.from(cell.querySelectorAll("strong")).find(visible);
-        const badge = Array.from(cell.querySelectorAll(".label_badge_light")).find(visible);
-        setField(fields, "institutionName", institution?.innerText || text);
-        setField(fields, "degree", badge?.innerText);
-      } else {
-        setField(fields, key, text);
-      }
-      if (header === "duration") setDateRange(fields, sectionName, text);
-    });
+    readRecords(rows, (row, out) => {
+      const cells = Array.from(row.querySelectorAll(":scope > td"));
+      headers.forEach((header, index) => {
+        const key = keys[header];
+        const cell = cells[index];
+        if (!key || !cell || !visible(cell)) return;
+        const text = clean(cell.innerText);
+        if (sectionName === "education history" && header === "institution") {
+          const institution = Array.from(cell.querySelectorAll("strong")).find(visible);
+          const badge = Array.from(cell.querySelectorAll(".label_badge_light")).find(visible);
+          setField(out, "institutionName", institution?.innerText || text);
+          setField(out, "degree", badge?.innerText);
+        } else {
+          setField(out, key, text);
+        }
+        if (header === "duration") setDateRange(out, sectionName, text);
+      });
+    }, fields);
   }
 
   // The Profile sidebar joins the address into one line. Split the city, postcode
@@ -797,9 +822,12 @@ if (!globalThis.__SAMS_CRM_READER_LOADED__) {
       fields.emergencyFirstName ||= names[0] || "";
       fields.emergencyLastName ||= names.slice(1).join(" ");
     }
-    for (const [source, target] of [["startDate", "studyStartYear"], ["endDate", "studyEndYear"]]) {
-      const year = fields[source] && fields[source].match(/\b\d{4}\b/);
-      if (year) fields[target] = year[0];
+    for (let record = 1; record <= MAX_RECORDS; record++) {
+      const suffix = record > 1 ? String(record) : "";
+      for (const [source, target] of [["startDate", "studyStartYear"], ["endDate", "studyEndYear"]]) {
+        const year = fields[source + suffix] && fields[source + suffix].match(/\b\d{4}\b/);
+        if (year) fields[target + suffix] = year[0];
+      }
     }
 
     const derivedTitle = TITLE_BY_GENDER.get(normalizeLabel(fields.gender));
@@ -887,7 +915,9 @@ if (!globalThis.__SAMS_CRM_READER_LOADED__) {
 
   function filterCamporaFields(fields) {
     for (const key of Object.keys(fields)) {
-      if (!CAMPORA_OUTPUT_KEYS.has(key)) delete fields[key];
+      // Extra records of a repeating section carry the record number (institutionName2).
+      const base = key.replace(/[2-9]$/, "");
+      if (!CAMPORA_OUTPUT_KEYS.has(key) && !(base !== key && CAMPORA_OUTPUT_KEYS.has(base))) delete fields[key];
     }
     return fields;
   }
@@ -1012,30 +1042,30 @@ if (!globalThis.__SAMS_CRM_READER_LOADED__) {
       });
       return;
     }
-    const row = rows[0];
-    if (!row) return;
-    const cells = Array.from(row.querySelectorAll(":scope > td"));
-    headers.forEach((header, index) => {
-      if (section === "passport details" && header === "comments") return;
-      const key = keys[header];
-      const cell = cells[index];
-      if (!key || !cell || !visible(cell)) return;
-      if (section === "education history" && header === "institution") {
-        const institution = Array.from(cell.querySelectorAll("strong")).find(visible);
-        const badge = Array.from(cell.querySelectorAll(".label_badge_light, .label_badge_radius")).find(visible);
-        setField(fields, "institutionName", institution?.innerText || cell.innerText);
-        setField(fields, "degree", badge?.innerText);
-      } else {
-        setField(fields, key, clean(cell.innerText));
-      }
-      if (header === "duration") {
-        setDateRange(fields, section, cell.innerText);
-        // Campora saves an open-ended work record as "01 Jul 2024 - N/A".
-        const open = String(cell.innerText).match(/^(\d{1,2} [A-Za-z]{3} \d{4})\s*-\s*N\/A$/i);
-        const rangeKeys = RANGE_KEYS[section];
-        if (open && rangeKeys) setField(fields, rangeKeys[0], open[1]);
-      }
-    });
+    readRecords(rows, (row, out) => {
+      const cells = Array.from(row.querySelectorAll(":scope > td"));
+      headers.forEach((header, index) => {
+        if (section === "passport details" && header === "comments") return;
+        const key = keys[header];
+        const cell = cells[index];
+        if (!key || !cell || !visible(cell)) return;
+        if (section === "education history" && header === "institution") {
+          const institution = Array.from(cell.querySelectorAll("strong")).find(visible);
+          const badge = Array.from(cell.querySelectorAll(".label_badge_light, .label_badge_radius")).find(visible);
+          setField(out, "institutionName", institution?.innerText || cell.innerText);
+          setField(out, "degree", badge?.innerText);
+        } else {
+          setField(out, key, clean(cell.innerText));
+        }
+        if (header === "duration") {
+          setDateRange(out, section, cell.innerText);
+          // Campora saves an open-ended work record as "01 Jul 2024 - N/A".
+          const open = String(cell.innerText).match(/^(\d{1,2} [A-Za-z]{3} \d{4})\s*-\s*N\/A$/i);
+          const rangeKeys = RANGE_KEYS[section];
+          if (open && rangeKeys) setField(out, rangeKeys[0], open[1]);
+        }
+      });
+    }, fields);
   }
 
   // The section title is the nearest .main_title that precedes the table in
@@ -1155,7 +1185,7 @@ if (!globalThis.__SAMS_CRM_READER_LOADED__) {
     const readInPlace = async () => {
       await waitFor(tracker, 1500);
       await readExpandedSections(document, (panel, section) => {
-        readListEntries(panel, fields);
+        readListEntries(panel, fields, true);
         collectFields(panel, fields, section);
       });
       readVisibleForms(document, fields);

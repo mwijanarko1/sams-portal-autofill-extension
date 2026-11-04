@@ -197,6 +197,53 @@ async function copyValue(button, value) {
   }
 }
 
+// Copied fields are shown under the CRM's own section names, in the CRM's profile order.
+// Keys missing from this map fall into a trailing "Other" group so nothing is hidden.
+const FIELD_SECTIONS = [
+  ["Lead details", ["studentId", "leadRef", "fileNumber", "counsellorName", "officeName", "studentPortalStatus", "connection", "subAgentReferral", "leadStatus", "channel", "registeredOn", "leadCreatedOn", "studentQuality", "studentQualitySummary"]],
+  ["Personal information", ["title", "givenName", "middleName", "familyName", "dateOfBirth", "gender", "nationality", "maritalStatus", "applicantOccupation", "funding", "selfFundedStatus", "selfFundedDetails", "studyBudget"]],
+  ["Contact information", ["email", "phone", "whatsapp", "viber", "skypeId", "telegram", "lineId", "googleHangout", "facebook", "instagram", "twitter", "location", "city", "postcode", "countryName", "permanentAddress", "permanentCity", "permanentPostcode", "permanentCountry", "emergencyName", "emergencyRelationship", "emergencyPhone", "emergencyEmail"]],
+  ["Education history", ["institutionName", "degree", "major", "grade", "graduationYear", "studyDates", "startDate", "endDate", "studyStartYear", "studyEndYear"]],
+  ["Study gap", ["hasStudyGap", "studyGapInstitution", "studyGapType", "studyGapDates", "studyGapStartDate", "studyGapEndDate"]],
+  ["Previous study abroad", ["previousInstitution", "previousSubject", "previousStudyDestination", "previousStudyVisaType", "previousStudyCountryVisa"]],
+  ["Test score", ["englishTestName", "testDate", "testExpiryDate", "overallScore", "listeningScore", "speakingScore", "writingScore", "readingScore"]],
+  ["Work experience", ["hasWorkExperience", "cvCurrentEmployer", "cvCurrentJobTitle", "cvWorkDates", "cvWorkStartDate", "cvWorkEndDate"]],
+  ["References", ["hasReference", "referenceName", "referenceSource", "referencePhone", "referenceEmail"]],
+  ["Passport details", ["hasPassport", "passportNumber", "passportDates", "passportIssueDate", "passportExpiryDate", "passportPlaceOfIssue", "issuingAuthority"]],
+  ["Visa history", ["hasVisaHistory", "visaType", "visaCountry", "visaPurpose", "visaDates", "visaStartDate", "visaEndDate", "visaStatus"]],
+  ["Visa refusal", ["hasVisaRefusal", "visaRefusalType", "visaRefusalCountry", "visaRefusalPurpose", "visaRefusalDates", "visaRefusalStartDate", "visaRefusalEndDate", "refusalReason"]],
+  ["Admission preference", ["preferredDestination", "preferredInstituteType", "preferredPathway", "preferredUniversity", "preferredLevel", "preferredCourse", "preferredDepartment", "preferredIntake", "preferredStartMonth", "preferredStartYear", "preferredRoute", "preferredPriority"]],
+];
+
+// Records 2 to 5 of a repeating section (a second school, a third job) are stored as the
+// first record's key plus the record number, for example institutionName2.
+const MAX_RECORDS = 5;
+const SECTION_KEYS = new Set(FIELD_SECTIONS.flatMap(([, keys]) => keys));
+
+function isExtraRecordKey(key) {
+  const match = /^(.*[A-Za-z])([2-9])$/.exec(key);
+  return Boolean(match) && SECTION_KEYS.has(match[1]) && !SECTION_KEYS.has(key);
+}
+
+function groupFields(entries) {
+  const byKey = new Map(entries);
+  const groups = FIELD_SECTIONS.map(([title, keys]) => {
+    const present = [];
+    for (let record = 1; record <= MAX_RECORDS; record++) {
+      for (const key of keys) {
+        const recordKey = record > 1 ? `${key}${record}` : key;
+        if (byKey.has(recordKey)) present.push(recordKey);
+      }
+    }
+    return [title, present];
+  });
+  const placed = new Set(groups.flatMap(([, keys]) => keys));
+  groups.push(["Other", entries.map(([key]) => key).filter((key) => !placed.has(key))]);
+  return groups
+    .filter(([, keys]) => keys.length)
+    .map(([title, keys]) => [title, keys.map((key) => [key, byKey.get(key)])]);
+}
+
 function renderFields(fields) {
   const entries = Object.entries(fields || {});
   copiedDetails.hidden = !entries.length;
@@ -208,7 +255,7 @@ function renderFields(fields) {
   const query = copiedSearch.value.trim().toLowerCase();
   const matches = ([key, value]) => `${fieldLabel(key)} ${value}`.toLowerCase().includes(query);
   copiedEmpty.hidden = !entries.length || entries.some(matches);
-  copiedFields.replaceChildren(...entries.map(([key, value]) => {
+  const rowFor = ([key, value]) => {
     const row = document.createElement("div");
     row.className = "field-row";
     row.hidden = !matches([key, value]);
@@ -229,6 +276,17 @@ function renderFields(fields) {
     button.addEventListener("click", () => copyValue(button, value));
     row.append(text, button);
     return row;
+  };
+  copiedFields.replaceChildren(...groupFields(entries).map(([title, group]) => {
+    const section = document.createElement("section");
+    section.className = "field-group";
+    const heading = document.createElement("h3");
+    heading.className = "field-group-title";
+    heading.textContent = title;
+    const rows = group.map(rowFor);
+    section.hidden = rows.every((row) => row.hidden);
+    section.append(heading, ...rows);
+    return section;
   }));
 }
 
@@ -509,7 +567,8 @@ function mergeResults(results) {
     }
     for (const item of result.filled || []) if (item.name) filledKeys.add(item.name);
   }
-  merged.unmatched = [...new Set(merged.unmatched)].filter((key) => !filledKeys.has(key));
+  // Extra records (institutionName2) are copied for reference only, so they are not reported as misses.
+  merged.unmatched = [...new Set(merged.unmatched)].filter((key) => !filledKeys.has(key) && !(typeof key === "string" && isExtraRecordKey(key)));
   return merged;
 }
 

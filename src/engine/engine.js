@@ -2973,7 +2973,35 @@ function withDerivedKeys(fieldMap) {
     var value = String(DERIVED_KEYS[key](fieldMap) || "").trim();
     if (value) derived[key] = value;
   });
+  Object.assign(derived, splitAddressLines(fieldMap, mapped));
   return Object.keys(derived).length ? Object.assign({}, fieldMap, derived) : fieldMap;
+}
+
+// The CRM keeps one comma-joined street line. A portal that maps the extra line keys for an
+// address kind gets it split at the commas: the first part stays on the base key (line 1) and the
+// next parts go to the line keys, with any surplus joined into the last mapped line. A portal that
+// maps no extra line keeps the whole line, and so does a street line with no comma.
+var ADDRESS_LINE_KEYS = {
+  location: ["addressLine2", "addressLine3"],
+  permanentAddress: ["permanentAddressLine2", "permanentAddressLine3"],
+};
+
+function splitAddressLines(fieldMap, mapped) {
+  var out = {};
+  Object.keys(ADDRESS_LINE_KEYS).forEach(function (base) {
+    var extras = ADDRESS_LINE_KEYS[base].filter(function (key) {
+      return mapped.indexOf(key) >= 0 && !crmText(fieldMap[key]);
+    });
+    var parts = crmText(fieldMap[base]).split(",").map(function (part) { return part.trim(); }).filter(Boolean);
+    if (!extras.length || parts.length < 2) return;
+    var lines = parts.slice(0, extras.length);
+    lines.push(parts.slice(extras.length).join(", "));
+    out[base] = lines[0];
+    extras.forEach(function (key, index) {
+      if (lines[index + 1]) out[key] = lines[index + 1];
+    });
+  });
+  return out;
 }
 
 /**
@@ -2987,6 +3015,8 @@ function withDerivedKeys(fieldMap) {
  */
 async function autofillPage(fieldMap, fields, followUp) {
   if (!ACTIVE_PORTAL) return autofillGeneric(fieldMap, fields);
+  // The follow-up pass reads the same CRM map, so same-address answers never see a split line.
+  var crmMap = fieldMap;
   fieldMap = withDerivedKeys(fieldMap);
 
   /** @type {Array<{name:string,value:string,fieldName:string,fieldLabel:string,score:number,matchReason:string}>} */
@@ -3228,7 +3258,7 @@ async function autofillPage(fieldMap, fields, followUp) {
   if (!followUp && filled.some(function (row) { return reveals.indexOf(row.name) >= 0; })) {
     try {
       await waitMs(300);
-      var next = await autofillPage(fieldMap, scanFormFields({ mode: "fill" }), true);
+      var next = await autofillPage(crmMap, scanFormFields({ mode: "fill" }), true);
       var wasFilled = function (row) { return filled.some(function (done) { return done.name === row.name; }); };
       next.filled = filled.concat(next.filled);
       next.skippedExisting = next.skippedExisting.filter(function (row) { return !wasFilled(row); });

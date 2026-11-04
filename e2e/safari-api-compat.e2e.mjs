@@ -35,6 +35,7 @@ for (const missing of variants) {
       '});\n');
 
     const context = await chromium.launchPersistentContext(join(run, "profile"), {
+      chromiumSandbox: true,
       executablePath: process.env.SAMS_E2E_BROWSER || "/Applications/Helium.app/Contents/MacOS/Helium",
       channel: "chromium", headless: false, ignoreDefaultArgs: ["--disable-extensions"],
       args: [`--disable-extensions-except=${extension}`, `--load-extension=${extension}`, "--host-resolver-rules=MAP * ~NOTFOUND", "--disable-background-networking"],

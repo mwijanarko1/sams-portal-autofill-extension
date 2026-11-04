@@ -1,5 +1,9 @@
 {
 globalThis.SAMS_PORTALS = globalThis.SAMS_PORTALS || [];
+// Live check 2026-11-04: the Permanent and Mailing pages both post to bwskaadr.P_ProcAppAddr1.
+// Only the hidden wsct input differs (ADDR1 on Permanent, ADDR2 on Mailing), so it scopes each form.
+const PERMANENT_FORM = "form[action*='bwskaadr.P_ProcAppAddr1']:has(input[name='wsct'][value='ADDR1'])";
+const MAILING_FORM = "form[action*='bwskaadr.P_ProcAppAddr1']:has(input[name='wsct'][value='ADDR2'])";
 const config = {
   id: "greenwich",
   name: "University of Greenwich",
@@ -39,19 +43,24 @@ const config = {
     // Applicant phones only (not referee #ud25)
     phone: ["#mobiletelno", "#hometelno"],
     // Permanent Address takes the CRM permanent address and Mailing Address takes the CRM present
-    // address. Both pages reuse #addr1/#city/#zip/#natn, so the form a control posts to says which
-    // page it is (the URL still names the previous page after a save). Any other form is blocked.
-    permanentAddress: ["form[action*='bwskaadr.P_ProcAppAddr1'] #addr1"],
-    permanentCity: ["form[action*='bwskaadr.P_ProcAppAddr1'] #city"],
-    permanentPostcode: ["form[action*='bwskaadr.P_ProcAppAddr1'] #zip"],
-    permanentCountry: ["form[action*='bwskaadr.P_ProcAppAddr1'] #natn"],
-    location: ["form[action*='bwskaadr.P_ProcAppAddr2'] #addr1"],
-    city: ["form[action*='bwskaadr.P_ProcAppAddr2'] #city"],
-    postcode: ["form[action*='bwskaadr.P_ProcAppAddr2'] #zip"],
-    countryName: ["form[action*='bwskaadr.P_ProcAppAddr2'] #natn"],
+    // address. Both pages reuse #addr1/#city/#zip/#natn and post to the same action, so the hidden
+    // wsct input says which page it is (the URL still names the previous page after a save). Any
+    // other form is blocked.
+    permanentAddress: [`${PERMANENT_FORM} #addr1`],
+    permanentAddressLine2: [`${PERMANENT_FORM} #addr2`],
+    permanentAddressLine3: [`${PERMANENT_FORM} #addr3`],
+    permanentCity: [`${PERMANENT_FORM} #city`],
+    permanentPostcode: [`${PERMANENT_FORM} #zip`],
+    permanentCountry: [`${PERMANENT_FORM} #natn`],
+    location: [`${MAILING_FORM} #addr1`],
+    addressLine2: [`${MAILING_FORM} #addr2`],
+    addressLine3: [`${MAILING_FORM} #addr3`],
+    city: [`${MAILING_FORM} #city`],
+    postcode: [`${MAILING_FORM} #zip`],
+    countryName: [`${MAILING_FORM} #natn`],
     // Derived answers (engine DERIVED_KEYS)
     fullLegalName: ["#ud50"],
-    mailingSameAsPermanent: ["form[action*='bwskaadr.P_ProcAppAddr1'] input[name='addrflag']"],
+    mailingSameAsPermanent: [`${PERMANENT_FORM} input[name='addrflag']`],
     // Referee name, e-mail, and telephone take only the CRM reference record
     referenceName: ["form[action*='bwskaudf.P_ProcAppUserDef'] #ud17"],
     referenceEmail: ["form[action*='bwskaudf.P_ProcAppUserDef'] #ud18"],
@@ -159,7 +168,7 @@ const config = {
     "#ud17:not(form[action*='bwskaudf.P_ProcAppUserDef'] #ud17)",
     "#ud18:not(form[action*='bwskaudf.P_ProcAppUserDef'] #ud18)",
     "#ud25:not(form[action*='bwskaudf.P_ProcAppUserDef'] #ud25)",
-    "input[name='addrflag']:not(form[action*='bwskaadr.P_ProcAppAddr1'] input[name='addrflag'])",
+    `input[name='addrflag']:not(${PERMANENT_FORM} input[name='addrflag'])`,
     "#ud19",
     "#ud20",
     "#ud21",
@@ -190,15 +199,12 @@ const config = {
     "#ud8",
     "#ud40",
     "#ud45",
-    // Address lines 2/3 have no CRM key; institution address must not take the applicant address
-    "#addr2",
-    "#addr3",
+    // Institution address must not take the applicant address
     "form[action*='P_ProcAppPrvCollege'] #addr1",
     // The shared address controls fill only inside the Permanent and Mailing address forms
-    "#addr1:not(form[action*='bwskaadr.P_ProcAppAddr1'] #addr1):not(form[action*='bwskaadr.P_ProcAppAddr2'] #addr1)",
-    "#city:not(form[action*='bwskaadr.P_ProcAppAddr1'] #city):not(form[action*='bwskaadr.P_ProcAppAddr2'] #city)",
-    "#zip:not(form[action*='bwskaadr.P_ProcAppAddr1'] #zip):not(form[action*='bwskaadr.P_ProcAppAddr2'] #zip)",
-    "#natn:not(form[action*='bwskaadr.P_ProcAppAddr1'] #natn):not(form[action*='bwskaadr.P_ProcAppAddr2'] #natn)",
+    ...["addr1", "addr2", "addr3", "city", "zip", "natn"].map(
+      (id) => `#${id}:not(${PERMANENT_FORM} #${id}):not(${MAILING_FORM} #${id})`
+    ),
     // Qualification award date selects are split-date targets
     "#ud91month",
     "#ud91year",

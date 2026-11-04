@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Synthetic applicant email labels</title></head>
+<body>
+  <h1>Example University application</h1>
+  <form>
+    <h2>Personal details</h2>
+    <label for="field_01" id="primary-label">Applicant email</label><input id="field_01" type="text">
+    <label for="field_02">Confirm email</label><input id="field_02" type="email">
+    <label for="field_03">Verify email address</label><input id="field_03" type="email">
+    <label for="field_04">Re-enter email</label><input id="field_04" type="email">
+    <section>
+      <h2>Emergency contact</h2>
+      <label for="field_05">Email</label><input id="field_05" type="email">
+    </section>
+    <button type="submit">Save and continue</button>
+  </form>
+  <script>
+    document.getElementById("primary-label").textContent = new URL(location.href).searchParams.get("label") || "Applicant email";
+    window.activity = { clicks: 0, submissions: 0, changes: [] };
+    document.addEventListener("submit", (event) => { event.preventDefault(); activity.submissions++; });
+    document.addEventListener("click", (event) => { if (event.target.closest("button, a")) activity.clicks++; });
+    document.addEventListener("change", (event) => activity.changes.push(event.target.id));
+  </script>
+</body>
+</html>

@@ -3,7 +3,7 @@ importScripts("../config/build-mode.js", "../config/allowlist.js");
 const CACHE_KEY = "studentCache";
 const ALARM_NAME = "expire-student-cache";
 const CACHE_ACTIONS = ["cacheStudent", "getStudentCache", "touchStudentCache", "recordAttachedDocument", "clearStudentCache"];
-const MAX_FIELDS = 200;
+const MAX_FIELDS = 400;
 const MAX_TEXT_LENGTH = 4000;
 const MAX_DOCUMENTS = 100;
 const DOCUMENT_KEYS = ["documentType", "extension", "group", "groupLabel", "key", "name", "url"].join();

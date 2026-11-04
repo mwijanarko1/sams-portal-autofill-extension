@@ -253,6 +253,7 @@ async function checkAttachment(page, result) {
 
 try {
   context = await chromium.launchPersistentContext(join(run, "profile"), {
+    chromiumSandbox: true,
     executablePath: process.env.SAMS_E2E_BROWSER || "/Applications/Helium.app/Contents/MacOS/Helium",
     channel: "chromium", headless: false, ignoreDefaultArgs: ["--disable-extensions"],
     args: [`--disable-extensions-except=${extension}`, `--load-extension=${extension}`, "--no-first-run"], timeout: 20000,

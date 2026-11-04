@@ -41,6 +41,7 @@ function fakeEl({
   label = "",
   type = "text",
   formAction = "",
+  formWsct = "",
 } = {}) {
   const el = {
     id,
@@ -64,8 +65,8 @@ function fakeEl({
       if (selector.includes(":not(")) {
         const target = selector.split(":not(")[0];
         if (target !== `#${id}` && target !== `input[name='${name}']`) return false;
-        const scopes = [...selector.matchAll(/form\[action\*='([^']+)'\]/g)];
-        return !scopes.some((match) => formAction.includes(match[1]));
+        const scopes = [...selector.matchAll(/form\[action\*='([^']+)'\](?::has\(input\[name='wsct'\]\[value='([^']+)'\]\))?/g)];
+        return !scopes.some((match) => formAction.includes(match[1]) && (!match[2] || formWsct === match[2]));
       }
       if (selector === `#${id}`) return true;
       if (selector === `input[name='${name}']` || selector === `input[name="${name}"]`) {
@@ -113,10 +114,19 @@ test("greenwich keeps split DOB and scopes applicant address overrides", () => {
     (p) => p.id === "greenwich"
   );
   assert.equal(cfg.selectorOverrides.dateOfBirth, undefined);
-  sameJson(cfg.selectorOverrides.location, ["form[action*='bwskaadr.P_ProcAppAddr2'] #addr1"]);
-  sameJson(cfg.selectorOverrides.city, ["form[action*='bwskaadr.P_ProcAppAddr2'] #city"]);
-  sameJson(cfg.selectorOverrides.postcode, ["form[action*='bwskaadr.P_ProcAppAddr2'] #zip"]);
-  sameJson(cfg.selectorOverrides.countryName, ["form[action*='bwskaadr.P_ProcAppAddr2'] #natn"]);
+  const permanent = "form[action*='bwskaadr.P_ProcAppAddr1']:has(input[name='wsct'][value='ADDR1'])";
+  const mailing = "form[action*='bwskaadr.P_ProcAppAddr1']:has(input[name='wsct'][value='ADDR2'])";
+  for (const [scope, mapping] of [
+    [permanent, { permanentAddress: "addr1", permanentAddressLine2: "addr2", permanentAddressLine3: "addr3", permanentCity: "city", permanentPostcode: "zip", permanentCountry: "natn" }],
+    [mailing, { location: "addr1", addressLine2: "addr2", addressLine3: "addr3", city: "city", postcode: "zip", countryName: "natn" }],
+  ]) {
+    for (const [key, id] of Object.entries(mapping)) sameJson(cfg.selectorOverrides[key], [`${scope} #${id}`]);
+  }
+  for (const id of ["addr1", "addr2", "addr3", "city", "zip", "natn"]) {
+    assert.ok(cfg.blockedControls.includes(`#${id}:not(${permanent} #${id}):not(${mailing} #${id})`), `${id} must be blocked outside both applicant forms`);
+  }
+  sameJson(cfg.selectorOverrides.mailingSameAsPermanent, [`${permanent} input[name='addrflag']`]);
+  assert.ok(cfg.blockedControls.includes(`input[name='addrflag']:not(${permanent} input[name='addrflag'])`));
   sameJson(cfg.selectorOverrides.currentDomicile, ["#ud70"]);
   const flat = Object.values(cfg.selectorOverrides).flat();
   assert.equal(flat.includes("#bday_dd"), false);
@@ -245,6 +255,7 @@ test("greenwich blocks institution city/postcode on Previous Education form", ()
     name: "city",
     label: "City",
     formAction: "bwskaadr.P_ProcAppAddr1",
+    formWsct: "ADDR1",
   });
 
   assert.equal(ctx.SAMS_ENGINE.isFillable(institutionCity), false);
@@ -265,6 +276,7 @@ test("greenwich autofill skips institution city and can still fill applicant cit
     name: "city",
     label: "City",
     formAction: "bwskaadr.P_ProcAppAddr1",
+    formWsct: "ADDR1",
   });
 
   // Scan-time gate: institution address fields never enter the fillable set.

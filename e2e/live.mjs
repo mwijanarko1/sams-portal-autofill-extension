@@ -116,6 +116,7 @@ function armDeadline() {
 armDeadline();
 try {
   context = await chromium.launchPersistentContext(profile, {
+    chromiumSandbox: true,
     executablePath: process.env.SAMS_E2E_BROWSER || "/Applications/Helium.app/Contents/MacOS/Helium",
     channel: "chromium", headless: false, ignoreDefaultArgs: ["--disable-extensions"],
     args: [`--disable-extensions-except=${extension}`, `--load-extension=${extension}`], timeout: 15000,
