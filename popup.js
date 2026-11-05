@@ -1,3 +1,4 @@
+const updateBanner = document.getElementById("updateBanner");
 const btnCopy = document.getElementById("btnCopy");
 const btnAutofill = document.getElementById("btnAutofill");
 const btnClear = document.getElementById("btnClear");
@@ -1023,6 +1024,12 @@ btnSiteAccess.addEventListener("click", requestSiteAccess);
 btnDocuments.addEventListener("click", scanUploads);
 copiedSearch.addEventListener("input", () => renderFields(cache && cache.fields));
 refreshCache().catch((error) => setStatus("error", error.message || String(error)));
+SAMS_UPDATE.available().then((update) => {
+  if (!update) return;
+  updateBanner.textContent = `Update available: version ${update.version}`;
+  updateBanner.href = update.url;
+  updateBanner.hidden = false;
+}).catch(() => {});
 window.addEventListener("focus", refreshSiteAccess);
 chrome.tabs.onActivated.addListener(refreshSiteAccess);
 chrome.tabs.onUpdated.addListener((tabId, change) => {

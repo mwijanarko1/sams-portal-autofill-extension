@@ -1,7 +1,9 @@
-importScripts("../config/build-mode.js", "../config/allowlist.js");
+importScripts("../config/build-mode.js", "../config/allowlist.js", "update-check.js");
 
 const CACHE_KEY = "studentCache";
 const ALARM_NAME = "expire-student-cache";
+const UPDATE_ALARM = "check-for-update";
+const UPDATE_CHECK_MINUTES = 360;
 const CACHE_ACTIONS = ["cacheStudent", "getStudentCache", "touchStudentCache", "recordAttachedDocument", "clearStudentCache"];
 const MAX_FIELDS = 400;
 const MAX_TEXT_LENGTH = 4000;
@@ -127,3 +129,33 @@ chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name !== ALARM_NAME) return;
   serialized(expireIfDue).catch(() => console.warn("Student cache expiry check failed."));
 });
+
+async function refreshUpdateBadge() {
+  const update = await SAMS_UPDATE.available();
+  await chrome.action.setBadgeText({ text: update ? "NEW" : "" });
+  if (update) await chrome.action.setBadgeBackgroundColor({ color: "#312e81" });
+}
+
+async function checkForUpdate() {
+  try {
+    await SAMS_UPDATE.check();
+  } catch {
+    console.warn("Update check failed.");
+  }
+  await refreshUpdateBadge();
+}
+
+async function scheduleUpdateChecks() {
+  if (!(await chrome.alarms.get(UPDATE_ALARM))) await chrome.alarms.create(UPDATE_ALARM, { periodInMinutes: UPDATE_CHECK_MINUTES });
+}
+
+chrome.runtime.onInstalled.addListener(() => {
+  scheduleUpdateChecks().then(checkForUpdate);
+});
+chrome.runtime.onStartup.addListener(() => {
+  scheduleUpdateChecks().then(checkForUpdate);
+});
+chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name === UPDATE_ALARM) checkForUpdate();
+});
+refreshUpdateBadge().catch(() => console.warn("Update badge refresh failed."));

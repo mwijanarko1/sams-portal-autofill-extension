@@ -74,6 +74,8 @@ Open the extension from the toolbar on a CRM profile or an application page.
 
 Follow [STAFF-GUIDE.md](STAFF-GUIDE.md) to copy a student and autofill a portal form.
 
+The extension checks GitHub for a newer release every few hours. When one exists, the toolbar icon shows **NEW** and the popup shows a banner that links to the release. The extension does not update itself. Follow the update steps below to install the new version.
+
 To update Chrome later, download the new approved zip, unzip it, then on `chrome://extensions` select **Remove** on the old copy (or use **Reload** if you replaced the same folder) and load the new folder with **Load unpacked**.
 
 To update Safari later, download the new approved Safari zip, unzip it, and add the new folder again with **Develop** → **Add Temporary Extension…**.

@@ -13,6 +13,10 @@
     h1 { margin: 0; color: #262261; font-size: 16px; }
     header p, .meta { margin: 2px 0 0; color: #64748b; font-size: 11px; }
     .card { margin-bottom: 12px; padding: 12px; border: 1px solid #e0e7ff; border-radius: 12px; background: white; }
+    .update { display: block; margin: -4px 0 12px; color: #4338ca; font-size: 12px; text-align: center; text-decoration: underline; text-underline-offset: 2px; }
+    .update[hidden] { display: none; }
+    .update:hover { color: #262261; }
+    .update:focus-visible { outline: 2px solid #818cf8; outline-offset: 2px; border-radius: 4px; }
     .student { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 9px 10px 9px 12px; border-radius: 9px; background: #f5f3ff; }
     .student[hidden] { display: none; }
     .student strong { color: #312e81; }
@@ -149,6 +153,7 @@
         <button id="btnDocuments" class="secondary" hidden>Attach CRM documents</button>
       </div>
     </section>
+    <a id="updateBanner" class="update" target="_blank" rel="noopener" hidden></a>
     <section id="documentsCard" class="card" hidden>
       <div id="uploadGeneral"></div>
       <div id="uploadFields"></div>
@@ -157,6 +162,7 @@
   </main>
   <script src="config/build-mode.js"></script>
   <script src="config/allowlist.js"></script>
+  <script src="src/update-check.js"></script>
   <script src="popup.js"></script>
   <script src="src/popup-motion.js"></script>
 </body>
