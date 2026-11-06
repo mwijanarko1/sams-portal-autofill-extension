@@ -816,6 +816,24 @@ if (!globalThis.__SAMS_CRM_READER_LOADED__) {
   // The CRM stores gender but no salutation; unknown genders deliberately map to nothing.
   const TITLE_BY_GENDER = new Map([["male", "Mr"], ["m", "Mr"], ["female", "Ms"], ["f", "Ms"]]);
 
+  // The sidebar joins street, city, postcode and country into one home line. When the CRM also
+  // gives the city, postcode, or country as their own values, drop each one from the end of that
+  // line, country first. A value that is not at the end is left alone, and the street is never emptied.
+  function stripPermanentTail(fields) {
+    let line = fields.permanentAddress;
+    if (!line) return;
+    for (const key of ["permanentCountry", "permanentPostcode", "permanentCity"]) {
+      const part = clean(fields[key]);
+      if (!part) continue;
+      const trimmed = clean(line).replace(/[,\s]+$/, "");
+      if (trimmed.length <= part.length || !trimmed.toLowerCase().endsWith(part.toLowerCase())) continue;
+      const rest = trimmed.slice(0, trimmed.length - part.length);
+      if (!/[,\s]$/.test(rest)) continue;
+      line = rest.replace(/[,\s]+$/, "");
+    }
+    if (line) fields.permanentAddress = clean(line);
+  }
+
   function finalizeProfile(fields, fallbackId) {
     if (fields.emergencyName) {
       const names = fields.emergencyName.split(/\s+/).filter(Boolean);
@@ -832,6 +850,8 @@ if (!globalThis.__SAMS_CRM_READER_LOADED__) {
 
     const derivedTitle = TITLE_BY_GENDER.get(normalizeLabel(fields.gender));
     if (!fields.title && derivedTitle) fields.title = derivedTitle;
+
+    stripPermanentTail(fields);
 
     // The worker rejects any value over 4000 characters. Free-text lead summaries
     // can exceed that, so keep the profile cacheable instead of failing Copy.

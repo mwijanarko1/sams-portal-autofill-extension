@@ -1961,6 +1961,9 @@ async function setElementValue(el, value, meta) {
         var sc1 = scoreComboboxOption(normalize(candidates[ci]), ot);
         var sc2 = scoreComboboxOption(normalize(candidates[ci]), ov);
         var sc = Math.max(sc1, sc2);
+        // A short country alias ("UK", "UAE") is an abbreviation, never a prefix: "UK" must not
+        // pick "Ukraine". It counts only on an exact match.
+        if (isCountryKey(crmKey) && normalize(candidates[ci]).length <= 3 && sc < 100) sc = 0;
         if (sc > bestSc) {
           bestSc = sc;
           bestOpt = options[oi];
@@ -2048,6 +2051,11 @@ async function setElementValue(el, value, meta) {
   el.dispatchEvent(new Event("input", { bubbles: true }));
   el.dispatchEvent(new Event("change", { bubbles: true }));
   return true;
+}
+
+function isCountryKey(crmKey) {
+  return crmKey === "studyCountry" || crmKey === "countryName" || crmKey === "employmentCountry" ||
+    crmKey === "permanentCountry" || crmKey === "passportIssueNation" || crmKey === "countryOfBirth";
 }
 
 /**
@@ -2973,27 +2981,54 @@ function withDerivedKeys(fieldMap) {
     var value = String(DERIVED_KEYS[key](fieldMap) || "").trim();
     if (value) derived[key] = value;
   });
-  Object.assign(derived, splitAddressLines(fieldMap, mapped));
+  var fallback = presentFromPermanent(fieldMap, mapped);
+  Object.assign(derived, fallback, splitAddressLines(Object.assign({}, fieldMap, fallback), mapped));
   return Object.keys(derived).length ? Object.assign({}, fieldMap, derived) : fieldMap;
+}
+
+// A portal flagged permanentAddressFillsMissingPresent has one address and takes the permanent
+// one when the CRM has no present street line. Each present key the CRM left empty copies its
+// permanent twin, so a present value never gets replaced. Derived answers read the CRM map, not this one.
+var PRESENT_FROM_PERMANENT = {
+  location: "permanentAddress",
+  city: "permanentCity",
+  postcode: "permanentPostcode",
+  countryName: "permanentCountry",
+};
+
+function presentFromPermanent(fieldMap, mapped) {
+  var out = {};
+  if (!ACTIVE_PORTAL.permanentAddressFillsMissingPresent || crmText(fieldMap.location)) return out;
+  Object.keys(PRESENT_FROM_PERMANENT).forEach(function (key) {
+    var value = crmText(fieldMap[PRESENT_FROM_PERMANENT[key]]);
+    if (mapped.indexOf(key) >= 0 && value && !crmText(fieldMap[key])) out[key] = value;
+  });
+  return out;
 }
 
 // The CRM keeps one comma-joined street line. A portal that maps the extra line keys for an
 // address kind gets it split at the commas: the first part stays on the base key (line 1) and the
-// next parts go to the line keys, with any surplus joined into the last mapped line. A portal that
-// maps no extra line keeps the whole line, and so does a street line with no comma.
+// next parts go to the line keys, with any surplus joined into the last mapped line. A closing UK
+// postcode goes to the postcode key when the portal maps it and the CRM sent none, never into a
+// line. A portal that maps no extra line keeps the whole line, and so does a street line with no comma.
 var ADDRESS_LINE_KEYS = {
-  location: ["addressLine2", "addressLine3"],
-  permanentAddress: ["permanentAddressLine2", "permanentAddressLine3"],
+  location: { lines: ["addressLine2", "addressLine3"], postcode: "postcode" },
+  permanentAddress: { lines: ["permanentAddressLine2", "permanentAddressLine3"], postcode: "permanentPostcode" },
 };
+var UK_POSTCODE = /^[A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2}$/i;
 
 function splitAddressLines(fieldMap, mapped) {
   var out = {};
   Object.keys(ADDRESS_LINE_KEYS).forEach(function (base) {
-    var extras = ADDRESS_LINE_KEYS[base].filter(function (key) {
+    var spec = ADDRESS_LINE_KEYS[base];
+    var extras = spec.lines.filter(function (key) {
       return mapped.indexOf(key) >= 0 && !crmText(fieldMap[key]);
     });
     var parts = crmText(fieldMap[base]).split(",").map(function (part) { return part.trim(); }).filter(Boolean);
     if (!extras.length || parts.length < 2) return;
+    if (mapped.indexOf(spec.postcode) >= 0 && !crmText(fieldMap[spec.postcode]) && UK_POSTCODE.test(parts[parts.length - 1])) {
+      out[spec.postcode] = parts.pop();
+    }
     var lines = parts.slice(0, extras.length);
     lines.push(parts.slice(extras.length).join(", "));
     out[base] = lines[0];

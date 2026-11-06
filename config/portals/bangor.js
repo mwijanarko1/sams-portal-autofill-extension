@@ -52,6 +52,9 @@ const config = {
     ukVisaRefusal: ["input[name='refused_visa']"],
   },
   phoneKeepsDialPrefix: true,
+  // Bangor has one address and the CRM often holds only a permanent one. With no present street
+  // line, the address controls take the permanent address instead of staying empty.
+  permanentAddressFillsMissingPresent: true,
   extraSynonyms: {
     title: ["title"],
     givenName: ["given name"],
