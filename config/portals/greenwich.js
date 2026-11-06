@@ -4,6 +4,12 @@ globalThis.SAMS_PORTALS = globalThis.SAMS_PORTALS || [];
 // Only the hidden wsct input differs (ADDR1 on Permanent, ADDR2 on Mailing), so it scopes each form.
 const PERMANENT_FORM = "form[action*='bwskaadr.P_ProcAppAddr1']:has(input[name='wsct'][value='ADDR1'])";
 const MAILING_FORM = "form[action*='bwskaadr.P_ProcAppAddr1']:has(input[name='wsct'][value='ADDR2'])";
+// The UK address pages (bwskaadr.p_uk) keep #city and #zip read-only. Staff type the postcode into
+// the search box, press Search Address, and pick the street. The search box sits in its own form,
+// so the page's real address form (by its hidden wsct input) says which page it is.
+// (:has cannot nest, so these repeat the form test without the :has in PERMANENT_FORM.)
+const PERMANENT_PAGE = "body:has(form[action*='bwskaadr.P_ProcAppAddr1'] input[name='wsct'][value='ADDR1'])";
+const MAILING_PAGE = "body:has(form[action*='bwskaadr.P_ProcAppAddr1'] input[name='wsct'][value='ADDR2'])";
 const config = {
   id: "greenwich",
   name: "University of Greenwich",
@@ -50,13 +56,13 @@ const config = {
     permanentAddressLine2: [`${PERMANENT_FORM} #addr2`],
     permanentAddressLine3: [`${PERMANENT_FORM} #addr3`],
     permanentCity: [`${PERMANENT_FORM} #city`],
-    permanentPostcode: [`${PERMANENT_FORM} #zip`],
+    permanentPostcode: [`${PERMANENT_FORM} #zip`, `${PERMANENT_PAGE} #searchzip`],
     permanentCountry: [`${PERMANENT_FORM} #natn`],
     location: [`${MAILING_FORM} #addr1`],
     addressLine2: [`${MAILING_FORM} #addr2`],
     addressLine3: [`${MAILING_FORM} #addr3`],
     city: [`${MAILING_FORM} #city`],
-    postcode: [`${MAILING_FORM} #zip`],
+    postcode: [`${MAILING_FORM} #zip`, `${MAILING_PAGE} #searchzip`],
     countryName: [`${MAILING_FORM} #natn`],
     // Derived answers (engine DERIVED_KEYS)
     fullLegalName: ["#ud50"],
