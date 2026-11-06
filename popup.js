@@ -20,6 +20,12 @@ const btnDocuments = document.getElementById("btnDocuments");
 const documentsCard = document.getElementById("documentsCard");
 const uploadGeneral = document.getElementById("uploadGeneral");
 const uploadFields = document.getElementById("uploadFields");
+const recordSteppers = document.getElementById("recordSteppers");
+const recordShowAll = document.getElementById("recordShowAll");
+// Titles of the record sections the open page can fill, or null when the page cannot be read.
+let pageSectionTitles = null;
+let showAllRecords = false;
+let pageSectionsRevision = 0;
 let cache = null;
 let expiryTimer = null;
 let siteAccessTarget = null;
@@ -226,6 +232,143 @@ function isExtraRecordKey(key) {
   return Boolean(match) && SECTION_KEYS.has(match[1]) && !SECTION_KEYS.has(key);
 }
 
+// Sections that hold several saved records (two schools, three jobs): { title, keys, count }.
+function repeatingSections(fields) {
+  const source = fields || {};
+  return FIELD_SECTIONS.map(([title, keys]) => {
+    let count = 1;
+    for (let record = 2; record <= MAX_RECORDS; record++) {
+      if (keys.some((key) => source[`${key}${record}`])) count = record;
+    }
+    return { title, keys, count };
+  }).filter((section) => section.count > 1);
+}
+
+function chosenRecord(section) {
+  const chosen = Number(cache && cache.recordChoice && cache.recordChoice[section.title]);
+  return Number.isInteger(chosen) && chosen >= 1 && chosen <= section.count ? chosen : 1;
+}
+
+// The CRM keys sent to the page. A later record is moved onto the plain keys that portals map,
+// and a key that record lacks is removed, so it never inherits another record's value.
+function fieldsForFill() {
+  const map = { ...cache.fields };
+  repeatingSections(map).forEach((section) => {
+    const record = chosenRecord(section);
+    if (record === 1) return;
+    section.keys.forEach((key) => {
+      const value = cache.fields[`${key}${record}`];
+      if (value) map[key] = value; else delete map[key];
+    });
+  });
+  return map;
+}
+
+// The saved values that name a record, such as the school and the qualification, for the summary lines.
+function recordUsed(section, record) {
+  const used = cache && cache.recordUsed && cache.recordUsed[section.title];
+  return Array.isArray(used) && used.includes(record);
+}
+
+function recordSummary(section, record) {
+  const suffix = record > 1 ? String(record) : "";
+  return section.keys.filter((key) => !/^has[A-Z]/.test(key))
+    .map((key) => cache.fields[`${key}${suffix}`]).filter(Boolean).slice(0, 2);
+}
+
+async function chooseRecord(choices) {
+  try {
+    const response = await runtimeMessage({ action: "setRecordChoice", choices });
+    cache = response.cache || null;
+  } catch (error) {
+    setStatus("error", error.message || String(error));
+  }
+  renderCache();
+}
+
+function renderRecordSteppers() {
+  const all = cache ? repeatingSections(cache.fields) : [];
+  const sections = showAllRecords ? all : all.filter((section) => pageSectionTitles && pageSectionTitles.has(section.title));
+  recordSteppers.hidden = !sections.length;
+  // An escape hatch for pages the extension cannot read or does not recognise.
+  recordShowAll.hidden = !all.length || (!showAllRecords && sections.length === all.length);
+  recordShowAll.textContent = showAllRecords ? "Show this page's records only" : "Show all records";
+  const heading = document.createElement("div");
+  heading.className = "record-heading";
+  heading.textContent = "Records used by Autofill";
+  const hint = document.createElement("p");
+  hint.className = "meta";
+  hint.textContent = "Moves to the next record after each fill.";
+  recordSteppers.replaceChildren(heading, ...sections.map((section) => {
+    const record = chosenRecord(section);
+    const row = document.createElement("div");
+    row.className = "record-step";
+    const head = document.createElement("div");
+    head.className = "record-step-head";
+    const title = document.createElement("span");
+    title.className = "record-step-title";
+    title.textContent = section.title;
+    const count = document.createElement("span");
+    count.className = "record-step-count";
+    count.textContent = `${record} of ${section.count}`;
+    const step = (text, name, target) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "record-step-btn";
+      button.textContent = text;
+      button.setAttribute("aria-label", `${name} ${section.title.toLowerCase()} record`);
+      button.disabled = target < 1 || target > section.count;
+      button.addEventListener("click", () => chooseRecord({ [section.title]: target }));
+      return button;
+    };
+    head.append(title, step("‹", "Previous", record - 1), count, step("›", "Next", record + 1));
+    const detail = document.createElement("div");
+    detail.className = "record-step-detail";
+    detail.replaceChildren(...recordSummary(section, record).map((text) => {
+      const line = document.createElement("div");
+      line.textContent = text;
+      return line;
+    }));
+    row.append(head, detail);
+    if (recordUsed(section, record)) {
+      const badge = document.createElement("div");
+      badge.className = "record-step-used";
+      badge.textContent = "✓ Already filled on a page";
+      row.append(badge);
+    }
+    return row;
+  }), hint);
+}
+
+// Asks the open page which record sections it can fill, so the stepper shows only on those pages.
+// Any failure leaves the sections hidden; "Show all records" still reaches them.
+async function refreshPageSections() {
+  const revision = ++pageSectionsRevision;
+  const sections = cache ? repeatingSections(cache.fields) : [];
+  if (!sections.length) {
+    pageSectionTitles = null;
+    renderRecordSteppers();
+    return;
+  }
+  let frames = [];
+  let titles = null;
+  try {
+    const tab = await approvedTab(SAMS_ALLOWLIST.isFillTarget, "");
+    const prepared = await preparePageFrames(tab);
+    frames = prepared.frames;
+    const answers = await Promise.all(prepared.checked.map(async (frame) => {
+      if (frame.error) return [];
+      const response = await frame.request({ action: "pageSections", sections: sections.map(({ title, keys }) => ({ title, keys })) });
+      return response && Array.isArray(response.titles) ? response.titles : [];
+    }));
+    titles = new Set(answers.flat());
+  } catch { /* an unreadable page shows no records; the link above the buttons still works */ }
+  frames.forEach((frame) => frame.close && frame.close());
+  if (revision !== pageSectionsRevision) return;
+  pageSectionTitles = titles;
+  renderRecordSteppers();
+}
+
 function groupFields(entries) {
   const byKey = new Map(entries);
   const groups = FIELD_SECTIONS.map(([title, keys]) => {
@@ -342,6 +485,7 @@ function renderCache() {
   btnDocuments.hidden = !(cache && cache.documents && cache.documents.length);
   renderFields(cache && cache.fields);
   renderDocuments(cache && cache.documents);
+  renderRecordSteppers();
   if (!cache) {
     closeUploads();
     studentName.textContent = "";
@@ -480,6 +624,7 @@ async function copyFromCrm() {
     if (stored.error) throw new Error(stored.error);
     cache = stored.cache;
     renderCache();
+    refreshPageSections();
     const documentsNote = listing.failed ? " CRM documents could not be read, so attach them manually."
       : cache.documents.length ? ` ${cache.documents.length} CRM documents available to attach.` : "";
     setStatus("success", `${Object.keys(cache.fields).length} CRM fields copied.${documentsNote} Student data expires after 30 minutes of inactivity.`);
@@ -606,7 +751,8 @@ async function autofill() {
     // The worker cache is authoritative: Clear, expiry, or a new Copy elsewhere must win over this popup's memory.
     await refreshCache();
     if (!cache) throw new Error("No copied student is available. Copy from CRM again before Autofill.");
-    const fieldMap = cache.fields;
+    const fieldMap = fieldsForFill();
+    const usedRecords = repeatingSections(cache.fields).map((section) => ({ section, record: chosenRecord(section) }));
     const outcomes = await Promise.all(checked.map(async (frame) => {
       if (frame.error) return frame;
       const response = await frame.request({ action: "autofill", fieldMap });
@@ -618,17 +764,30 @@ async function autofill() {
     const failures = outcomes.filter((outcome) => outcome.error);
     if (!reports.length) throw new Error(failures[0].error);
     const result = mergeResults(reports);
+    // A section that took values from its record moves on, so the next empty form gets the next record.
+    const filledNames = new Set(result.filled.map((item) => item.name));
+    const advance = {};
+    usedRecords.forEach(({ section, record }) => {
+      if (record < section.count && section.keys.some((key) => filledNames.has(key))) advance[section.title] = record + 1;
+    });
+    const used = {};
+    usedRecords.forEach(({ section, record }) => {
+      if (section.keys.some((key) => filledNames.has(key))) used[section.title] = record;
+    });
+    const advanceNote = Object.entries(advance).map(([title, record]) => ` Next ${title.toLowerCase()} fill uses record ${record}.`).join("");
     // Kept from Chrome: one successful frame counts as activity. All-frame failure threw above.
-    const touched = await runtimeMessage({ action: "touchStudentCache" });
+    const touched = await runtimeMessage(Object.keys(advance).length || Object.keys(used).length
+      ? { action: "setRecordChoice", choices: advance, used }
+      : { action: "touchStudentCache" });
     cache = touched.cache || null;
     renderCache();
     if (failures.length) {
-      setStatus("warning", `${result.filled.length} fields filled in ${reports.length} of ${outcomes.length} page frames. Some frames were not filled: review the whole page before continuing.`);
+      setStatus("warning", `${result.filled.length} fields filled in ${reports.length} of ${outcomes.length} page frames. Some frames were not filled: review the whole page before continuing.${advanceNote}`);
       addList("Frames not filled", failures.map((failure) => `Frame ${failure.frameId}: ${failure.error}`));
     } else if (reports.some((report) => !report.mapping)) {
-      setStatus("success", `${result.filled.length} fields filled using shared matching for this website. Draft only: review every field, complete the rest, and submit it yourself.`);
+      setStatus("success", `${result.filled.length} fields filled using shared matching for this website. Draft only: review every field, complete the rest, and submit it yourself.${advanceNote}`);
     } else {
-      setStatus("success", `${result.filled.length} fields filled. Draft only: review the form and submit it yourself.`);
+      setStatus("success", `${result.filled.length} fields filled.${advanceNote}`);
     }
     addList("Filled", result.filled);
     addList("Skipped, already had a value", result.skippedExisting);
@@ -782,9 +941,20 @@ function createPicker({ label, options, placeholder }) {
   trigger.append(valueText, chevron);
   const menu = document.createElement("div");
   menu.className = "upload-choice-menu";
-  menu.setAttribute("role", "listbox");
-  menu.setAttribute("aria-label", `CRM document for ${label}`);
   menu.hidden = true;
+  const search = document.createElement("input");
+  search.type = "search";
+  search.className = "upload-choice-search";
+  search.placeholder = "Search documents";
+  search.setAttribute("aria-label", `Search CRM documents for ${label}`);
+  search.autocomplete = "off";
+  const list = document.createElement("div");
+  list.className = "upload-choice-list";
+  list.setAttribute("role", "listbox");
+  list.setAttribute("aria-label", `CRM document for ${label}`);
+  const noMatch = document.createElement("div");
+  noMatch.className = "upload-choice-empty";
+  noMatch.textContent = "No matching documents.";
   const optionNodes = options.map((option, index) => {
     const node = document.createElement("div");
     node.className = "upload-choice-option";
@@ -800,11 +970,20 @@ function createPicker({ label, options, placeholder }) {
     node.addEventListener("click", () => selectOption(index, true));
     return node;
   });
-  menu.append(...optionNodes);
+  menu.append(search, list);
   root.append(trigger, menu);
   let selected = "";
   let highlighted = -1;
+  let visible = optionNodes.map((node, index) => index);
   let notify = () => {};
+
+  function renderOptions() {
+    const query = search.value.trim().toLowerCase();
+    visible = options.map((option, index) => index).filter((index) => `${options[index].text}`.toLowerCase().includes(query));
+    list.replaceChildren(...(visible.length ? visible.map((index) => optionNodes[index]) : [noMatch]));
+  }
+
+  renderOptions();
 
   function setHighlight(index) {
     highlighted = index;
@@ -812,9 +991,12 @@ function createPicker({ label, options, placeholder }) {
   }
   function open() {
     if (trigger.disabled || !menu.hidden) return;
+    search.value = "";
+    renderOptions();
     menu.hidden = false;
     trigger.setAttribute("aria-expanded", "true");
     setHighlight(options.findIndex((option) => option.value === selected));
+    if (search.focus) search.focus();
   }
   function close() {
     menu.hidden = true;
@@ -835,18 +1017,23 @@ function createPicker({ label, options, placeholder }) {
   }
   function move(step) {
     if (menu.hidden) return open();
-    const next = Math.min(optionNodes.length - 1, Math.max(0, highlighted + step));
+    if (!visible.length) return;
+    const position = visible.indexOf(highlighted);
+    const next = visible[Math.min(visible.length - 1, Math.max(0, position + step))];
     setHighlight(next);
     if (optionNodes[next].scrollIntoView) optionNodes[next].scrollIntoView({ block: "nearest" });
   }
   function onKey(event) {
+    const inSearch = event.target === search;
     if (event.key === "ArrowDown" || event.key === "ArrowUp") {
       event.preventDefault();
       move(event.key === "ArrowDown" ? 1 : -1);
-    } else if (event.key === "Enter" || event.key === " ") {
+    } else if (event.key === "Enter" || (event.key === " " && !inSearch)) {
       if (menu.hidden) { event.preventDefault(); open(); } else if (highlighted >= 0) { event.preventDefault(); selectOption(highlighted, true); }
-    } else if (event.key === "Home" || event.key === "End") {
-      if (!menu.hidden) { event.preventDefault(); setHighlight(event.key === "Home" ? 0 : optionNodes.length - 1); }
+    } else if ((event.key === "Home" || event.key === "End") && !inSearch) {
+      if (!menu.hidden && visible.length) { event.preventDefault(); setHighlight(visible[event.key === "Home" ? 0 : visible.length - 1]); }
+    } else if (event.key === "Tab" && inSearch) {
+      close();
     } else if (event.key === "Escape" && !menu.hidden) {
       event.preventDefault();
       close();
@@ -857,6 +1044,12 @@ function createPicker({ label, options, placeholder }) {
   const onDocumentClick = (event) => { if (!root.contains || !root.contains(event.target)) close(); };
   trigger.addEventListener("click", () => { if (menu.hidden) open(); else close(); });
   trigger.addEventListener("keydown", onKey);
+  search.addEventListener("keydown", onKey);
+  search.addEventListener("input", () => {
+    renderOptions();
+    const first = visible.includes(highlighted) ? highlighted : visible[0];
+    setHighlight(first === undefined ? -1 : first);
+  });
   document.addEventListener("click", onDocumentClick);
 
   return {
@@ -1023,18 +1216,20 @@ btnClear.addEventListener("click", clearStudent);
 btnSiteAccess.addEventListener("click", requestSiteAccess);
 btnDocuments.addEventListener("click", scanUploads);
 copiedSearch.addEventListener("input", () => renderFields(cache && cache.fields));
-refreshCache().catch((error) => setStatus("error", error.message || String(error)));
+refreshCache().then(() => refreshPageSections()).catch((error) => setStatus("error", error.message || String(error)));
 SAMS_UPDATE.available().then((update) => {
   if (!update) return;
   updateBanner.textContent = `Update available: version ${update.version}`;
   updateBanner.href = update.url;
   updateBanner.hidden = false;
 }).catch(() => {});
-window.addEventListener("focus", refreshSiteAccess);
-chrome.tabs.onActivated.addListener(refreshSiteAccess);
+window.addEventListener("focus", () => { refreshSiteAccess(); refreshPageSections(); });
+chrome.tabs.onActivated.addListener(() => { refreshSiteAccess(); refreshPageSections(); });
 chrome.tabs.onUpdated.addListener((tabId, change) => {
+  if (change.url || change.status === "complete") refreshPageSections();
   if ((!siteAccessTarget || siteAccessTarget.tabId === tabId) && (change.url || change.status === "complete")) refreshSiteAccess();
 });
+recordShowAll.addEventListener("click", () => { showAllRecords = !showAllRecords; renderRecordSteppers(); });
 chrome.permissions?.onAdded?.addListener(refreshSiteAccess);
 chrome.permissions?.onRemoved?.addListener(refreshSiteAccess);
 refreshSiteAccess();

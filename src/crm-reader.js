@@ -670,9 +670,10 @@ if (!globalThis.__SAMS_CRM_READER_LOADED__) {
     const value = clean(text);
     if (!value || !city) return null;
     const index = value.toLowerCase().lastIndexOf(city.toLowerCase());
-    if (index <= 0) return null;
+    if (index < 0) return null;
+    // A city at the very start means the CRM holds no street line: only city, postcode and country.
     const line = value.slice(0, index).replace(/[,\s]+$/, "").trim();
-    const tail = value.slice(index + city.length).trim();
+    const tail = value.slice(index + city.length).replace(/^[,\s]+/, "").replace(/\s*,\s*/g, " ").trim();
     const uk = tail.match(/^([A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2})\s+(.+)$/i);
     if (uk) return { line, postcode: uk[1].toUpperCase(), country: uk[2] };
     const ukOnly = tail.match(/^([A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2})$/i);
@@ -683,6 +684,8 @@ if (!globalThis.__SAMS_CRM_READER_LOADED__) {
     const generic = tail.match(/^(\d{4,6}(?:-\d{4})?|[A-Za-z0-9-]{3,10})\s+(.+)$/);
     return generic && /\d/.test(generic[1]) ? { line, postcode: generic[1], country: generic[2] } : null;
   }
+
+  const joinedPresentLine = new WeakMap();
 
   function readSidebar(root, fields) {
     const sidebar = Array.from(root.querySelectorAll(".pro_left_side_part")).find(visible);
@@ -720,6 +723,10 @@ if (!globalThis.__SAMS_CRM_READER_LOADED__) {
       setField(fields, "location", split.line);
       setField(fields, "postcode", split.postcode);
       setField(fields, "countryName", split.country);
+    } else if (clean(present)) {
+      // No usable city anchor: keep the joined line as a last resort. finalizeProfile applies it only
+      // when no structured Applications street exists, and the engine peels city, postcode and country at fill time.
+      joinedPresentLine.set(fields, clean(present));
     }
     const contact = pick(".only_contact_detail_div");
     setField(fields, "phone", contact?.querySelector(".hover_for_edit_phone")?.innerText);
@@ -835,6 +842,8 @@ if (!globalThis.__SAMS_CRM_READER_LOADED__) {
   }
 
   function finalizeProfile(fields, fallbackId) {
+    const joinedPresent = joinedPresentLine.get(fields);
+    if (joinedPresent) setField(fields, "location", joinedPresent);
     if (fields.emergencyName) {
       const names = fields.emergencyName.split(/\s+/).filter(Boolean);
       fields.emergencyFirstName ||= names[0] || "";

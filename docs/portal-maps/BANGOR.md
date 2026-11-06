@@ -165,11 +165,11 @@ supervisor field and a free-text project title.
 |---|---|---|---|---|
 | `#id_institution` | Institution | text **required** | `institutionName` | Mapped |
 | `#id_country` | Country | select (215) **required** | — | Manual: institution country is not applicant residence |
-| `#id_qualification_title` | Title of qualification | text **required** | `degree` | Mapped |
+| `#id_qualification_title` | Title of qualification | text **required** | `qualificationTitle` | Derived: "Level in Subject" from CRM `degree` (level badge) and `major` (subject). Either alone is used as is. A subject that already contains the level is not prefixed |
 | `#id_result` | Grades achieved / expected | text | `grade` | Mapped |
 | `#id_course_start_date` / `_year` | Course attended from | select **required** | `startDate` | Split date |
 | `#id_course_end_date` / `_year` | Course attended to | select **required** | `endDate` | Split date |
-| `#id_qualification_date` / `_year` | Date qualification awarded / expected | select | `graduationYear` | Split date (year only) |
+| `#id_qualification_date` / `_year` | Date qualification awarded / expected | select | `graduationYear`, else `qualificationAwardDate` | Split date. The CRM passing year fills the year only. With no passing year, the course end date (`endDate`) fills month and year |
 | `#id_transcript_file` | Academic transcript related to this qualification | file **required** | — | Manual: document attach |
 | `#id_certificate_file` | Qualification certificate | file | — | Manual: document attach |
 | `#id_reference_file` | Academic reference | file | — | Manual: document attach |
@@ -218,6 +218,7 @@ Filled only when the select is still on its placeholder; an existing value is ne
 | `startDate` | `/apply/education/` | `#id_course_start_date`, `#id_course_start_date_year` |
 | `endDate` | `/apply/education/` | `#id_course_end_date`, `#id_course_end_date_year` |
 | `graduationYear` | `/apply/education/` | `#id_qualification_date_year` |
+| `qualificationAwardDate` (derived from `endDate` when there is no `graduationYear`) | `/apply/education/` | `#id_qualification_date`, `#id_qualification_date_year` |
 | `cvWorkStartDate` | `/apply/employment/` | `#id_start_date`, `#id_start_date_year` |
 | `cvWorkEndDate` | `/apply/employment/` | `#id_end_date`, `#id_end_date_year` |
 | `passportExpiryDate` | `/apply/international/` | `#id_passport_expiry_date_day`, `_month`, `_year` |

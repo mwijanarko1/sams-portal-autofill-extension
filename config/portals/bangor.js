@@ -38,7 +38,8 @@ const config = {
     postcode: ["#id_postcode"],
     phone: ["#id_phone_number"],
     institutionName: ["#id_institution"],
-    degree: ["#id_qualification_title"],
+    // One title field: the engine builds it from the CRM level and subject (derived qualificationTitle).
+    qualificationTitle: ["#id_qualification_title"],
     grade: ["#id_result"],
     cvCurrentEmployer: ["#id_employer"],
     cvCurrentJobTitle: ["#id_position"],
@@ -71,7 +72,7 @@ const config = {
     postcode: ["postcode / zip", "postcode", "zip"],
     phone: ["phone number"],
     institutionName: ["institution"],
-    degree: ["title of qualification"],
+    qualificationTitle: ["title of qualification"],
     grade: ["grades achieved / expected", "grades achieved", "grades expected"],
     cvCurrentEmployer: ["employer"],
     cvCurrentJobTitle: ["position"],
@@ -85,6 +86,8 @@ const config = {
     { key: "startDate", page: "^/apply/education/", month: "#id_course_start_date", year: "#id_course_start_date_year" },
     { key: "endDate", page: "^/apply/education/", month: "#id_course_end_date", year: "#id_course_end_date_year" },
     { key: "graduationYear", page: "^/apply/education/", year: "#id_qualification_date_year" },
+    // Derived: with no passing year, the award date follows the course end date (month and year).
+    { key: "qualificationAwardDate", page: "^/apply/education/", month: "#id_qualification_date", year: "#id_qualification_date_year" },
     { key: "cvWorkStartDate", page: "^/apply/employment/", month: "#id_start_date", year: "#id_start_date_year" },
     { key: "cvWorkEndDate", page: "^/apply/employment/", month: "#id_end_date", year: "#id_end_date_year" },
     { key: "passportExpiryDate", page: "^/apply/international/", day: "#id_passport_expiry_date_day", month: "#id_passport_expiry_date_month", year: "#id_passport_expiry_date_year" },

@@ -4,7 +4,7 @@ const CACHE_KEY = "studentCache";
 const ALARM_NAME = "expire-student-cache";
 const UPDATE_ALARM = "check-for-update";
 const UPDATE_CHECK_MINUTES = 360;
-const CACHE_ACTIONS = ["cacheStudent", "getStudentCache", "touchStudentCache", "recordAttachedDocument", "clearStudentCache"];
+const CACHE_ACTIONS = ["cacheStudent", "getStudentCache", "touchStudentCache", "recordAttachedDocument", "setRecordChoice", "clearStudentCache"];
 const MAX_FIELDS = 400;
 const MAX_TEXT_LENGTH = 4000;
 const MAX_DOCUMENTS = 100;
@@ -60,6 +60,23 @@ async function recordAttachment(key, label) {
   return storeCache({ ...cache, attached });
 }
 
+// Which saved record of each repeating section (education, work) the next Autofill uses. It is kept
+// with the copied student so it survives the popup closing. A new Copy or Clear drops it.
+// `used` lists the records an Autofill filled, so the popup can mark them as used.
+async function setRecordChoice(choices, used) {
+  const cache = await readCache();
+  if (!cache) return cache;
+  const valid = (title, record) => /^[A-Za-z ]{1,40}$/.test(title) && Number.isInteger(record) && record >= 1 && record <= 5;
+  const plain = (value) => value && typeof value === "object" && !Array.isArray(value) ? Object.entries(value).slice(0, 20) : [];
+  const recordChoice = { ...(cache.recordChoice || {}) };
+  plain(choices).forEach(([title, record]) => { if (valid(title, record)) recordChoice[title] = record; });
+  const recordUsed = { ...(cache.recordUsed || {}) };
+  plain(used).forEach(([title, record]) => {
+    if (valid(title, record)) recordUsed[title] = [...new Set([...(recordUsed[title] || []), record])].sort();
+  });
+  return storeCache({ ...cache, recordChoice, recordUsed });
+}
+
 function validProfile(profile) {
   if (!profile || typeof profile !== "object") return null;
   const { studentId, studentName, sourceOrigin, copiedAt, fields } = profile;
@@ -107,6 +124,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     operation = async () => ({ cache: await storeCache(profile) });
   } else if (message.action === "getStudentCache") operation = async () => ({ cache: await readCache() });
   else if (message.action === "touchStudentCache") operation = async () => ({ cache: await touchCache() });
+  else if (message.action === "setRecordChoice") operation = async () => ({ cache: await setRecordChoice(message.choices, message.used) });
   else if (message.action === "recordAttachedDocument") operation = async () => ({ cache: await recordAttachment(message.key, message.label) });
   else {
     operation = async () => {

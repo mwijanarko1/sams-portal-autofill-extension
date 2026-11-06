@@ -180,7 +180,7 @@ if (!globalThis.__SAMS_PORTAL_FILL_LOADED__) {
       try { port.postMessage(response); } catch { /* port closed */ }
     };
     port.onMessage.addListener(async (message) => {
-      if (!message || !["prepare", "autofill", "listUploads", "showUpload", "attachDocument"].includes(message.action)) return;
+      if (!message || !["prepare", "autofill", "listUploads", "showUpload", "attachDocument", "pageSections"].includes(message.action)) return;
       if (message.action === "prepare") origin = message.origin;
       const problem = pageProblem(origin);
       if (problem) {
@@ -193,6 +193,19 @@ if (!globalThis.__SAMS_PORTAL_FILL_LOADED__) {
       }
       if (message.action === "prepare") {
         reply({ ready: true });
+        return;
+      }
+      if (message.action === "pageSections") {
+        // Section names and CRM key names only. No student values are sent to or read from the page.
+        const asked = Array.isArray(message.sections) ? message.sections.slice(0, 20) : [];
+        const sections = asked
+          .filter((section) => section && typeof section.title === "string" && Array.isArray(section.keys))
+          .map((section) => ({ title: section.title.slice(0, 40), keys: section.keys.filter((key) => typeof key === "string").slice(0, 40) }));
+        try {
+          reply({ titles: SAMS_ENGINE.pageRecordSections(sections) });
+        } catch (error) {
+          reply({ error: error.message || String(error) });
+        }
         return;
       }
       if (message.action === "listUploads") {

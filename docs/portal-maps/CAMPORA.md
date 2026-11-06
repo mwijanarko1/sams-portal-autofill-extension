@@ -92,7 +92,7 @@ enter the fill engine's heuristic matching.
 | Emergency contact rows | `emergencyName`, `emergencyPhone`, `emergencyEmail`, `emergencyRelationship` | Scoped to the emergency block |
 | Emergency contact name | `emergencyFirstName`, `emergencyLastName` | Derived from `emergencyName` |
 | Present Address | `location` | Free text |
-| Home Address | `permanentAddress` | Separate free text; no inferred city/postcode/country |
+| Home Address | `permanentAddress` | Separate free text. The Copy step keeps it whole; at fill time the engine peels a trailing country, postcode and city off it (see CRM-LEAD-PROFILE.md, "Address text at fill time") |
 | Education History | `institutionName`, `degree`, `major`, `grade`, `studyDates`, `startDate`, `endDate`, `studyStartYear`, `studyEndYear` | First record only |
 | Test Score | `englishTestName`, `testDate`, `overallScore`, `listeningScore`, `readingScore`, `writingScore`, `speakingScore` | First saved test only |
 | Work Experience | `cvCurrentEmployer`, `cvCurrentJobTitle`, `cvWorkStartDate`, `cvWorkEndDate` | First record only; open-ended `- N/A` keeps the start date |

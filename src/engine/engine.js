@@ -2924,7 +2924,7 @@ function endedInPast(raw, now) {
 // "applying from within the UK" follows the current country, never nationality.
 var DERIVED_KEYS = {
   countryOfBirth: function (map) { return map.nationality; },
-  currentDomicile: function (map) { return map.countryName; },
+  currentDomicile: function (map, parsed) { return map.countryName || parsed.countryName; },
   preferredIntake: function (map) {
     return map.preferredStartMonth && map.preferredStartYear
       ? String(map.preferredStartMonth).trim() + " " + String(map.preferredStartYear).trim()
@@ -2939,8 +2939,8 @@ var DERIVED_KEYS = {
     return country ? (EU_COUNTRIES.indexOf(country) >= 0 ? "Yes" : "No") : "";
   },
   passportIssueNation: function (map) { return resolveCountry(map.nationality, true); },
-  applyingFromWithinUk: function (map) {
-    var countries = [map.currentDomicile, map.countryName].filter(crmText).map(function (text) { return resolveCountry(text, false); });
+  applyingFromWithinUk: function (map, parsed) {
+    var countries = [map.currentDomicile, map.countryName || parsed.countryName].filter(crmText).map(function (text) { return resolveCountry(text, false); });
     if (!countries.length || countries.some(function (country) { return !country || country !== countries[0]; })) return "";
     return countries[0] === "United Kingdom" ? "Yes" : "No";
   },
@@ -2958,6 +2958,19 @@ var DERIVED_KEYS = {
     var relation = addressRelation(kinds.permanent, kinds.present);
     return relation === "same" ? "No" : relation === "different" ? "Yes" : "";
   },
+  // A portal with one qualification title control gets "Level in Subject". Either part alone is used
+  // as is, and a subject that already names the level is not prefixed again.
+  qualificationTitle: function (map) {
+    var level = crmText(map.degree);
+    var subject = crmText(map.major);
+    if (!level || !subject) return subject || level;
+    var levelWords = plainWords(level);
+    var subjectWords = plainWords(subject);
+    if (subjectWords === levelWords || (" " + subjectWords + " ").indexOf(" " + levelWords + " ") >= 0) return subject;
+    return level + " in " + subject;
+  },
+  // The award or expected date follows the course end date, but only when the CRM has no passing year.
+  qualificationAwardDate: function (map) { return crmText(map.graduationYear) ? "" : map.endDate; },
   qualificationCompleted: function (map) { return endedInPast(map.endDate, new Date()) ? "Yes" : ""; },
   ukVisaRefusal: function (map) {
     var flag = crmYesNo(map.hasVisaRefusal);
@@ -2976,19 +2989,24 @@ function withDerivedKeys(fieldMap) {
   var mapped = Object.keys(ACTIVE_PORTAL.selectorOverrides || {})
     .concat((ACTIVE_PORTAL.splitDates || []).map(function (spec) { return spec.key; }));
   var derived = {};
+  // Address text may hold the country; residence answers read it, the same-address answers do not.
+  var parsed = Object.assign({}, fieldMap, normalizeAddressText(fieldMap, mapped, true));
   Object.keys(DERIVED_KEYS).forEach(function (key) {
     if (mapped.indexOf(key) === -1 || String(fieldMap[key] || "").trim()) return;
-    var value = String(DERIVED_KEYS[key](fieldMap) || "").trim();
+    var value = String(DERIVED_KEYS[key](fieldMap, parsed) || "").trim();
     if (value) derived[key] = value;
   });
-  var fallback = presentFromPermanent(fieldMap, mapped);
-  Object.assign(derived, fallback, splitAddressLines(Object.assign({}, fieldMap, fallback), mapped));
+  var normalized = normalizeAddressText(fieldMap, mapped);
+  var withParts = Object.assign({}, fieldMap, normalized);
+  var fallback = presentFromPermanent(withParts, mapped);
+  Object.assign(derived, normalized, fallback, splitAddressLines(Object.assign({}, withParts, fallback), mapped));
   return Object.keys(derived).length ? Object.assign({}, fieldMap, derived) : fieldMap;
 }
 
 // A portal flagged permanentAddressFillsMissingPresent has one address and takes the permanent
 // one when the CRM has no present street line. Each present key the CRM left empty copies its
-// permanent twin, so a present value never gets replaced. Derived answers read the CRM map, not this one.
+// permanent twin, so a present value never gets replaced. A permanent address that names a different
+// city, postcode or country than the present one is not borrowed. Derived answers read the CRM map, not this one.
 var PRESENT_FROM_PERMANENT = {
   location: "permanentAddress",
   city: "permanentCity",
@@ -2996,12 +3014,166 @@ var PRESENT_FROM_PERMANENT = {
   countryName: "permanentCountry",
 };
 
+// A present address that already names a city, postcode or country must not be completed with a
+// permanent address that names a different one: that would join two different places in one form.
+function presentContradictsPermanent(fieldMap) {
+  var countryKey = function (text) { return resolveCountry(text, false) || plainWords(text); };
+  var pairs = [
+    ["city", "permanentCity", plainWords],
+    ["postcode", "permanentPostcode", postcodeKey],
+    ["countryName", "permanentCountry", countryKey],
+  ];
+  return pairs.some(function (pair) {
+    var present = crmText(fieldMap[pair[0]]);
+    var permanent = crmText(fieldMap[pair[1]]);
+    return present && permanent && pair[2](present) !== pair[2](permanent);
+  });
+}
+
 function presentFromPermanent(fieldMap, mapped) {
   var out = {};
   if (!ACTIVE_PORTAL.permanentAddressFillsMissingPresent || crmText(fieldMap.location)) return out;
+  if (presentContradictsPermanent(fieldMap)) return out;
   Object.keys(PRESENT_FROM_PERMANENT).forEach(function (key) {
     var value = crmText(fieldMap[PRESENT_FROM_PERMANENT[key]]);
     if (mapped.indexOf(key) >= 0 && value && !crmText(fieldMap[key])) out[key] = value;
+  });
+  return out;
+}
+
+// The CRM holds each address as free text that may carry any mix of street lines, city, postcode
+// and country ("City, Postcode, Country", "Street, City", "Country" alone). Peel the country, then
+// the postcode, then the city from the END of that text into their own keys, so only street text is
+// left for the address lines. A component is peeled only when the portal maps its key, when the CRM
+// sent no different value for it, and when the text clearly is that component. A city is taken from
+// the text only next to a recognised postcode or country, or when it equals the CRM's own city, so
+// "Flat 1, 12 Baker Street" keeps both parts as street. A street left empty stays empty.
+var ADDRESS_KINDS = [
+  { street: "location", city: "city", postcode: "postcode", country: "countryName", state: "state", present: true },
+  { street: "permanentAddress", city: "permanentCity", postcode: "permanentPostcode", country: "permanentCountry" },
+];
+var POSTCODE_END = /(?:^|\s)([A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2}|[A-Z]\d[A-Z]\s?\d[A-Z]\d|\d{4}\s?[A-Z]{2}|\d{5}-\d{4}|\d{4,6})$/i;
+var POSTCODE_WORD = /^(?=.{4,10}$)[A-Za-z]{0,3}\d[A-Za-z\d-]{2,9}$/;
+var POSTCODE_START = /^([A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2}|[A-Z]\d[A-Z]\s?\d[A-Z]\d|\d{4}\s?[A-Z]{2}|\d{5}-\d{4}|\d{4,6})(?:\s+(.+))?$/i;
+// A county, state or province sits between the city and the postcode. It is not the city, so it is
+// set aside (into the portal's state key when it has one) and the part before it becomes the city.
+var REGION_CODE = /^[A-Z]{2,3}$/;
+var REGION_SUFFIX = /\b(?:division|province|county|state|region|district|governorate|prefecture|emirate)$/i;
+var REGION_NAMES = ("greater london|greater manchester|west midlands|west yorkshire|south yorkshire|north yorkshire|east yorkshire|" +
+  "yorkshire|merseyside|tyne and wear|county durham|durham|northumberland|cumbria|lancashire|cheshire|derbyshire|nottinghamshire|" +
+  "leicestershire|rutland|lincolnshire|staffordshire|shropshire|herefordshire|worcestershire|warwickshire|northamptonshire|" +
+  "cambridgeshire|norfolk|suffolk|essex|hertfordshire|bedfordshire|buckinghamshire|oxfordshire|berkshire|surrey|kent|east sussex|" +
+  "west sussex|hampshire|isle of wight|wiltshire|dorset|somerset|gloucestershire|devon|cornwall|england|scotland|wales|northern ireland|" +
+  "alabama|alaska|arizona|arkansas|california|colorado|connecticut|delaware|florida|georgia|hawaii|idaho|illinois|indiana|iowa|kansas|" +
+  "kentucky|louisiana|maine|maryland|massachusetts|michigan|minnesota|mississippi|missouri|montana|nebraska|nevada|new hampshire|" +
+  "new jersey|new mexico|new york|north carolina|north dakota|ohio|oklahoma|oregon|pennsylvania|rhode island|south carolina|" +
+  "south dakota|tennessee|texas|utah|vermont|virginia|washington|west virginia|wisconsin|wyoming|alberta|british columbia|manitoba|" +
+  "new brunswick|newfoundland and labrador|nova scotia|ontario|prince edward island|quebec|saskatchewan|new south wales|queensland|" +
+  "south australia|tasmania|victoria|western australia").split("|");
+var STREET_WORD = /\b(?:street|st|road|rd|avenue|ave|lane|ln|drive|dr|house|flat|apartment|apt|block|building|floor|plot|unit|room|no|number|sector|suite|po box)\b/i;
+
+function postcodeKey(text) {
+  return plainWords(text).replace(/ /g, "");
+}
+
+/** A trailing country of one to four words: { rest, value }, or null. */
+function countrySuffix(text, known) {
+  var words = text.split(/\s+/);
+  for (var size = Math.min(4, words.length); size >= 1; size--) {
+    var value = words.slice(words.length - size).join(" ");
+    var country = resolveCountry(value, false);
+    if (country && (!known || resolveCountry(known, false) === country)) {
+      return { rest: words.slice(0, words.length - size).join(" "), value: value };
+    }
+  }
+  return null;
+}
+
+/** A leading postcode before the city, as in "75001 Paris": { rest, value }, or null. */
+function postcodePrefix(text, known, hasCountry) {
+  var m = POSTCODE_START.exec(text);
+  if (!m || !m[2]) return null;
+  if (/^\d{4,6}$/.test(m[1]) && (!hasCountry || STREET_WORD.test(m[2]))) return null;
+  return !known || postcodeKey(known) === postcodeKey(m[1]) ? { rest: m[2], value: m[1] } : null;
+}
+
+function isRegion(text) {
+  return REGION_CODE.test(text) || REGION_SUFFIX.test(text) || REGION_NAMES.indexOf(plainWords(text)) >= 0;
+}
+
+/** A trailing postcode: { rest, value }, or null. A bare 4 to 6 digit tail never follows a street word. */
+function postcodeSuffix(text, known) {
+  var m = POSTCODE_END.exec(text);
+  var value;
+  var rest;
+  if (m) {
+    value = m[1];
+    rest = text.slice(0, m.index).replace(/[,\s]+$/, "");
+    if (/^\d{4,6}$/.test(value) && rest && STREET_WORD.test(rest.split(/\s+/).pop())) return null;
+  } else if (POSTCODE_WORD.test(text)) {
+    value = text;
+    rest = "";
+  } else return null;
+  return !known || postcodeKey(known) === postcodeKey(value) ? { rest: rest, value: value } : null;
+}
+
+/** Split one address text into { parts, city, postcode, country }, peeling only the wanted components. */
+function peelAddress(text, known, want) {
+  var parts = String(text || "").split(/[\n\r,;|]+/).map(crmText).filter(Boolean);
+  var found = { city: "", postcode: "", country: "" };
+  var peeled = true;
+  while (parts.length && peeled) {
+    var last = parts[parts.length - 1];
+    var hit = null;
+    var kind = "";
+    if (want.country && !found.country && (hit = countrySuffix(last, known.country))) kind = "country";
+    else if (want.postcode && !found.postcode && (hit = postcodeSuffix(last, known.postcode) || postcodePrefix(last, known.postcode, Boolean(found.country)))) kind = "postcode";
+    peeled = Boolean(kind);
+    if (!peeled) break;
+    found[kind] = hit.value;
+    if (hit.rest) parts[parts.length - 1] = hit.rest; else parts.pop();
+  }
+  var anchored = found.country || found.postcode;
+  var region = "";
+  if (want.city && parts.length > 1) {
+    var edge = parts[parts.length - 1];
+    var beforeEdge = parts[parts.length - 2];
+    var edgeIsCity = known.city && plainWords(edge) === plainWords(known.city);
+    if (!edgeIsCity && isRegion(edge) && (anchored || (known.city && plainWords(beforeEdge) === plainWords(known.city)))) {
+      region = edge;
+      parts.pop();
+    }
+  }
+  if (want.city && parts.length) {
+    var tail = parts[parts.length - 1];
+    var sameCity = known.city && plainWords(tail) === plainWords(known.city);
+    if (sameCity || (!known.city && anchored && !/\d/.test(tail) && !STREET_WORD.test(tail))) {
+      found.city = tail;
+      parts.pop();
+    }
+  }
+  return { parts: parts, city: found.city, postcode: found.postcode, country: found.country, region: region };
+}
+
+function normalizeAddressText(fieldMap, mapped, everything) {
+  var out = {};
+  var isMapped = function (key) { return everything || mapped.indexOf(key) >= 0; };
+  ADDRESS_KINDS.forEach(function (kind) {
+    var text = crmText(fieldMap[kind.street]);
+    if (!text) return;
+    // A portal that fills a missing present address from the permanent one consumes these keys too.
+    var feeds = function (key) {
+      var twin = Object.keys(PRESENT_FROM_PERMANENT).find(function (present) { return PRESENT_FROM_PERMANENT[present] === key; });
+      return isMapped(key) || Boolean(!kind.present && ACTIVE_PORTAL.permanentAddressFillsMissingPresent && twin && isMapped(twin));
+    };
+    var known = { city: crmText(fieldMap[kind.city]), postcode: crmText(fieldMap[kind.postcode]), country: crmText(fieldMap[kind.country]) };
+    var peeled = peelAddress(text, known, { city: feeds(kind.city), postcode: feeds(kind.postcode), country: feeds(kind.country) });
+    if (!peeled.city && !peeled.postcode && !peeled.country) return;
+    out[kind.street] = peeled.parts.join(", ");
+    ["city", "postcode", "country"].forEach(function (part) {
+      if (peeled[part] && !known[part]) out[kind[part]] = peeled[part];
+    });
+    if (peeled.region && kind.state && isMapped(kind.state) && !crmText(fieldMap[kind.state])) out[kind.state] = peeled.region;
   });
   return out;
 }
@@ -3772,7 +3944,29 @@ function enrichFieldsWithMapping(fields, fieldMap) {
   });
 }
 
+/**
+ * Titles of the given record sections that this page can fill. `sections` is [{title, keys}].
+ * A mapped portal counts a section when a control is mapped to one of its keys, or a split date for
+ * one of its keys belongs to this page. An unmapped site counts the shared field matcher's keys.
+ * Reads field structure only; it fills nothing and sees no student data.
+ */
+function pageRecordSections(sections) {
+  var fields = scanFormFields({ mode: "fill" });
+  var here = location.pathname + location.search;
+  var generic = ACTIVE_PORTAL ? null : fields.map(function (field) { return genericFieldKey(field); });
+  return (sections || []).filter(function (section) {
+    var keys = section.keys || [];
+    if (!ACTIVE_PORTAL) return generic.some(function (key) { return key && keys.indexOf(key) >= 0; });
+    if (fields.some(function (field) { return field.overrideCrmKey && keys.indexOf(field.overrideCrmKey) >= 0; })) return true;
+    return (ACTIVE_PORTAL.splitDates || []).some(function (spec) {
+      if (keys.indexOf(spec.key) < 0 || !new RegExp(spec.page).test(here)) return false;
+      return [spec.day, spec.month, spec.year].some(function (selector) { return selector && splitDateSelect(selector); });
+    });
+  }).map(function (section) { return section.title; });
+}
+
 globalThis.SAMS_ENGINE = {
+  pageRecordSections,
   scanFormFields,
   autofillPage,
   enrichFieldsWithMapping,
