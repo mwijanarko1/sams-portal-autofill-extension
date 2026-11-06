@@ -13,11 +13,28 @@ if (!globalThis.__SAMS_CRM_DOCUMENTS_LOADED__) {
     { group: "passport", endpoint: "fp_get_passport_docs", dataKey: "passport_docs", label: "Passport" },
     { group: "additional", endpoint: "fp_get_additional_docs", dataKey: "additional_docs", label: "Additional Documentations" },
   ];
+  // Campora serves each section as an HTML fragment from its own endpoint. Read-only GETs only.
+  const CAMPORA_GROUPS = [
+    { group: "cv", endpoint: "full_profile_cv_doc", label: "Curriculum Vitae (CV)" },
+    { group: "edu", endpoint: "full_profile_education_history", label: "Education History" },
+    { group: "work_history", endpoint: "full_profile_work_history_doc", label: "Work Experience" },
+    { group: "eng_test", endpoint: "full_profile_english_test_doc", label: "Test Score" },
+    { group: "reference", endpoint: "full_profile_reference_doc", label: "References" },
+    { group: "visa_history", endpoint: "full_profile_visa_history_doc", label: "Visa History" },
+    { group: "visa_refusal", endpoint: "full_profile_visa_refusal_doc", label: "Visa Refusal" },
+    { group: "passport", endpoint: "full_profile_passport_doc", label: "Passport" },
+    { group: "additional", endpoint: "full_profile_additional_doc", label: "Additional Documentations" },
+  ];
   const EXTENSIONS = ["pdf", "jpg", "jpeg", "png", "doc", "docx"];
   const MAX_DOCUMENT_BYTES = 10 * 1024 * 1024;
 
   function leadId() {
     const match = location.pathname.match(/^\/agent\/leads\/full-profile\/(\d{1,12})\/?$/);
+    return match ? match[1] : "";
+  }
+
+  function camporaApplyId() {
+    const match = location.pathname.match(/^\/applyuser\/show\/(\d{1,12})\/profile\/?$/);
     return match ? match[1] : "";
   }
 
@@ -54,7 +71,51 @@ if (!globalThis.__SAMS_CRM_DOCUMENTS_LOADED__) {
     return Array.isArray(rows) ? rows.map((row) => toDocument(row, group, lead)).filter(Boolean) : [];
   }
 
+  // One .single_doc_item per file. Only the label, the extension badge and the same-origin
+  // download link are kept. Status menus, preview tokens and captions are never copied.
+  function camporaDocuments(html, group) {
+    const page = new DOMParser().parseFromString(html, "text/html");
+    const documents = [];
+    page.querySelectorAll(".single_doc_item").forEach((item) => {
+      const link = item.querySelector('a[href*="/applyuser/download-media/"][download]');
+      let url = "";
+      try { url = link ? new URL(link.getAttribute("href"), location.origin).href : ""; } catch { url = ""; }
+      const id = (url.match(/\/applyuser\/download-media\/(\d{1,12})\//) || [])[1];
+      const extension = (item.querySelector(".label_badge_radius")?.textContent || "").trim().toLowerCase();
+      if (!id || !EXTENSIONS.includes(extension) || !SAMS_ALLOWLIST.isCrmFileUrl(url, location.origin)) return;
+      documents.push({
+        key: `${group.group}:${id}`,
+        group: group.group,
+        groupLabel: group.label,
+        documentType: null,
+        name: fileName(item.querySelector("strong")?.textContent) || group.label,
+        extension,
+        url,
+      });
+    });
+    return documents;
+  }
+
+  async function listCamporaGroup(group, lead, apply) {
+    const response = await fetch(`/applyuser/sub-content/${group.endpoint}?lead_id=${lead}&apply_id=${apply}`, {
+      headers: { "X-Requested-With": "XMLHttpRequest", Accept: "text/html" },
+      credentials: "same-origin",
+      redirect: "error",
+    });
+    if (!response.ok) throw new Error(`Document listing failed (${response.status}).`);
+    return camporaDocuments(await response.text(), group);
+  }
+
+  async function listCamporaDocuments() {
+    const apply = camporaApplyId();
+    const lead = String(document.querySelector('input[name="lead_id"]')?.value || "");
+    if (!apply || !/^\d{1,12}$/.test(lead)) return [];
+    const groups = await Promise.all(CAMPORA_GROUPS.map((group) => listCamporaGroup(group, lead, apply)));
+    return groups.flat();
+  }
+
   async function listDocuments() {
+    if (camporaApplyId()) return listCamporaDocuments();
     const lead = leadId();
     const token = document.querySelector('meta[name="api-token"]')?.content;
     if (!lead || !token) return [];
@@ -80,6 +141,9 @@ if (!globalThis.__SAMS_CRM_DOCUMENTS_LOADED__) {
     try {
       response = await fetch(url, { credentials: "same-origin", redirect: "error", cache: "no-store" });
     } catch {
+      if (new URL(url).pathname.startsWith("/applyuser/")) {
+        throw new Error("Campora did not return this file (its download link redirects to an error page). Download it from Campora and attach it manually.");
+      }
       throw new Error("Could not fetch this document from the CRM. Sign in to the CRM, Copy again, and retry.");
     }
     if (!response.ok) throw new Error(`The CRM refused this document (${response.status}). Copy from CRM again and retry.`);

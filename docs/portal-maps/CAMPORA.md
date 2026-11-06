@@ -118,8 +118,14 @@ values are intentionally left alone:
 - **Reference organisation/address/text**, **passport Comments/Status**, raw work duration text and prior-visa history tables: no consumer or unsupported semantics. Reference name, phone and email and the Home Address now have explicit consumers.
 - Application Status, University Ref, Student Decision, Agent, document statuses, tasks,
   remarks, timelines and uploaded documents.
-- Campora documents are not listed or fetched. `src/crm-documents.js` only matches the SAMS
-  lead path, so it returns no Campora documents and staff attach them manually.
+- Campora documents: `src/crm-documents.js` lists the Documents tab from
+  `/applyuser/sub-content/full_profile_*` (HTML fragments; lead id from `input[name=lead_id]`,
+  apply id from the path) and keeps label, extension badge and the same-origin
+  `/applyuser/download-media/<id>/<slug>` link. Live check 2026-11-06 on lead 33621: a newly
+  uploaded file reads as a real PDF through that link, so Copy and Attach work. Older uploads on
+  the test backend redirect to the app's `/error` page (or return 500), so the extension refuses
+  them with "Campora did not return this file" and staff attach those manually. The preview
+  iframe points at a private S3 bucket (403, no CORS) and is not used.
 
 ## Limitations
 

@@ -41,7 +41,7 @@ function isCrmFileUrl(value, sourceOrigin) {
   let url;
   try { url = new URL(value); } catch { return false; }
   return url.origin === sourceOrigin && isCrmOrigin(url.origin) && !url.username && !url.password
-    && /^\/tmp_aws_media\/[A-Za-z0-9._-]+$/.test(url.pathname);
+    && /^\/(tmp_aws_media\/[A-Za-z0-9._-]+|applyuser\/download-media\/\d{1,12}\/[A-Za-z0-9._-]+)$/.test(url.pathname);
 }
 
 globalThis.SAMS_ALLOWLIST = {
