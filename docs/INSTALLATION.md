@@ -16,7 +16,7 @@ Open the latest release that SAMS has approved for your browser. Chrome and Safa
 
 ### 2. Download the zip
 
-Under **Assets**, download the Chrome zip. The file name looks like `sams-portal-autofill-0.7.0-chrome.zip`. The version number changes with each release.
+Under **Assets**, download the Chrome zip. The file name looks like `sams-portal-autofill-0.7.1-chrome.zip`. The version number changes with each release.
 
 ### 3. Unzip the download
 
@@ -42,7 +42,7 @@ The Safari package is not signed yet. Safari loads it as a temporary extension. 
 
 ### 2. Download the zip
 
-Under **Assets**, download the Safari zip. The file name looks like `sams-portal-autofill-0.7.0-safari-webextension.zip`.
+Under **Assets**, download the Safari zip. The file name looks like `sams-portal-autofill-0.7.1-safari-webextension.zip`.
 
 ### 3. Unzip the download
 
