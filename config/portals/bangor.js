@@ -95,10 +95,7 @@ const config = {
     { key: "visaEndDate", page: "^/apply/international/", day: "#id_visa_end_day", month: "#id_visa_end_month", year: "#id_visa_end_year" },
   ],
   blockedControls: [
-    // Auth / account
-    "input[type='email']",
-    "input[type='password']",
-    "input[name='password']",
+    // Submits stay manual
     "button[type='submit']",
     "input[type='submit']",
     // Chat widget on every apply page
