@@ -1997,6 +1997,7 @@ async function setElementValue(el, value, meta) {
     // A country list may print "Korea, Republic of [KR]" for South Korea. Offer every alias of the
     // country and read the option without its punctuation and code, so those labels still match.
     var countryList = isCountryKey(crmKey);
+    var wantedCountry = countryList ? resolveCountry(value, false) : "";
     if (countryList) countryAliases(value).forEach(function (alias) { if (candidates.indexOf(alias) === -1) candidates.push(alias); });
     var bestOpt = null;
     var bestSc = 0;
@@ -2005,6 +2006,12 @@ async function setElementValue(el, value, meta) {
       var ot = options[oi].text.trim();
       var ov = options[oi].value || "";
       var otPlain = countryList ? plainWords(ot.replace(/\s*[\[(][A-Za-z]{2,3}[\])]\s*$/, "")) : "";
+      // An option that is a different country is never a match, whatever alias scored it: with no
+      // Democratic Republic of the Congo in the list, the control stays blank rather than take Congo.
+      if (wantedCountry && otPlain) {
+        var optionNames = optionCountry(ot);
+        if (optionNames && optionNames !== wantedCountry) continue;
+      }
       for (var ci = 0; ci < candidates.length; ci++) {
         var sc1 = scoreComboboxOption(normalize(candidates[ci]), ot);
         var sc2 = scoreComboboxOption(normalize(candidates[ci]), ov);
@@ -2102,6 +2109,32 @@ async function setElementValue(el, value, meta) {
   return true;
 }
 
+var COUNTRY_OWN_NAMES = null;
+
+/** The country whose own name is this text, even when another country also uses it as an alias ("Congo"). */
+function countryOwnName(text) {
+  if (!COUNTRY_OWN_NAMES) {
+    COUNTRY_OWN_NAMES = Object.create(null);
+    COUNTRIES.forEach(function (row) {
+      var name = row.split("|")[0];
+      COUNTRY_OWN_NAMES[plainWords(name)] = name;
+    });
+  }
+  return COUNTRY_OWN_NAMES[plainWords(text)] || "";
+}
+
+/** The country a portal option names, including a reversed label such as "Korea, Democratic People's Republic of". */
+function optionCountry(label) {
+  var text = String(label || "").replace(/\s*[\[(][A-Za-z]{2,3}[\])]\s*$/, "").trim();
+  var comma = text.indexOf(",");
+  var spellings = comma > 0 ? [text, text.slice(comma + 1) + " " + text.slice(0, comma)] : [text];
+  for (var i = 0; i < spellings.length; i++) {
+    var country = countryOwnName(spellings[i]) || resolveCountry(spellings[i], false);
+    if (country) return country;
+  }
+  return "";
+}
+
 /** A country's own name followed by every alias the country table holds for it. */
 function countryAliases(text) {
   var country = resolveCountry(text, false);
@@ -2115,7 +2148,8 @@ function countryAliases(text) {
 
 function isCountryKey(crmKey) {
   return crmKey === "studyCountry" || crmKey === "countryName" || crmKey === "employmentCountry" ||
-    crmKey === "permanentCountry" || crmKey === "passportIssueNation" || crmKey === "countryOfBirth";
+    crmKey === "permanentCountry" || crmKey === "passportIssueNation" || crmKey === "countryOfBirth" ||
+    crmKey === "currentDomicile" || crmKey === "visaCountry" || crmKey === "visaRefusalCountry";
 }
 
 /**
@@ -2902,6 +2936,8 @@ function resolveCountry(text, withDemonyms) {
   if (!key) return "";
   var lookup = countryLookup();
   var found = lookup.names[key];
+  // A word two countries share ("Congo") means the country that owns it as its own name.
+  if (found === "") found = countryOwnName(key);
   if (found === undefined && withDemonyms) {
     found = lookup.demonyms[key.replace(/ (citizen|national|citizenship)$/, "")];
   }
@@ -3119,7 +3155,7 @@ var POSTCODE_START = globalThis.SAMS_POSTCODES.start;
 // A county, state or province sits between the city and the postcode. It is not the city, so it is
 // set aside (into the portal's state key when it has one) and the part before it becomes the city.
 var REGION_CODE = /^[A-Z]{2,3}$/;
-var REGION_SUFFIX = /\b(?:division|province|county|state|region|district|governorate|prefecture|emirate)$/i;
+var REGION_SUFFIX = /\b(?:division|province|county|state|region|district|governorate|prefecture|emirate|lga|local government area)$/i;
 var REGION_NAMES = ("greater london|greater manchester|west midlands|west yorkshire|south yorkshire|north yorkshire|east yorkshire|" +
   "yorkshire|merseyside|tyne and wear|county durham|durham|northumberland|cumbria|lancashire|cheshire|derbyshire|nottinghamshire|" +
   "leicestershire|rutland|lincolnshire|staffordshire|shropshire|herefordshire|worcestershire|warwickshire|northamptonshire|" +
@@ -3134,7 +3170,10 @@ var REGION_NAMES = ("greater london|greater manchester|west midlands|west yorksh
   "andhra pradesh|arunachal pradesh|assam|bihar|chhattisgarh|gujarat|haryana|himachal pradesh|jharkhand|karnataka|kerala|" +
   "madhya pradesh|maharashtra|manipur|meghalaya|mizoram|nagaland|odisha|orissa|punjab|rajasthan|sikkim|tamil nadu|telangana|tripura|" +
   "uttar pradesh|uttarakhand|west bengal|jammu and kashmir|ladakh|sindh|balochistan|" +
-  "khyber pakhtunkhwa|islamabad capital territory").split("|");
+  "khyber pakhtunkhwa|islamabad capital territory|" +
+  "abia|adamawa|akwa ibom|anambra|bauchi|bayelsa|benue|borno|cross river|delta|ebonyi|edo|ekiti|enugu|gombe|imo|jigawa|kaduna|kano|" +
+  "katsina|kebbi|kogi|kwara|lagos|nasarawa|niger|ogun|ondo|osun|oyo|plateau|rivers|sokoto|taraba|yobe|zamfara|" +
+  "federal capital territory").split("|");
 var STREET_WORD = /\b(?:street|st|road|rd|avenue|ave|lane|ln|drive|dr|house|flat|apartment|apt|block|building|floor|plot|unit|room|no|number|sector|suite|lot|bldg|villa|shop|po box)\b/i;
 
 function postcodeKey(text) {
@@ -3207,14 +3246,18 @@ function peelAddress(text, known, want) {
   }
   var anchored = found.country || found.postcode;
   var region = "";
-  if (want.city && parts.length > 1) {
+  // Counties, states and districts sit between the city and the postcode. Set each aside, nearest
+  // first, but only while an earlier part can still be the city, so "Lagos" stays the city of
+  // "1 Test Road, Lagos, 100001".
+  var cityLike = function (part) { return !/\d/.test(part) && !STREET_WORD.test(part); };
+  while (want.city && parts.length > 1) {
     var edge = parts[parts.length - 1];
     var beforeEdge = parts[parts.length - 2];
     var edgeIsCity = known.city && plainWords(edge) === plainWords(known.city);
-    if (!edgeIsCity && isRegion(edge) && (anchored || (known.city && plainWords(beforeEdge) === plainWords(known.city)))) {
-      region = edge;
-      parts.pop();
-    }
+    var beforeIsCity = known.city && plainWords(beforeEdge) === plainWords(known.city);
+    if (edgeIsCity || !isRegion(edge) || !(anchored || beforeIsCity) || !(beforeIsCity || cityLike(beforeEdge))) break;
+    if (!region) region = edge;
+    parts.pop();
   }
   if (want.city && parts.length) {
     var tail = parts[parts.length - 1];

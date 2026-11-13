@@ -676,10 +676,11 @@ if (!globalThis.__SAMS_CRM_READER_LOADED__) {
     const tail = value.slice(index + city.length).replace(/^[,\s]+/, "").replace(/\s*,\s*/g, " ").trim();
     // config/postcodes.js holds every country's postcode shape, spaced and dashed ones included.
     const shapes = globalThis.SAMS_POSTCODES ? globalThis.SAMS_POSTCODES.source : "[A-Z]{1,2}\\d[A-Z\\d]?\\s*\\d[A-Z]{2}";
+    // A tail that is one postcode ("1234 AB") is tested first, so its suffix is not read as a country.
+    const whole = tail.match(new RegExp("^(" + shapes + ")$", "i"));
+    if (whole && /\d/.test(whole[1])) return { line, postcode: whole[1].toUpperCase(), country: "" };
     const known = tail.match(new RegExp("^(" + shapes + ")\\s+(.+)$", "i"));
     if (known && /\d/.test(known[1])) return { line, postcode: known[1].toUpperCase(), country: known[2] };
-    const knownOnly = tail.match(new RegExp("^(" + shapes + ")$", "i"));
-    if (knownOnly && /\d/.test(knownOnly[1])) return { line, postcode: knownOnly[1].toUpperCase(), country: "" };
     // Only accept a postcode-shaped candidate; a word such as "United" is not a
     // postcode and must not turn "United Kingdom" into postcode/country garbage.
     // A single token with a digit is a postcode, so alphanumeric codes (drf577) split too.

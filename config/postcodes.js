@@ -20,8 +20,9 @@ const SAMS_POSTCODE_FORMATS = [
   "[A-Z]-\\d{4}",
   // Ghana digital address: GA-123-4567
   "[A-Z]{2}-\\d{3}-\\d{3,4}",
-  // Digits with a dash: US 12345-6789, Brazil 01310-100, Japan 100-0001, Portugal 1000-001, Iran 12345-67890
-  "\\d{3,5}-\\d{3,5}",
+  // Digits with a dash: US 12345-6789, Brazil 01310-100, Japan 100-0001, Portugal 1000-001, Iran 12345-67890.
+  // Only these exact splits, so a house range such as 123-125 is never a postcode.
+  "\\d{5}-\\d{4}|\\d{5}-\\d{3}|\\d{3}-\\d{4}|\\d{4}-\\d{3}|\\d{5}-\\d{5}",
   // Poland: 00-950
   "\\d{2}-\\d{3}",
   // Digits with a space: Sweden, Czechia, Slovakia, Greece 114 71
