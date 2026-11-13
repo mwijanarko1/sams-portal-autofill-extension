@@ -1994,16 +1994,22 @@ async function setElementValue(el, value, meta) {
     var candidates = expandComboboxCandidates(crmKey, value);
     if (!portalValueMap(crmKey, value) && candidates.indexOf(value.trim()) === -1) candidates.unshift(value.trim());
 
+    // A country list may print "Korea, Republic of [KR]" for South Korea. Offer every alias of the
+    // country and read the option without its punctuation and code, so those labels still match.
+    var countryList = isCountryKey(crmKey);
+    if (countryList) countryAliases(value).forEach(function (alias) { if (candidates.indexOf(alias) === -1) candidates.push(alias); });
     var bestOpt = null;
     var bestSc = 0;
     for (var oi = 0; oi < options.length; oi++) {
       if (isPlaceholderOption(options[oi])) continue;
       var ot = options[oi].text.trim();
       var ov = options[oi].value || "";
+      var otPlain = countryList ? plainWords(ot.replace(/\s*[\[(][A-Za-z]{2,3}[\])]\s*$/, "")) : "";
       for (var ci = 0; ci < candidates.length; ci++) {
         var sc1 = scoreComboboxOption(normalize(candidates[ci]), ot);
         var sc2 = scoreComboboxOption(normalize(candidates[ci]), ov);
         var sc = Math.max(sc1, sc2);
+        if (otPlain) sc = Math.max(sc, scoreComboboxOption(plainWords(candidates[ci]), otPlain));
         // A short country alias ("UK", "UAE") is an abbreviation, never a prefix: "UK" must not
         // pick "Ukraine". It counts only on an exact match.
         if (isCountryKey(crmKey) && normalize(candidates[ci]).length <= 3 && sc < 100) sc = 0;
@@ -2094,6 +2100,17 @@ async function setElementValue(el, value, meta) {
   el.dispatchEvent(new Event("input", { bubbles: true }));
   el.dispatchEvent(new Event("change", { bubbles: true }));
   return true;
+}
+
+/** A country's own name followed by every alias the country table holds for it. */
+function countryAliases(text) {
+  var country = resolveCountry(text, false);
+  var names = country ? [country] : [];
+  COUNTRIES.forEach(function (row) {
+    var parts = row.split("|");
+    if (parts[0] === country && parts[2]) names = names.concat(parts[2].split(","));
+  });
+  return names;
 }
 
 function isCountryKey(crmKey) {
@@ -3095,9 +3112,10 @@ var ADDRESS_KINDS = [
   { street: "location", city: "city", postcode: "postcode", country: "countryName", state: "state", present: true },
   { street: "permanentAddress", city: "permanentCity", postcode: "permanentPostcode", country: "permanentCountry" },
 ];
-var POSTCODE_END = /(?:^|\s)([A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2}|[A-Z]\d[A-Z]\s?\d[A-Z]\d|\d{4}\s?[A-Z]{2}|\d{5}-\d{4}|\d{4,6})$/i;
+// Postcode shapes for every country live in config/postcodes.js.
+var POSTCODE_END = globalThis.SAMS_POSTCODES.end;
 var POSTCODE_WORD = /^(?=.{4,10}$)[A-Za-z]{0,3}\d[A-Za-z\d-]{2,9}$/;
-var POSTCODE_START = /^([A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2}|[A-Z]\d[A-Z]\s?\d[A-Z]\d|\d{4}\s?[A-Z]{2}|\d{5}-\d{4}|\d{4,6})(?:\s+(.+))?$/i;
+var POSTCODE_START = globalThis.SAMS_POSTCODES.start;
 // A county, state or province sits between the city and the postcode. It is not the city, so it is
 // set aside (into the portal's state key when it has one) and the part before it becomes the city.
 var REGION_CODE = /^[A-Z]{2,3}$/;
@@ -3112,17 +3130,21 @@ var REGION_NAMES = ("greater london|greater manchester|west midlands|west yorksh
   "new jersey|new mexico|new york|north carolina|north dakota|ohio|oklahoma|oregon|pennsylvania|rhode island|south carolina|" +
   "south dakota|tennessee|texas|utah|vermont|virginia|washington|west virginia|wisconsin|wyoming|alberta|british columbia|manitoba|" +
   "new brunswick|newfoundland and labrador|nova scotia|ontario|prince edward island|quebec|saskatchewan|new south wales|queensland|" +
-  "south australia|tasmania|victoria|western australia").split("|");
-var STREET_WORD = /\b(?:street|st|road|rd|avenue|ave|lane|ln|drive|dr|house|flat|apartment|apt|block|building|floor|plot|unit|room|no|number|sector|suite|po box)\b/i;
+  "south australia|tasmania|victoria|western australia|" +
+  "andhra pradesh|arunachal pradesh|assam|bihar|chhattisgarh|gujarat|haryana|himachal pradesh|jharkhand|karnataka|kerala|" +
+  "madhya pradesh|maharashtra|manipur|meghalaya|mizoram|nagaland|odisha|orissa|punjab|rajasthan|sikkim|tamil nadu|telangana|tripura|" +
+  "uttar pradesh|uttarakhand|west bengal|jammu and kashmir|ladakh|sindh|balochistan|" +
+  "khyber pakhtunkhwa|islamabad capital territory").split("|");
+var STREET_WORD = /\b(?:street|st|road|rd|avenue|ave|lane|ln|drive|dr|house|flat|apartment|apt|block|building|floor|plot|unit|room|no|number|sector|suite|lot|bldg|villa|shop|po box)\b/i;
 
 function postcodeKey(text) {
   return plainWords(text).replace(/ /g, "");
 }
 
-/** A trailing country of one to four words: { rest, value }, or null. */
+/** A trailing country of one to six words: { rest, value }, or null. */
 function countrySuffix(text, known) {
   var words = text.split(/\s+/);
-  for (var size = Math.min(4, words.length); size >= 1; size--) {
+  for (var size = Math.min(6, words.length); size >= 1; size--) {
     var value = words.slice(words.length - size).join(" ");
     var country = resolveCountry(value, false);
     if (country && (!known || resolveCountry(known, false) === country)) {
@@ -3136,7 +3158,7 @@ function countrySuffix(text, known) {
 function postcodePrefix(text, known, hasCountry) {
   var m = POSTCODE_START.exec(text);
   if (!m || !m[2]) return null;
-  if (/^\d{4,6}$/.test(m[1]) && (!hasCountry || STREET_WORD.test(m[2]))) return null;
+  if (isBarePostcode(m[1]) && (!hasCountry || STREET_WORD.test(m[2]))) return null;
   return !known || postcodeKey(known) === postcodeKey(m[1]) ? { rest: m[2], value: m[1] } : null;
 }
 
@@ -3144,16 +3166,23 @@ function isRegion(text) {
   return REGION_CODE.test(text) || REGION_SUFFIX.test(text) || REGION_NAMES.indexOf(plainWords(text)) >= 0;
 }
 
-/** A trailing postcode: { rest, value }, or null. A bare 4 to 6 digit tail never follows a street word. */
-function postcodeSuffix(text, known) {
+/** A postcode of digits, spaces and dashes only, which can also be a house number or a range. */
+function isBarePostcode(value) {
+  return globalThis.SAMS_POSTCODES.isWeak(value);
+}
+
+/** A trailing postcode: { rest, value }, or null. A digits-only tail never follows a street word. */
+function postcodeSuffix(text, known, hasCountry) {
   var m = POSTCODE_END.exec(text);
   var value;
   var rest;
   if (m) {
     value = m[1];
     rest = text.slice(0, m.index).replace(/[,\s]+$/, "");
-    if (/^\d{4,6}$/.test(value) && rest && STREET_WORD.test(rest.split(/\s+/).pop())) return null;
-  } else if (POSTCODE_WORD.test(text)) {
+    if (STREET_WORD.test(value.split(/[\s-]/)[0])) return null;
+    if (isBarePostcode(value) && rest && STREET_WORD.test(rest.split(/\s+/).pop())) return null;
+  } else if (POSTCODE_WORD.test(text) || (hasCountry && /^\d{3}$/.test(text))) {
+    // A three digit postcode (Taiwan, Iceland) counts only as a whole part beside a known country.
     value = text;
     rest = "";
   } else return null;
@@ -3170,7 +3199,7 @@ function peelAddress(text, known, want) {
     var hit = null;
     var kind = "";
     if (want.country && !found.country && (hit = countrySuffix(last, known.country))) kind = "country";
-    else if (want.postcode && !found.postcode && (hit = postcodeSuffix(last, known.postcode) || postcodePrefix(last, known.postcode, Boolean(found.country)))) kind = "postcode";
+    else if (want.postcode && !found.postcode && (hit = postcodeSuffix(last, known.postcode, Boolean(found.country || known.country)) || postcodePrefix(last, known.postcode, Boolean(found.country || known.country)))) kind = "postcode";
     peeled = Boolean(kind);
     if (!peeled) break;
     found[kind] = hit.value;

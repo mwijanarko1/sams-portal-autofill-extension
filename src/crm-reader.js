@@ -674,10 +674,12 @@ if (!globalThis.__SAMS_CRM_READER_LOADED__) {
     // A city at the very start means the CRM holds no street line: only city, postcode and country.
     const line = value.slice(0, index).replace(/[,\s]+$/, "").trim();
     const tail = value.slice(index + city.length).replace(/^[,\s]+/, "").replace(/\s*,\s*/g, " ").trim();
-    const uk = tail.match(/^([A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2})\s+(.+)$/i);
-    if (uk) return { line, postcode: uk[1].toUpperCase(), country: uk[2] };
-    const ukOnly = tail.match(/^([A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2})$/i);
-    if (ukOnly) return { line, postcode: ukOnly[1].toUpperCase(), country: "" };
+    // config/postcodes.js holds every country's postcode shape, spaced and dashed ones included.
+    const shapes = globalThis.SAMS_POSTCODES ? globalThis.SAMS_POSTCODES.source : "[A-Z]{1,2}\\d[A-Z\\d]?\\s*\\d[A-Z]{2}";
+    const known = tail.match(new RegExp("^(" + shapes + ")\\s+(.+)$", "i"));
+    if (known && /\d/.test(known[1])) return { line, postcode: known[1].toUpperCase(), country: known[2] };
+    const knownOnly = tail.match(new RegExp("^(" + shapes + ")$", "i"));
+    if (knownOnly && /\d/.test(knownOnly[1])) return { line, postcode: knownOnly[1].toUpperCase(), country: "" };
     // Only accept a postcode-shaped candidate; a word such as "United" is not a
     // postcode and must not turn "United Kingdom" into postcode/country garbage.
     // A single token with a digit is a postcode, so alphanumeric codes (drf577) split too.

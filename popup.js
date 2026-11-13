@@ -66,6 +66,7 @@ const PORTAL_FILES = [
   "config/build-mode.js",
   "config/allowlist.js",
   "config/synonyms.js",
+  "config/postcodes.js",
   "config/portals/greenwich.js",
   "config/portals/manchester.js",
   "config/portals/bangor.js",
@@ -614,6 +615,7 @@ async function copyFromCrm() {
       "config/build-mode.js",
       "config/allowlist.js",
       "config/crm-source.js",
+      "config/postcodes.js",
       "src/crm-reader.js",
       "src/crm-documents.js",
     ]);
