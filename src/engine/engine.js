@@ -1288,6 +1288,8 @@ function matchScore(crmKey, fieldId, autocompleteValue, terminalToken, sectionKi
   }
   if (crmKey === "email" && /\bemployer/.test(nField)) return 0;
   if (crmKey === "phone" && /\bemployer/.test(nField)) return 0;
+  // Counsellor contact details are not the applicant's
+  if ((crmKey === "email" || crmKey === "phone") && /\bcounsel+or\b/.test(nField)) return 0;
 
   // Ulster NEW EDUCATION HISTORY: Start Year / End Year / Country
   var isStudyStartYearField =
@@ -1555,6 +1557,13 @@ function matchScore(crmKey, fieldId, autocompleteValue, terminalToken, sectionKi
  * @returns {{y:string,m:string,d:string}|null}
  */
 function parseDateParts(raw) {
+  var parts = parseNumericDateParts(raw);
+  if (!parts) return null;
+  var month = +parts.m;
+  return month >= 1 && month <= 12 && +parts.d >= 1 && +parts.d <= new Date(+parts.y, month, 0).getDate() ? parts : null;
+}
+
+function parseNumericDateParts(raw) {
   if (!raw || typeof raw !== "string") return null;
   var s = raw.trim();
   var iso = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
@@ -1585,6 +1594,40 @@ function parseDateParts(raw) {
     };
   }
   return null;
+}
+
+/**
+ * Parse the other date spellings a CRM can hold, into {y, m, d} with real calendar values:
+ * "12 Mar 1996", "12th March 1996", "Tue, 12 March 1996", "March 12, 1996", "1996/03/12", "19960312".
+ * Returns null for an impossible date. Numeric day-first and ISO dates stay with parseDateParts.
+ */
+function parseCalendarDate(raw) {
+  if (!raw || typeof raw !== "string") return null;
+  var s = raw.trim().replace(/\s+/g, " ");
+  var y;
+  var m;
+  var d;
+  var hit;
+  var monthNumber = function (word) {
+    var lower = String(word).toLowerCase().replace(/\.$/, "");
+    if (lower === "sept") return 9;
+    if (lower.length < 3) return 0;
+    var index = SPLIT_MONTHS.findIndex(function (name) { return name.indexOf(lower) === 0; });
+    return index + 1;
+  };
+  if ((hit = s.match(/^(\d{4})[\/.](\d{1,2})[\/.](\d{1,2})$/))) {
+    y = +hit[1]; m = +hit[2]; d = +hit[3];
+  } else if ((hit = s.match(/^(\d{4})(\d{2})(\d{2})$/))) {
+    y = +hit[1]; m = +hit[2]; d = +hit[3];
+  } else if ((hit = s.match(/^(?:[A-Za-z]+,? )?(\d{1,2})(?:st|nd|rd|th)?[ \-\/.]+(?:of )?([A-Za-z]{3,9})\.?,?[ \-\/.]+(\d{4})$/))) {
+    d = +hit[1]; m = monthNumber(hit[2]); y = +hit[3];
+  } else if ((hit = s.match(/^(?:[A-Za-z]+,? )?([A-Za-z]{3,9})\.? (\d{1,2})(?:st|nd|rd|th)?,? (\d{4})$/))) {
+    m = monthNumber(hit[1]); d = +hit[2]; y = +hit[3];
+  } else {
+    return null;
+  }
+  if (!m || m > 12 || !d || d > new Date(y, m, 0).getDate()) return null;
+  return { y: String(y), m: String(m).padStart(2, "0"), d: String(d).padStart(2, "0") };
 }
 
 /**
@@ -1664,7 +1707,7 @@ function formatValueForField(el, value, meta) {
     }
   }
 
-  var parts = parseDateParts(value);
+  var parts = parseDateParts(value) || (isBirth ? parseCalendarDate(value) : null);
   if (!parts) return value;
 
   if (isMonthYear) {
@@ -1723,7 +1766,7 @@ var SPLIT_MONTHS = ["january", "february", "march", "april", "may", "june", "jul
 
 /** Parse an ISO / DD/MM/YYYY date, "September 2019", or a bare year into {y, m, d} parts. */
 function splitDateParts(raw) {
-  var full = parseDateParts(raw);
+  var full = parseDateParts(raw) || parseCalendarDate(raw);
   if (full) return full;
   var text = String(raw || "").trim();
   var monthYear = text.match(/^([A-Za-z]+)\s+(\d{4})$/);
@@ -1772,7 +1815,7 @@ function fillSplitDates(fieldMap, filled) {
       if (!select || select.tagName !== "SELECT" || select.disabled) return;
       // A page reached by saving the previous one keeps that save's address, so the form it posts to
       // says which screen this is.
-      if (!onPage && !(spec.form && select.form && new RegExp(spec.form).test(select.form.action))) return;
+      if (!spec.anyPage && !onPage && !(spec.form && select.form && new RegExp(spec.form).test(select.form.action))) return;
       var current = select.options[select.selectedIndex];
       var placeholder = !select.value || (select.selectedIndex === 0 &&
         /^(month|year|day|select\b.*|choose\b.*|-+|)$/i.test(String(current && current.textContent || "").trim()));

@@ -82,7 +82,7 @@ const config = {
     visaType: ["visa type"],
   },
   splitDates: [
-    { key: "dateOfBirth", page: "^/apply/personal/", day: "#id_dob_day", month: "#id_dob_month", year: "#id_dob_year" },
+    { key: "dateOfBirth", page: "^/apply/personal/", anyPage: true, day: "#id_dob_day", month: "#id_dob_month", year: "#id_dob_year" },
     { key: "startDate", page: "^/apply/education/", month: "#id_course_start_date", year: "#id_course_start_date_year" },
     { key: "endDate", page: "^/apply/education/", month: "#id_course_end_date", year: "#id_course_end_date_year" },
     { key: "graduationYear", page: "^/apply/education/", year: "#id_qualification_date_year" },

@@ -106,6 +106,7 @@ const config = {
     {
       key: "dateOfBirth",
       page: "SIW_IPP_USR\\.start_url",
+      anyPage: true,
       day: "#IPR_DOB_DAY",
       month: "#IPR_DOB_MONTH",
       year: "#IPR_DOB_YEAR",
