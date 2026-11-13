@@ -1,6 +1,6 @@
 {
   "name": "sams-portal-autofill-extension",
-  "version": "0.7.1",
+  "version": "0.7.2",
   "private": true,
   "scripts": {
     "build": "node scripts/build.mjs dev",
