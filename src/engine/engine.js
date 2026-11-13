@@ -1792,6 +1792,11 @@ function splitDateOption(select, part, kind) {
 /**
  * The select a split-date spec names: the first match on the page.
  */
+function isShown(el) {
+  var rect = el.getBoundingClientRect();
+  return rect.width > 0 && rect.height > 0 && window.getComputedStyle(el).display !== "none";
+}
+
 function splitDateSelect(selector) {
   return document.querySelector(selector);
 }
@@ -1813,6 +1818,8 @@ function fillSplitDates(fieldMap, filled) {
       if (!selector || !entry[1]) return;
       var select = splitDateSelect(selector);
       if (!select || select.tagName !== "SELECT" || select.disabled) return;
+      // A spec flagged visibleOnly leaves a select of a branch the page has not revealed.
+      if (spec.visibleOnly && !isShown(select)) return;
       // A page reached by saving the previous one keeps that save's address, so the form it posts to
       // says which screen this is.
       if (!spec.anyPage && !onPage && !(spec.form && select.form && new RegExp(spec.form).test(select.form.action))) return;
@@ -1954,9 +1961,11 @@ async function setElementValue(el, value, meta) {
   // National phone digits only when filling Ulster Phone/Mobile (country code separate)
   if ((!ACTIVE_PORTAL || ACTIVE_PORTAL.phoneKeepsDialPrefix) &&
     (crmKey === "phone" || crmKey === "emergencyPhone") && (type === "tel" || type === "text")) {
-    // No country-code field: UK numbers go national (07...), others keep +CC.
+    // No country-code field: UK numbers go national (07...) unless the portal keeps +44, others keep +CC.
     var intlPhone = String(value).trim().replace(/^00/, "+").replace(/[^\d+]/g, "");
-    value = intlPhone.indexOf("+44") === 0 ? "0" + intlPhone.slice(3).replace(/^0/, "") : intlPhone;
+    // A portal flagged phoneKeepsUkPrefix has no dial-code control and wants +44 kept on UK numbers too.
+    var ukNational = intlPhone.indexOf("+44") === 0 && !(ACTIVE_PORTAL && ACTIVE_PORTAL.phoneKeepsUkPrefix);
+    value = ukNational ? "0" + intlPhone.slice(3).replace(/^0/, "") : intlPhone;
   } else if ((crmKey === "phone" || crmKey === "emergencyPhone") && (type === "tel" || type === "text")) {
     var rawPhone = String(value).trim();
     if (rawPhone.indexOf("+44") === 0) rawPhone = rawPhone.slice(3);
@@ -3018,6 +3027,24 @@ function endedInPast(raw, now) {
 // The portal answers below fill only on the portal that maps them. An answer the CRM cannot
 // settle is "", so the control stays for staff. Passport nation follows nationality, and
 // "applying from within the UK" follows the current country, never nationality.
+/**
+ * A category answer from the active portal's `categoryAnswers[key]`: { source, rules, exact, fallback }.
+ * The first rule whose pattern matches the CRM text wins, then an option the CRM text equals, then the fallback.
+ * "" when the CRM has no source text.
+ */
+function categoryAnswer(key, map) {
+  var spec = ACTIVE_PORTAL && ACTIVE_PORTAL.categoryAnswers && ACTIVE_PORTAL.categoryAnswers[key];
+  var text = spec ? crmText(map[spec.source]) : "";
+  if (!text) return "";
+  var rules = spec.rules || [];
+  for (var i = 0; i < rules.length; i++) {
+    if (new RegExp(rules[i][0], "i").test(text)) return rules[i][1];
+  }
+  var words = function (value) { return plainWords(String(value).replace(/&/g, " and ")); };
+  var exact = (spec.exact || []).find(function (option) { return words(option) === words(text); });
+  return exact || spec.fallback || "";
+}
+
 var DERIVED_KEYS = {
   countryOfBirth: function (map) { return map.nationality; },
   currentDomicile: function (map, parsed) { return map.countryName || parsed.countryName; },
@@ -3068,6 +3095,16 @@ var DERIVED_KEYS = {
   // The award or expected date follows the course end date, but only when the CRM has no passing year.
   qualificationAwardDate: function (map) { return crmText(map.graduationYear) ? "" : map.endDate; },
   qualificationCompleted: function (map) { return endedInPast(map.endDate, new Date()) ? "Yes" : ""; },
+  // Category lists of a portal ("Select Qualification", "Select Subject", "Select Grade") answer from the
+  // CRM education record. Only a list option that names the CRM value is chosen. Anything else is the
+  // portal's own "Other", which reveals a free text box that the CRM value then fills.
+  qualificationType: function (map) { return crmText(map.degree) ? "Academic" : ""; },
+  qualificationCategory: function (map) { return categoryAnswer("qualificationCategory", map); },
+  subjectCategory: function (map) { return categoryAnswer("subjectCategory", map); },
+  gradeCategory: function (map) { return categoryAnswer("gradeCategory", map); },
+  // An English test row in the CRM answers "Have you sat a relevant English test?" and picks the test type.
+  englishTestTaken: function (map) { return crmText(map.englishTestName) ? "Yes" : ""; },
+  englishTestType: function (map) { return categoryAnswer("englishTestType", map); },
   ukVisaRefusal: function (map) {
     var flag = crmYesNo(map.hasVisaRefusal);
     var details = [map.visaRefusalCountry, map.visaRefusalType, map.visaRefusalPurpose, map.visaRefusalDates,
@@ -3332,10 +3369,13 @@ function splitAddressLines(fieldMap, mapped) {
  *
  * @param {Record<string,string>} fieldMap - CRM key → value
  * @param {Array} fields - detected form fields (from scanFormFields)
- * @param {boolean} [followUp] - internal: the rescan pass after a revealing answer
+ * @param {number|boolean} [followUp] - internal: how many rescan passes after a revealing answer came before
+ * @param {string[]} [rebuilt] - internal: CRM keys whose controls the page rebuilt in the last pass
  * @returns {Promise<{filled:Array, skippedEmpty:Array, skippedExisting:Array, skippedSelect:Array, unmatched:string[]}>}
  */
-async function autofillPage(fieldMap, fields, followUp) {
+async function autofillPage(fieldMap, fields, followUp, rebuilt) {
+  var depth = Number(followUp) || 0;
+  rebuilt = rebuilt || [];
   if (!ACTIVE_PORTAL) return autofillGeneric(fieldMap, fields);
   // The follow-up pass reads the same CRM map, so same-address answers never see a split line.
   var crmMap = fieldMap;
@@ -3426,6 +3466,8 @@ async function autofillPage(fieldMap, fields, followUp) {
       }
 
       // Skip non-empty; try next empty candidate (e.g. countryName → residence)
+      // A select the page just rebuilt holds the page's default, not an answer, so it counts as empty.
+      if (rebuilt.indexOf(crmKey) >= 0 && bestField.element.tagName === "SELECT") existingVal = "";
       if (existingVal.trim()) {
         // A portal override target or a field already holding this value means the key is done;
         // falling through would copy the value into a second field on repeat Autofill.
@@ -3575,12 +3617,14 @@ async function autofillPage(fieldMap, fields, followUp) {
   };
 
   // An answer the portal may answer by revealing more controls (a correspondence address)
-  // gets one follow-up pass over the rescanned page, so the new controls fill in this click.
+  // gets follow-up passes (up to three) over the rescanned page, so chained reveals fill in this click.
   var reveals = ACTIVE_PORTAL.revealingKeys || [];
-  if (!followUp && filled.some(function (row) { return reveals.indexOf(row.name) >= 0; })) {
+  if (depth < 3 && filled.some(function (row) { return reveals.indexOf(row.name) >= 0; })) {
     try {
       await waitMs(300);
-      var next = await autofillPage(crmMap, scanFormFields({ mode: "fill" }), true);
+      var rebuiltNext = [];
+      filled.forEach(function (row) { rebuiltNext = rebuiltNext.concat((ACTIVE_PORTAL.rebuiltBy || {})[row.name] || []); });
+      var next = await autofillPage(crmMap, scanFormFields({ mode: "fill" }), depth + 1, rebuiltNext);
       var wasFilled = function (row) { return filled.some(function (done) { return done.name === row.name; }); };
       next.filled = filled.concat(next.filled);
       next.skippedExisting = next.skippedExisting.filter(function (row) { return !wasFilled(row); });

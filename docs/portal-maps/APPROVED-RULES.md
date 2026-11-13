@@ -44,8 +44,7 @@ Manchester Completed is Yes only when the education end date is definitely in th
 
 No conditional workflows were selected in the approval questionnaire. The following remain manual:
 
-- Manchester qualification, subject and grade category selection, including selecting Other.
-- Manchester English-test reveal questions and test-specific score branches.
+- Manchester English-test answers other than the test-taken answer and IELTS, and English questions with no CRM source (first language, UKVI, degree-in-English).
 - Manchester statement upload/text mode selection.
 - Bangor restricted-admissions starting term, study mode and point of entry.
 - Sensitive declarations, consent, login, Save, Continue, Submit and payment.

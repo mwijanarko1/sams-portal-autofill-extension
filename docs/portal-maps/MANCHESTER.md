@@ -233,6 +233,21 @@ during the first scan, so they fill on a second Autofill pass:
 Verified live on 2026-10-23: after choosing those options, a second Autofill filled
 `degree` → `#IPQ_OA_QEQEN1`, `major` → `#IPQ_OA_QESUN1`, `grade` → `#IPQ_OA_QGRDN1`.
 
+## Category answers from CRM data
+
+The first qualification row answers its category lists from the CRM education record. A CRM value that no list option names selects the portal's own **Other**, which reveals the free-text box that the CRM value then fills. The engine follows up to three rescan passes, because each answer can reveal the next.
+
+| Control | CRM source | Answer |
+|---|---|---|
+| `#IPQ_OA_QTYP1` | `degree` present | Academic |
+| `#IPQ_OA_QEQEC1` | `degree` | First Degree for bachelor terms, GCE A-Level for A-level terms, otherwise Other (then `#IPQ_OA_QEQEN1` fills) |
+| `#IPQ_OA_QESUC1` | `major` | The list subject the CRM text equals, otherwise Other (then `#IPQ_OA_QESUN1` fills) |
+| `#IPQ_OA_QGRD1` | `grade` present | Other (then `#IPQ_OA_QGRDN1` fills). The page picks its own default after the qualification changes, and the next pass replaces it |
+| `#IPQ_OA_ENGLANGT` | `englishTestName` present | Yes. Visible only after "Is English your first language?" is No |
+| `#IPQ_OA_ENGTYPE` | `englishTestName` | IELTS when the name contains IELTS, otherwise left blank. `testDate` fills the visible IELTS date selects |
+
+The qualification end date fills only once the Completed answer has revealed it. Bolton has no dial-code control, so a `+44` number keeps `+44` like every other country code.
+
 ## Split dates
 
 | CRM key | Controls |
@@ -250,9 +265,8 @@ Verified live on 2026-10-23: after choosing those options, a second Autofill fil
 | Third forename, Known as, Address Line 2 | No CRM keys |
 | Home County (`#IPR_HAD4`) | No permanent-county source; present `state` belongs to correspondence |
 | Care, disability, criminal conviction | Sensitive declarations with no CRM source |
-| Qualification/Subject/Grade category dropdowns | Category lists, not the CRM values; choosing Other reveals the mapped free-text fields |
 | Full-time / Part-time / APL / voluntary work | Application answers with no CRM key |
-| English score branches | Conditional; score select options are empty until a test is chosen |
+| English tests other than IELTS | The Other test block sits inside the IELTS block on this form, so choosing Other never shows it. Only IELTS is answered; IELTS has no score boxes |
 | Remaining passport, visa, residence-history and agent fields | No approved source or rule; approved exceptions are listed above |
 | Unsupported correspondence telephone fields | No separate correspondence source; never substitute home data |
 | Qualification row 2, prior employment rows | The extension copies one qualification and employer, even when CRM has more |

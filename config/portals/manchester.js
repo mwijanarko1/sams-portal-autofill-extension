@@ -58,12 +58,52 @@ const config = {
     cvCurrentEmployer: ["#IPQ_OA_CREMP"],
     cvCurrentJobTitle: ["#IPQ_OA_CRJOB"],
     personalStatement: ["#IPQ_OA_PS"],
-    englishTestName: ["#IPQ_OA_ENGTYPE"],
     englishFirstLanguage: ["#IPQ_OA_ENGFIRST"],
+    // Category answers (engine DERIVED_KEYS and categoryAnswers below). A CRM value that no list option
+    // names selects the portal's "Other", which reveals the free text box that the CRM value fills.
+    qualificationType: ["#IPQ_OA_QTYP1"],
+    qualificationCategory: ["#IPQ_OA_QEQEC1"],
+    subjectCategory: ["#IPQ_OA_QESUC1"],
+    gradeCategory: ["#IPQ_OA_QGRD1"],
+    // The English test answers fill only after the applicant answers "Is English your first language?" with No.
+    // Only IELTS is answered: the Other test block sits inside the IELTS block on this form, so choosing Other never shows it.
+    englishTestTaken: ["#IPQ_OA_ENGLANGT"],
+    englishTestType: ["#IPQ_OA_ENGTYPE"],
+  },
+  // Filling the left key makes the page rebuild the right key's list and pick its own default, so the next
+  // pass may replace that default.
+  rebuiltBy: { qualificationCategory: ["gradeCategory"] },
+  categoryAnswers: {
+    qualificationCategory: {
+      source: "degree",
+      rules: [
+        ["bachelor|undergraduate degree|first degree|\\bb\\.?\\s?(?:sc|a|eng|com|ed)\\b", "First Degree"],
+        ["\\ba[- ]?levels?\\b|\\bgce\\b", "GCE A-Level"],
+      ],
+      fallback: "Other",
+    },
+    subjectCategory: {
+      source: "major",
+      exact: [
+        "Accounting", "Art & Design", "Biology", "Business", "Civil Engineering", "Computing", "Dance",
+        "Dental Technology", "Education", "English", "Film and Media Studies", "Game Design", "General Studies",
+        "Health and Social Care", "Languages", "Law", "Mathematics", "Nursing", "Psychology", "Science",
+        "Sociology", "Sports Science",
+      ],
+      fallback: "Other",
+    },
+    gradeCategory: { source: "grade", fallback: "Other" },
+    englishTestType: { source: "englishTestName", rules: [["ielts", "IELTS"]] },
   },
   phoneKeepsDialPrefix: true,
+  // Bolton has no dial-code control, so UK numbers keep +44 like every other country code.
+  phoneKeepsUkPrefix: true,
   // Answers that reveal more controls: the engine rescans once after filling one of these.
-  revealingKeys: ["addCorrespondenceAddress", "holdsBritishPassport", "holdsEuPassport"],
+  revealingKeys: [
+    "addCorrespondenceAddress", "holdsBritishPassport", "holdsEuPassport",
+    "qualificationCategory", "subjectCategory", "qualificationCompleted", "gradeCategory",
+    "englishTestTaken", "englishTestType",
+  ],
   extraSynonyms: {
     title: ["title"],
     givenName: ["forename"],
@@ -95,7 +135,6 @@ const config = {
       "please type your personal statement in the box.",
       "personal statement",
     ],
-    englishTestName: ["type of qualification"],
     englishFirstLanguage: [
       "is english your first language?",
       "english your first language",
@@ -128,13 +167,23 @@ const config = {
     {
       key: "endDate",
       page: "SIW_IPP_USR\\.start_url",
+      visibleOnly: true,
       day: "#IPQ_OA_QENDD1_DAY",
       month: "#IPQ_OA_QENDD1_MONTH",
       year: "#IPQ_OA_QENDD1_YEAR",
     },
     {
+      key: "testDate",
+      page: "SIW_IPP_USR\\.start_url",
+      visibleOnly: true,
+      day: "#IPQ_OA_IELTSDATE_DAY",
+      month: "#IPQ_OA_IELTSDATE_MONTH",
+      year: "#IPQ_OA_IELTSDATE_YEAR",
+    },
+    {
       key: "graduationYear",
       page: "SIW_IPP_USR\\.start_url",
+      visibleOnly: true,
       year: "#IPQ_OA_QENDD1_YEAR",
     },
   ],
@@ -198,11 +247,6 @@ const config = {
     "#IPQ_OA_SOIC",
     "#IPQ_OA_SOICDET",
     "#IPQ_OA_AGREE",
-    // Qualification row 1 auxiliary selects without CRM values
-    "#IPQ_OA_QTYP1",
-    "#IPQ_OA_QEQEC1",
-    "#IPQ_OA_QESUC1",
-    "#IPQ_OA_QGRD1",
     // Qualification rows 2+ (the extension copies one qualification)
     "#IPQ_OA_QUINS2",
     "#IPQ_OA_QTYP2",
@@ -259,7 +303,6 @@ const config = {
     "#IPQ_OA_ENGSTYRS",
     "#IPQ_OA_ENGUKVI",
     "#IPQ_OA_ENGDEGR",
-    "#IPQ_OA_ENGLANGT",
     "#IPQ_OA_TOEFLNUM",
     "#IPQ_OA_TOEFLDAT_DAY",
     "#IPQ_OA_TOEFLDAT_MONTH",
