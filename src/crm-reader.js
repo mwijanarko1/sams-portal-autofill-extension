@@ -979,6 +979,14 @@ if (!globalThis.__SAMS_CRM_READER_LOADED__) {
     });
   }
 
+  // True while any section still shows its loader, or while a section has been removed for a re-render.
+  function camporaLoading(root) {
+    return CAMPORA_SECTION_IDS.some((id) => {
+      const section = root.querySelector(`#${id}`);
+      return !section || /please!\s*wait/i.test(section.textContent);
+    });
+  }
+
   function camporaRows(block) {
     return Array.from(block?.querySelectorAll("tr") || []);
   }
@@ -1169,12 +1177,22 @@ if (!globalThis.__SAMS_CRM_READER_LOADED__) {
         if (!await waitFor(ready, 12000)) {
           throw new Error("The Campora profile is still loading. Try Copy again.");
         }
+        // The click re-shows the previous render first and replaces its sections with loaders a
+        // few hundred ms later. That stale render looks ready and quiet, so wait for the loaders
+        // to appear (or for a grace period when the page reuses its data) before trusting it.
+        await waitFor(() => camporaLoading(root), 2500);
       }
       if (!await waitFor(() => camporaSectionsReady(root), 12000)) {
         throw new Error("The Campora profile sections are still loading. Try Copy again.");
       }
       if (!await waitForDomSettled(root, 5000, 500, 0)) {
         throw new Error("The Campora profile is still loading. Try Copy again.");
+      }
+      // A late reload can start inside the quiet window: wait for it too, then settle again.
+      if (camporaLoading(root) || !camporaSectionsReady(root)) {
+        if (!await waitFor(() => camporaSectionsReady(root), 12000) || !await waitForDomSettled(root, 5000, 500, 0)) {
+          throw new Error("The Campora profile sections are still loading. Try Copy again.");
+        }
       }
       readCamporaSummary(root, fields);
       readCamporaSections(root, fields);
