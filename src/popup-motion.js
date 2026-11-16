@@ -18,7 +18,7 @@
   let before = measure();
   new MutationObserver(() => {
     const after = measure();
-    if (!reduced.matches) {
+    if (!reduced.matches && !document.body.classList.contains("booting")) {
       for (const [element, top] of after) {
         const previous = before.get(element);
         if (previous === undefined || Math.abs(previous - top) < 2) continue;

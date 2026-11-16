@@ -309,6 +309,14 @@ if (!globalThis.__SAMS_CRM_READER_LOADED__) {
   // Only the CRM's section toggles are clicked; they render one read-only panel
   // at a time and send no writes. A single overall deadline keeps a slow CRM
   // from multiplying the per-panel waits across nine stages.
+  // Tells the open popup which CRM section Copy is reading. A closed popup is fine: nobody listens.
+  function reportProgress(section) {
+    try {
+      const sent = chrome.runtime.sendMessage({ action: "copyProgress", section });
+      if (sent && sent.catch) sent.catch(() => {});
+    } catch { /* the extension was reloaded */ }
+  }
+
   async function readExpandedSections(profileRoot, readPanel) {
     const deadline = Date.now() + 30000;
     const panelSection = (panel) => normalizeLabel(panel?.querySelector(".main_title")?.textContent || "");
@@ -319,6 +327,7 @@ if (!globalThis.__SAMS_CRM_READER_LOADED__) {
     for (const toggle of profileRoot.querySelectorAll("li[class*='btn_collapse_']")) {
       if (Date.now() > deadline) return;
       const section = normalizeLabel(toggle.textContent);
+      reportProgress(section);
       let panel = document.querySelector(".collapse_common");
       // Some layouts mount a stage (for example Personal Information) before Copy.
       if (panel && visible(panel) && panel.innerText && matches(panel, section)) {
@@ -1194,8 +1203,11 @@ if (!globalThis.__SAMS_CRM_READER_LOADED__) {
           throw new Error("The Campora profile sections are still loading. Try Copy again.");
         }
       }
+      reportProgress("contact and address");
       readCamporaSummary(root, fields);
+      reportProgress("education and other sections");
       readCamporaSections(root, fields);
+      reportProgress("application details");
       readCamporaApplication(fields);
       filterCamporaFields(fields);
     } finally {
@@ -1217,6 +1229,7 @@ if (!globalThis.__SAMS_CRM_READER_LOADED__) {
     // split address components that the Profile tab does not show. Read into a
     // separate map so the Profile tab can win on shared keys.
     const readApplications = async () => {
+      reportProgress("applications");
       if (tabElement("Applications") && activeTabName() !== "applications") {
         await ensureTab("Applications");
       }
@@ -1233,6 +1246,7 @@ if (!globalThis.__SAMS_CRM_READER_LOADED__) {
     // Older layouts without a tab strip are read in place. Forms get their own
     // section context; the page-wide pass covers non-form profile content only.
     const readInPlace = async () => {
+      reportProgress("profile");
       await waitFor(tracker, 1500);
       await readExpandedSections(document, (panel, section) => {
         readListEntries(panel, fields, true);
@@ -1285,6 +1299,7 @@ if (!globalThis.__SAMS_CRM_READER_LOADED__) {
             throw new Error("The CRM profile is still loading. Try Copy again.");
           }
         }
+        reportProgress("profile");
         readProfileTab(document, fields);
         // Test records merge as a unit: never borrow a score from a different test.
         const testIdentity = (value) => {

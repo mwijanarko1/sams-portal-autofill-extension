@@ -4124,8 +4124,36 @@ function pageRecordSections(sections) {
   }).map(function (section) { return section.title; });
 }
 
+/**
+ * True when this page is a single address form of a portal that has one address (Bangor), so staff can
+ * choose which saved address fills it. Portals with a Home and a Correspondence form never qualify.
+ */
+function pageSingleAddress() {
+  if (!ACTIVE_PORTAL || !ACTIVE_PORTAL.permanentAddressFillsMissingPresent) return false;
+  var presentKeys = Object.keys(PRESENT_FROM_PERMANENT);
+  return scanFormFields({ mode: "fill" }).some(function (field) {
+    return presentKeys.indexOf(field.overrideCrmKey) >= 0;
+  });
+}
+
+/**
+ * The CRM map with the permanent address moved onto the present keys, for a single address portal.
+ * A present key the permanent address lacks is removed, so it never keeps the other address's value.
+ */
+function applyAddressChoice(fieldMap, choice) {
+  if (choice !== "permanent" || !ACTIVE_PORTAL || !ACTIVE_PORTAL.permanentAddressFillsMissingPresent) return fieldMap;
+  var out = Object.assign({}, fieldMap);
+  Object.keys(PRESENT_FROM_PERMANENT).forEach(function (key) {
+    var value = crmText(fieldMap[PRESENT_FROM_PERMANENT[key]]);
+    if (value) out[key] = value; else delete out[key];
+  });
+  return out;
+}
+
 globalThis.SAMS_ENGINE = {
   pageRecordSections,
+  pageSingleAddress,
+  applyAddressChoice,
   scanFormFields,
   autofillPage,
   enrichFieldsWithMapping,

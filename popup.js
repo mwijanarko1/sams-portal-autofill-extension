@@ -24,6 +24,8 @@ const recordSteppers = document.getElementById("recordSteppers");
 const recordShowAll = document.getElementById("recordShowAll");
 // Titles of the record sections the open page can fill, or null when the page cannot be read.
 let pageSectionTitles = null;
+// True when the open page is a single address form, so staff can pick Present or Permanent.
+let pageSingleAddress = false;
 let showAllRecords = false;
 let pageSectionsRevision = 0;
 let cache = null;
@@ -169,7 +171,16 @@ function addList(title, items) {
   statusArea.appendChild(details);
 }
 
+// The CRM keys for the present address are named location, city, postcode and countryName. Staff see them as Present.
+const ADDRESS_LABELS = {
+  location: "Present address",
+  city: "Present city",
+  postcode: "Present postcode",
+  countryName: "Present country",
+};
+
 function fieldLabel(key) {
+  if (ADDRESS_LABELS[key]) return ADDRESS_LABELS[key];
   const words = key.replace(/(?<=[a-z0-9])(?=[A-Z])|(?<=[a-z])(?=[0-9])/g, " ").toLowerCase();
   return words.charAt(0).toUpperCase() + words.slice(1);
 }
@@ -245,6 +256,24 @@ function repeatingSections(fields) {
   }).filter((section) => section.count > 1);
 }
 
+// The address is a two record section: record 1 is the Present address, record 2 the Permanent one.
+// It uses the same stepper as the other record sections and is kept in the same record choice store.
+// It matters only when both saved addresses exist and differ.
+const ADDRESS_SECTION = {
+  title: "Address",
+  count: 2,
+  keys: ["location", "city", "postcode", "countryName"],
+  lines: (record) => (record === 1
+    ? ["Present address", cache.fields.location]
+    : ["Permanent address", cache.fields.permanentAddress]),
+};
+
+function hasAddressPair() {
+  const fields = (cache && cache.fields) || {};
+  const same = (text) => String(text || "").trim().toLowerCase();
+  return Boolean(same(fields.location) && same(fields.permanentAddress) && same(fields.location) !== same(fields.permanentAddress));
+}
+
 function chosenRecord(section) {
   const chosen = Number(cache && cache.recordChoice && cache.recordChoice[section.title]);
   return Number.isInteger(chosen) && chosen >= 1 && chosen <= section.count ? chosen : 1;
@@ -272,6 +301,7 @@ function recordUsed(section, record) {
 }
 
 function recordSummary(section, record) {
+  if (section.lines) return section.lines(record);
   const suffix = record > 1 ? String(record) : "";
   return section.keys.filter((key) => !/^has[A-Z]/.test(key))
     .map((key) => cache.fields[`${key}${suffix}`]).filter(Boolean).slice(0, 2);
@@ -290,7 +320,8 @@ async function chooseRecord(choices) {
 function renderRecordSteppers() {
   const all = cache ? repeatingSections(cache.fields) : [];
   const sections = showAllRecords ? all : all.filter((section) => pageSectionTitles && pageSectionTitles.has(section.title));
-  recordSteppers.hidden = !sections.length;
+  const showAddress = pageSingleAddress && hasAddressPair();
+  recordSteppers.hidden = !sections.length && !showAddress;
   // An escape hatch for pages the extension cannot read or does not recognise.
   recordShowAll.hidden = !all.length || (!showAllRecords && sections.length === all.length);
   recordShowAll.textContent = showAllRecords ? "Show this page's records only" : "Show all records";
@@ -300,7 +331,7 @@ function renderRecordSteppers() {
   const hint = document.createElement("p");
   hint.className = "meta";
   hint.textContent = "Moves to the next record after each fill.";
-  recordSteppers.replaceChildren(heading, ...sections.map((section) => {
+  recordSteppers.replaceChildren(heading, ...(showAddress ? [ADDRESS_SECTION] : []).concat(sections).map((section) => {
     const record = chosenRecord(section);
     const row = document.createElement("div");
     row.className = "record-step";
@@ -338,35 +369,49 @@ function renderRecordSteppers() {
       row.append(badge);
     }
     return row;
-  }), hint);
+  }), ...(sections.length ? [hint] : []));
 }
 
 // Asks the open page which record sections it can fill, so the stepper shows only on those pages.
 // Any failure leaves the sections hidden; "Show all records" still reaches them.
-async function refreshPageSections() {
+// Open, focus and tab events arrive together when the popup opens. A repeat within this time
+// would inject the page scripts again for the same answer, so it is skipped unless forced.
+const PAGE_SECTIONS_REPEAT_MS = 400;
+let pageSectionsStartedAt = 0;
+
+async function refreshPageSections(force = false) {
+  if (!force && Date.now() - pageSectionsStartedAt < PAGE_SECTIONS_REPEAT_MS) return;
+  pageSectionsStartedAt = Date.now();
   const revision = ++pageSectionsRevision;
   const sections = cache ? repeatingSections(cache.fields) : [];
-  if (!sections.length) {
+  if (!sections.length && !hasAddressPair()) {
     pageSectionTitles = null;
+    pageSingleAddress = false;
     renderRecordSteppers();
     return;
   }
   let frames = [];
   let titles = null;
+  let singleAddress = false;
   try {
     const tab = await approvedTab(SAMS_ALLOWLIST.isFillTarget, "");
     const prepared = await preparePageFrames(tab);
     frames = prepared.frames;
     const answers = await Promise.all(prepared.checked.map(async (frame) => {
-      if (frame.error) return [];
+      if (frame.error) return { titles: [], singleAddress: false };
       const response = await frame.request({ action: "pageSections", sections: sections.map(({ title, keys }) => ({ title, keys })) });
-      return response && Array.isArray(response.titles) ? response.titles : [];
+      return {
+        titles: response && Array.isArray(response.titles) ? response.titles : [],
+        singleAddress: Boolean(response && response.singleAddress),
+      };
     }));
-    titles = new Set(answers.flat());
+    titles = new Set(answers.flatMap((answer) => answer.titles));
+    singleAddress = answers.some((answer) => answer.singleAddress);
   } catch { /* an unreadable page shows no records; the link above the buttons still works */ }
   frames.forEach((frame) => frame.close && frame.close());
   if (revision !== pageSectionsRevision) return;
   pageSectionTitles = titles;
+  pageSingleAddress = singleAddress;
   renderRecordSteppers();
 }
 
@@ -481,7 +526,7 @@ async function viewDocument(crmDocument) {
 function renderCache() {
   clearInterval(expiryTimer);
   studentCard.hidden = !cache;
-  btnCopy.textContent = cache ? "Copy again" : "Copy from CRM";
+  if (!btnCopy.classList.contains("busy")) btnCopy.textContent = cache ? "Copy again" : "Copy from CRM";
   btnAutofill.disabled = !cache;
   btnDocuments.hidden = !(cache && cache.documents && cache.documents.length);
   renderFields(cache && cache.fields);
@@ -605,11 +650,74 @@ async function copyDocuments(tabId) {
   return { documents: [], failed: true };
 }
 
+// While Copy runs the button names the step in progress, as the CRM page reports it.
+let copyingTabId = null;
+
+// Each label stays up for a minimum time, so fast steps can still be read. Later labels wait in a queue.
+const COPY_LABEL_MS = 700;
+let copyLabelQueue = [];
+let copyLabelShownAt = 0;
+let copyLabelTimer = null;
+
+function showCopyLabel(text) {
+  const label = document.createElement("span");
+  label.className = "busy-label";
+  label.textContent = text;
+  btnCopy.replaceChildren(label);
+  copyLabelShownAt = Date.now();
+}
+
+function pumpCopyLabels() {
+  if (copyLabelTimer || !copyLabelQueue.length) return;
+  const wait = Math.max(0, copyLabelShownAt + COPY_LABEL_MS - Date.now());
+  copyLabelTimer = setTimeout(() => {
+    copyLabelTimer = null;
+    if (copyLabelQueue.length) showCopyLabel(copyLabelQueue.shift());
+    pumpCopyLabels();
+  }, wait);
+}
+
+function setCopyLabel(text) {
+  if (!btnCopy.classList.contains("busy")) return;
+  copyLabelQueue.push(text);
+  pumpCopyLabels();
+}
+
+function resetCopyLabels() {
+  clearTimeout(copyLabelTimer);
+  copyLabelTimer = null;
+  copyLabelQueue = [];
+  copyLabelShownAt = 0;
+}
+
+// Resolves when every queued label has been shown for its minimum time.
+function copyLabelsDone() {
+  return new Promise((resolve) => {
+    const check = () => {
+      if (!copyLabelQueue.length && !copyLabelTimer && Date.now() >= copyLabelShownAt + COPY_LABEL_MS) resolve();
+      else setTimeout(check, 50);
+    };
+    check();
+  });
+}
+
+chrome.runtime.onMessage.addListener((message, sender) => {
+  if (!message || message.action !== "copyProgress" || copyingTabId === null) return;
+  if (sender.id !== chrome.runtime.id || !sender.tab || sender.tab.id !== copyingTabId) return;
+  if (typeof message.section !== "string" || !/^[a-z0-9 &/()'-]{1,40}$/i.test(message.section)) return;
+  setCopyLabel(`Reading ${message.section.toLowerCase()}`);
+});
+
 async function copyFromCrm() {
   btnCopy.disabled = true;
-  setStatus("info", "Opening CRM sections and reading student fields...");
+  btnCopy.classList.add("busy");
+  btnCopy.setAttribute("aria-busy", "true");
+  resetCopyLabels();
+  setCopyLabel("Opening CRM sections");
+  statusArea.replaceChildren();
   try {
     const tab = await approvedTab(SAMS_ALLOWLIST.isCrmOrigin, "Open an approved SAMS CRM or Campora student profile first.");
+    copyingTabId = tab.id;
     await installProfileTracker(tab.id);
     await inject(tab.id, [0], [
       "config/build-mode.js",
@@ -621,18 +729,26 @@ async function copyFromCrm() {
     ]);
     const response = await chrome.tabs.sendMessage(tab.id, { action: "copyCrmProfile" }, { frameId: 0 });
     if (response.error) throw new Error(response.error);
+    setCopyLabel("Reading documents");
     const listing = await copyDocuments(tab.id);
+    setCopyLabel("Saving student");
     const stored = await runtimeMessage({ action: "cacheStudent", profile: { ...response.profile, documents: listing.documents } });
     if (stored.error) throw new Error(stored.error);
     cache = stored.cache;
     renderCache();
-    refreshPageSections();
-    const documentsNote = listing.failed ? " CRM documents could not be read, so attach them manually."
-      : cache.documents.length ? ` ${cache.documents.length} CRM documents available to attach.` : "";
-    setStatus("success", `${Object.keys(cache.fields).length} CRM fields copied.${documentsNote} Student data expires after 30 minutes of inactivity.`);
+    refreshPageSections(true);
+    // A good Copy needs no message: the student card shows the copy time and expiry. Only a failure to read documents is worth saying.
+    if (listing.failed) setStatus("warning", "CRM documents could not be read, so attach them manually.");
+    else statusArea.replaceChildren();
+    await copyLabelsDone();
   } catch (error) {
+    resetCopyLabels();
     setStatus("error", error.message || String(error));
   } finally {
+    copyingTabId = null;
+    btnCopy.classList.remove("busy");
+    btnCopy.removeAttribute("aria-busy");
+    btnCopy.textContent = cache ? "Copy again" : "Copy from CRM";
     btnCopy.disabled = false;
   }
 }
@@ -755,9 +871,11 @@ async function autofill() {
     if (!cache) throw new Error("No copied student is available. Copy from CRM again before Autofill.");
     const fieldMap = fieldsForFill();
     const usedRecords = repeatingSections(cache.fields).map((section) => ({ section, record: chosenRecord(section) }));
+    // The address choice is a record too, but it never moves on by itself: one form takes one address.
+    const addressUsed = pageSingleAddress && hasAddressPair() ? { section: ADDRESS_SECTION, record: chosenRecord(ADDRESS_SECTION) } : null;
     const outcomes = await Promise.all(checked.map(async (frame) => {
       if (frame.error) return frame;
-      const response = await frame.request({ action: "autofill", fieldMap });
+      const response = await frame.request({ action: "autofill", fieldMap, addressChoice: chosenRecord(ADDRESS_SECTION) === 2 ? "permanent" : "present" });
       return response && !response.error
         ? { frameId: frame.frameId, documentId: frame.documentId, report: response }
         : { frameId: frame.frameId, documentId: frame.documentId, error: (response && response.error) || FRAME_NO_RESPONSE };
@@ -776,6 +894,7 @@ async function autofill() {
     usedRecords.forEach(({ section, record }) => {
       if (section.keys.some((key) => filledNames.has(key))) used[section.title] = record;
     });
+    if (addressUsed && addressUsed.section.keys.some((key) => filledNames.has(key))) used[ADDRESS_SECTION.title] = addressUsed.record;
     const advanceNote = Object.entries(advance).map(([title, record]) => ` Next ${title.toLowerCase()} fill uses record ${record}.`).join("");
     // Kept from Chrome: one successful frame counts as activity. All-frame failure threw above.
     const touched = await runtimeMessage(Object.keys(advance).length || Object.keys(used).length
@@ -1218,7 +1337,10 @@ btnClear.addEventListener("click", clearStudent);
 btnSiteAccess.addEventListener("click", requestSiteAccess);
 btnDocuments.addEventListener("click", scanUploads);
 copiedSearch.addEventListener("input", () => renderFields(cache && cache.fields));
-refreshCache().then(() => refreshPageSections()).catch((error) => setStatus("error", error.message || String(error)));
+refreshCache().then(() => refreshPageSections(true)).catch((error) => setStatus("error", error.message || String(error))).finally(() => {
+  // Animations stay off for the first render. The wait lets every zero length animation finish first.
+  setTimeout(() => document.body.classList.remove("booting"), 400);
+});
 SAMS_UPDATE.available().then((update) => {
   if (!update) return;
   updateBanner.textContent = `Update available: version ${update.version}`;

@@ -29,10 +29,19 @@
     button.secondary:not(:disabled):hover { background: #e0e7ff; }
     button.clear:not(:disabled):hover { background: #f1f5f9; }
     button { transition: background-color .15s ease, box-shadow .15s ease, opacity .2s ease; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    button.busy { position: relative; cursor: progress; }
+    button.busy:disabled { opacity: .8; }
+    @keyframes shimmer { from { background-position: 100% 0; } to { background-position: -100% 0; } }
+    @keyframes label-in { from { opacity: 0; } }
+    button.busy .busy-label { background: linear-gradient(100deg, rgba(255, 255, 255, .55) 30%, #fff 50%, rgba(255, 255, 255, .55) 70%) 100% 0 / 250% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; animation: label-in .2s ease-out both, shimmer 1.8s linear infinite; }
+    .card.main:has(#studentCard:not([hidden])) button.busy .busy-label { background-image: linear-gradient(100deg, rgba(49, 46, 129, .55) 30%, #312e81 50%, rgba(49, 46, 129, .55) 70%); }
+    button.busy::before { content: ""; position: absolute; left: 12px; top: 0; bottom: 0; margin: auto 0; width: 12px; height: 12px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: spin .7s linear infinite; }
     button:not(:disabled):active { transform: translateY(1px); }
     @keyframes enter { from { opacity: 0; transform: translateY(-4px); } }
-    .student:not([hidden]), #copiedDetails:not([hidden]), #copiedDocuments:not([hidden]), #btnDocuments:not([hidden]), .card.main:has(#studentCard:not([hidden])) .action-row, #statusArea > .status, #statusArea > details { animation: enter .28s cubic-bezier(.22, 1, .36, 1) both; }
-    #copiedDocuments:not([hidden]) { animation-delay: .05s; }
+    .student:not([hidden]), #copiedDetails:not([hidden]), #copiedDocuments:not([hidden]), #btnDocuments:not([hidden]), .card.main:has(#studentCard:not([hidden])) .action-row, #statusArea > .status, #statusArea > details { animation: enter .18s cubic-bezier(.22, 1, .36, 1) both; }
+    /* The first render on open shows the saved student at once. popup.js drops this class after startup. */
+    body.booting *, body.booting *::before { animation-duration: 0s !important; animation-delay: 0s !important; }
     @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
     button:focus-visible { outline: 2px solid #818cf8; outline-offset: 2px; }
     .card.main { display: flex; flex-direction: column; gap: 8px; }
@@ -140,7 +149,7 @@
     #statusArea > details li { padding: 3px 9px; border-radius: 7px; background: #f5f3ff; color: #312e81; font-size: 11px; overflow-wrap: anywhere; }
   </style>
 </head>
-<body>
+<body class="booting">
   <main>
     <header>
       <img src="sams-logo.svg" alt="SAMS CRM">

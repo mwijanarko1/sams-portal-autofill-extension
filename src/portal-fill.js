@@ -202,7 +202,7 @@ if (!globalThis.__SAMS_PORTAL_FILL_LOADED__) {
           .filter((section) => section && typeof section.title === "string" && Array.isArray(section.keys))
           .map((section) => ({ title: section.title.slice(0, 40), keys: section.keys.filter((key) => typeof key === "string").slice(0, 40) }));
         try {
-          reply({ titles: SAMS_ENGINE.pageRecordSections(sections) });
+          reply({ titles: SAMS_ENGINE.pageRecordSections(sections), singleAddress: SAMS_ENGINE.pageSingleAddress() });
         } catch (error) {
           reply({ error: error.message || String(error) });
         }
@@ -221,7 +221,8 @@ if (!globalThis.__SAMS_PORTAL_FILL_LOADED__) {
         return;
       }
       try {
-        reply(await SAMS_ENGINE.autofillPage(message.fieldMap || {}, SAMS_ENGINE.scanFormFields({ mode: "fill" })));
+        const fieldMap = SAMS_ENGINE.applyAddressChoice(message.fieldMap || {}, message.addressChoice);
+        reply(await SAMS_ENGINE.autofillPage(fieldMap, SAMS_ENGINE.scanFormFields({ mode: "fill" })));
       } catch (error) {
         reply({ error: error.message || String(error) });
       }
